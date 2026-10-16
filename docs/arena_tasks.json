@@ -1,0 +1,302 @@
+[
+  {
+    "slug": "read-contract-state",
+    "title": "Read Contract State",
+    "tier": "Easy",
+    "category": "Chain MCP",
+    "points": 50,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/read-contract-state"
+  },
+  {
+    "slug": "event-log-monitor",
+    "title": "Event/Log Monitor",
+    "tier": "Easy",
+    "category": "Chain MCP",
+    "points": 50,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/event-log-monitor"
+  },
+  {
+    "slug": "docs-mcp-onboarding",
+    "title": "Docs MCP Onboarding",
+    "tier": "Easy",
+    "category": "Developer Docs MCP",
+    "points": 50,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/docs-mcp-onboarding"
+  },
+  {
+    "slug": "doc-search-cli",
+    "title": "Doc-Search CLI",
+    "tier": "Easy",
+    "category": "Developer Docs MCP",
+    "points": 50,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/doc-search-cli"
+  },
+  {
+    "slug": "threshold-guardian",
+    "title": "Threshold Guardian",
+    "tier": "Medium",
+    "category": "SkillEngine",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/threshold-guardian"
+  },
+  {
+    "slug": "saga-executor",
+    "title": "Saga Executor",
+    "tier": "Hard",
+    "category": "SkillEngine",
+    "points": 200,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/saga-executor"
+  },
+  {
+    "slug": "arbitrage-scanner",
+    "title": "Arbitrage Scanner",
+    "tier": "Hard",
+    "category": "SkillEngine",
+    "points": 200,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/arbitrage-scanner"
+  },
+  {
+    "slug": "dry-run-executor",
+    "title": "Dry-Run Executor",
+    "tier": "Medium",
+    "category": "SkillEngine",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/dry-run-executor"
+  },
+  {
+    "slug": "trend-watcher",
+    "title": "Trend Watcher",
+    "tier": "Hard",
+    "category": "SkillEngine",
+    "points": 200,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/trend-watcher"
+  },
+  {
+    "slug": "batch-executor",
+    "title": "Batch Executor",
+    "tier": "Medium",
+    "category": "SkillEngine",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/batch-executor"
+  },
+  {
+    "slug": "policy-gatekeeper",
+    "title": "Policy Gatekeeper",
+    "tier": "Medium",
+    "category": "SkillEngine",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/policy-gatekeeper"
+  },
+  {
+    "slug": "skill-chain-mcp-flow",
+    "title": "Skill + Chain MCP Flow",
+    "tier": "Medium",
+    "category": "Composition",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/skill-chain-mcp-flow"
+  },
+  {
+    "slug": "docs-chain-mcp-agent",
+    "title": "Docs MCP + Chain MCP Agent",
+    "tier": "Medium",
+    "category": "Composition",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/docs-chain-mcp-agent"
+  },
+  {
+    "slug": "portfolio-assistant",
+    "title": "Portfolio Assistant",
+    "tier": "Hard",
+    "category": "DeFi / Portfolio",
+    "points": 200,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/portfolio-assistant"
+  },
+  {
+    "slug": "yield-optimizer",
+    "title": "Yield Optimizer",
+    "tier": "Hard",
+    "category": "DeFi / Portfolio",
+    "points": 200,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/yield-optimizer"
+  },
+  {
+    "slug": "liquidation-watchdog",
+    "title": "Liquidation Watchdog",
+    "tier": "Medium",
+    "category": "DeFi / Portfolio",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/liquidation-watchdog"
+  },
+  {
+    "slug": "natural-language-payment-agent",
+    "title": "Natural-Language Payment Agent",
+    "tier": "Medium",
+    "category": "Payments",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/natural-language-payment-agent"
+  },
+  {
+    "slug": "recurring-payment-agent",
+    "title": "Recurring Payment Agent",
+    "tier": "Medium",
+    "category": "Payments",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/recurring-payment-agent"
+  },
+  {
+    "slug": "invoice-to-payment-agent",
+    "title": "Invoice-to-Payment Agent",
+    "tier": "Medium",
+    "category": "Payments",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/invoice-to-payment-agent"
+  },
+  {
+    "slug": "x402-paywalled-api",
+    "title": "x402 Paywalled API",
+    "tier": "Medium",
+    "category": "Payments",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/x402-paywalled-api"
+  },
+  {
+    "slug": "x402-agent-buyer",
+    "title": "x402 Agent Buyer",
+    "tier": "Hard",
+    "category": "Payments",
+    "points": 200,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/x402-agent-buyer"
+  },
+  {
+    "slug": "on-chain-alert-bot",
+    "title": "On-Chain Alert Bot",
+    "tier": "Easy",
+    "category": "Trading / Monitoring",
+    "points": 50,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/on-chain-alert-bot"
+  },
+  {
+    "slug": "whale-watching-agent",
+    "title": "Whale-Watching Agent",
+    "tier": "Medium",
+    "category": "Trading / Monitoring",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/whale-watching-agent"
+  },
+  {
+    "slug": "gas-fee-optimizer",
+    "title": "Gas Fee Optimizer",
+    "tier": "Medium",
+    "category": "Trading / Monitoring",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/gas-fee-optimizer"
+  },
+  {
+    "slug": "wallet-risk-checker",
+    "title": "Wallet Risk Checker",
+    "tier": "Medium",
+    "category": "Compliance / Security",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/wallet-risk-checker"
+  },
+  {
+    "slug": "audit-log-agent",
+    "title": "Audit-Log Agent",
+    "tier": "Medium",
+    "category": "Compliance / Security",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/audit-log-agent"
+  },
+  {
+    "slug": "dapp-support-agent",
+    "title": "dApp Support Agent",
+    "tier": "Easy",
+    "category": "Support / Reporting",
+    "points": 50,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/dapp-support-agent"
+  },
+  {
+    "slug": "weekly-digest-agent",
+    "title": "Weekly Digest Agent",
+    "tier": "Medium",
+    "category": "Support / Reporting",
+    "points": 100,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/weekly-digest-agent"
+  },
+  {
+    "slug": "doc-grounded-builder-agent",
+    "title": "Doc-Grounded Builder Agent",
+    "tier": "Hard",
+    "category": "Cross-tool / Advanced",
+    "points": 200,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/doc-grounded-builder-agent"
+  },
+  {
+    "slug": "multi-protocol-aggregator",
+    "title": "Multi-Protocol Aggregator",
+    "tier": "Hard",
+    "category": "Cross-tool / Advanced",
+    "points": 200,
+    "what_you_build": "",
+    "requirements": [],
+    "url": "https://pharos-agent-arena.vercel.app/tasks/multi-protocol-aggregator"
+  }
+]
