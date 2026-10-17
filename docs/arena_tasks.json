@@ -220,8 +220,13 @@
     "tier": "Easy",
     "category": "Trading / Monitoring",
     "points": 50,
-    "what_you_build": "",
-    "requirements": [],
+    "what_you_build": "A bot that watches Pharos for a condition you choose, such as a price crossing a threshold, a large transfer, or a specific contract call, and notifies you when it happens.",
+    "requirements": [
+      "At least one configurable alert condition.",
+      "Delivers alerts to a real channel: Telegram, Discord or similar.",
+      "Each alert includes what happened, the value, and a tx or explorer link.",
+      "No repeat spam for the same event."
+    ],
     "url": "https://pharos-agent-arena.vercel.app/tasks/on-chain-alert-bot"
   },
   {
@@ -270,8 +275,13 @@
     "tier": "Easy",
     "category": "Support / Reporting",
     "points": 50,
-    "what_you_build": "",
-    "requirements": [],
+    "what_you_build": "A support agent that takes a failed transaction hash and explains, in plain language, why it failed and what the user can do about it.",
+    "requirements": [
+      "Accepts a tx hash and fetches the transaction and receipt via Chain MCP.",
+      "Identifies the failure cause: revert reason, out of gas, insufficient balance or allowance, etc.",
+      "Explains it without jargon and suggests a fix.",
+      "Demonstrated on at least 3 different failure types."
+    ],
     "url": "https://pharos-agent-arena.vercel.app/tasks/dapp-support-agent"
   },
   {
