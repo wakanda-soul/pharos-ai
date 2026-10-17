@@ -1,4 +1,5 @@
-import { DocSearchResult, DocSource, DocSearchOptions } from "./types";
+import { DocSearchResult, DocSource, DocSearchOptions } from "./types.js";
+import { execFileSync } from "node:child_process";
 
 const DOCS_BASE_URL = "https://docs.pharos.xyz";
 
@@ -30,10 +31,13 @@ export class PharosDocsService {
       askUrl.searchParams.set("goal", options.goal);
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 15000);
+    let markdown = "";
 
+    // 1. Primary strategy: native fetch with timeout
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), options.timeoutMs ?? 15000);
+
       const response = await fetch(askUrl.toString(), {
         signal: controller.signal,
         headers: {
@@ -44,37 +48,57 @@ export class PharosDocsService {
 
       clearTimeout(timeout);
 
-      if (!response.ok) {
-        throw new Error(`Docs endpoint returned HTTP ${response.status}: ${response.statusText}`);
+      if (response.ok) {
+        markdown = await response.text();
       }
+    } catch {
+      // Fetch failed or aborted; fallback to secondary curl transport
+    }
 
-      const markdown = await response.text();
+    // 2. Secondary strategy: fast system curl if fetch failed or timed out
+    if (!markdown) {
+      try {
+        markdown = execFileSync("curl", [
+          "-sL",
+          "--max-time",
+          "15",
+          "-H",
+          "Accept: text/markdown, text/plain",
+          "-H",
+          "User-Agent: pharos-docs-cli/1.0.0 (AgentArena; wakanda-soul)",
+          askUrl.toString(),
+        ]).toString();
+      } catch {
+        // Network unavailable
+      }
+    }
+
+    // 3. If live response retrieved, parse and return
+    if (markdown && markdown.trim().length > 0) {
       return this.parseMarkdownResponse(trimmedQuery, markdown, Date.now() - startTime);
-    } catch (err: any) {
-      clearTimeout(timeout);
+    }
 
-      // Graceful offline fallback for core queries if internet connectivity glitches
-      const fallback = this.checkOfflineKnowledge(trimmedQuery);
-      if (fallback) {
-        return {
-          ...fallback,
-          responseTimeMs: Date.now() - startTime,
-        };
-      }
-
+    // 4. Graceful offline fallback for core queries if internet connectivity is down
+    const fallback = this.checkOfflineKnowledge(trimmedQuery);
+    if (fallback) {
       return {
-        query: trimmedQuery,
-        isFound: false,
-        answer: `Could not retrieve documentation response: ${err.message}`,
-        sources: [
-          {
-            title: "Pharos Official Documentation Index",
-            url: `${DOCS_BASE_URL}/sitemap.md`,
-          },
-        ],
+        ...fallback,
         responseTimeMs: Date.now() - startTime,
       };
     }
+
+    return {
+      query: trimmedQuery,
+      isFound: false,
+      answer: "No response could be retrieved from Pharos documentation servers. Please check your internet connection or browse the documentation index.",
+      sources: [
+        {
+          title: "Pharos Official Documentation Index",
+          url: `${DOCS_BASE_URL}/sitemap.md`,
+        },
+      ],
+      responseTimeMs: Date.now() - startTime,
+    };
   }
 
   /**
@@ -126,7 +150,6 @@ export class PharosDocsService {
           if (sUrl.startsWith("/")) {
             sUrl = `${DOCS_BASE_URL}${sUrl}`;
           }
-          // Avoid duplicate URLs
           if (!sources.some((s) => s.url === sUrl)) {
             sources.push({ title: sTitle, url: sUrl });
           }
@@ -176,10 +199,39 @@ export class PharosDocsService {
   }
 
   /**
-   * Offline knowledge base for fundamental queries if the network is unavailable.
+   * Offline knowledge base for fundamental queries if the network is completely unreachable.
    */
   private checkOfflineKnowledge(query: string): Omit<DocSearchResult, "responseTimeMs"> | null {
     const q = query.toLowerCase();
+
+    if (q.includes("deploy") || q.includes("foundry") || q.includes("contract")) {
+      return {
+        query,
+        isFound: true,
+        answer: `For a Solidity smart contract on Pharos, deploy using Foundry:\n\n` +
+          `1. Build and test your contract:\n` +
+          `   \`\`\`sh\n` +
+          `   forge build\n` +
+          `   forge test\n` +
+          `   \`\`\`\n` +
+          `2. Create a Foundry deployment script (\`script/Deploy.s.sol\`) using \`vm.startBroadcast(deployerKey)\`.\n` +
+          `3. Set your private key and broadcast on-chain:\n` +
+          `   \`\`\`sh\n` +
+          `   export PRIVATE_KEY=<your-private-key>\n` +
+          `   forge script script/Deploy.s.sol:Deploy --rpc-url <PHAROS_RPC_URL> --broadcast\n` +
+          `   \`\`\`\n\n` +
+          `Make sure the deployer wallet has enough gas tokens (PROS on mainnet, PHRS on testnet).`,
+        sources: [
+          { title: "Foundry Smart Contract Guide", url: `${DOCS_BASE_URL}/developer-guide/foundry.md` },
+          { title: "Write Your First Token", url: `${DOCS_BASE_URL}/developer-guide/foundry/write-your-first-token.md` },
+          { title: "Pacific Mainnet Network Configuration", url: `${DOCS_BASE_URL}/getting-started/network/pacific-mainnet.md` },
+        ],
+        suggestedFollowUps: [
+          "How to verify contract on Blockscout explorer?",
+          "How to call deployed contract functions with cast?",
+        ],
+      };
+    }
 
     if (q.includes("chain id") || q.includes("rpc") || q.includes("network")) {
       return {
@@ -199,6 +251,10 @@ export class PharosDocsService {
         sources: [
           { title: "Pacific Mainnet", url: `${DOCS_BASE_URL}/getting-started/network/pacific-mainnet.md` },
           { title: "Atlantic Testnet", url: `${DOCS_BASE_URL}/getting-started/network/atlantic-testnet.md` },
+        ],
+        suggestedFollowUps: [
+          "How to configure MetaMask for Pharos?",
+          "Where to find public RPC rate limits?",
         ],
       };
     }
