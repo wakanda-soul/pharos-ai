@@ -188,6 +188,9 @@ Finished: 22 events detected, 22 alerts dispatched.
 ```
 tasks/05-on-chain-alert-bot/
 ├── README.md               # Documentation, verification matrix & run samples
+├── test/
+│   ├── alert-engine.test.ts # Payload formatting, explorer links & channels
+│   └── dedup-store.test.ts  # Disk-persistence, deduplication & cooldown tests
 └── src/
     ├── index.ts            # AlertBotEngine orchestrator and exports
     ├── cli.ts              # Command-line interface with flags & options
@@ -203,4 +206,28 @@ tasks/05-on-chain-alert-bot/
     │   └── contract-monitor.ts # Smart contract event & call watcher via get_logs
     └── storage/
         └── dedup-store.ts  # Disk-backed deduplication store & debounce manager
+```
+
+---
+
+## 🧪 Automated Testing & Verification
+
+Automated unit tests verify deduplication logic, cooldown expiry, payload formatting, and explorer URL generation:
+
+```bash
+# Run test suite
+npm test
+```
+
+**Test Results**:
+```text
+ ✓ tasks/05-on-chain-alert-bot/test/dedup-store.test.ts (3 tests)
+   ✓ Task 05: DedupStore (Zero Repeat Spam) (3)
+     ✓ should allow first-time event and suppress immediate duplicates
+     ✓ should respect cooldown period for recurring conditions
+     ✓ should persist dedup state across process restarts
+ ✓ tasks/05-on-chain-alert-bot/test/alert-engine.test.ts (2 tests)
+   ✓ Task 05: Alert Payload & Channels (2)
+     ✓ should generate proper alert payload with block, tx, and explorer link
+     ✓ should format and append alert to audit log file via ConsoleChannel
 ```

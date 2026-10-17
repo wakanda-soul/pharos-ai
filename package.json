@@ -14,7 +14,8 @@
     "task:05": "tsx tasks/05-on-chain-alert-bot/src/cli.ts",
     "alert:bot": "tsx tasks/05-on-chain-alert-bot/src/cli.ts",
     "build": "tsc",
-    "test": "echo \"No tests yet\""
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "bin": {
     "pharos-state": "./tasks/01-read-contract-state/bin/pharos-state.js",
@@ -42,6 +43,7 @@
   "devDependencies": {
     "@types/node": "^22.13.9",
     "tsx": "^4.19.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "vitest": "^5.0.5"
   }
 }
