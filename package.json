@@ -5,16 +5,20 @@
   "type": "module",
   "scripts": {
     "task:01": "tsx tasks/01-read-contract-state/src/index.ts",
+    "state:read": "tsx tasks/01-read-contract-state/src/index.ts",
     "task:02": "tsx tasks/02-event-log-monitor/src/index.ts",
-    "task:04": "tsx tasks/04-doc-search-cli/src/index.ts",
-    "task:05": "tsx tasks/05-on-chain-alert-bot/src/cli.ts",
-    "alert:bot": "tsx tasks/05-on-chain-alert-bot/src/cli.ts",
+    "event:monitor": "tsx tasks/02-event-log-monitor/src/index.ts",
+    "task:04": "tsx tasks/04-doc-search-cli/src/cli.ts",
     "docs:search": "tsx tasks/04-doc-search-cli/src/cli.ts",
     "docs:mcp": "tsx tasks/04-doc-search-cli/src/docs-mcp-server.ts",
+    "task:05": "tsx tasks/05-on-chain-alert-bot/src/cli.ts",
+    "alert:bot": "tsx tasks/05-on-chain-alert-bot/src/cli.ts",
     "build": "tsc",
     "test": "echo \"No tests yet\""
   },
   "bin": {
+    "pharos-state": "./tasks/01-read-contract-state/bin/pharos-state.js",
+    "pharos-events": "./tasks/02-event-log-monitor/bin/pharos-events.js",
     "pharos-docs": "./tasks/04-doc-search-cli/bin/pharos-docs.js",
     "pharos-alert": "./tasks/05-on-chain-alert-bot/bin/pharos-alert.js"
   },

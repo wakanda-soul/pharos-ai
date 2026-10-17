@@ -80,10 +80,53 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 
 ---
 
-## 🛠️ Getting Started
+## 🛠️ Getting Started (On Any Machine)
+
+### Prerequisites
+- **Node.js**: `v18.0.0` or higher
+- **Git**
+
+### Installation
 
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/wakanda-soul/pharos-ai.git
 cd pharos-ai
+
+# 2. Install dependencies
+npm install
+
+# 3. Link CLI tools globally into your system PATH
+npm link
+```
+
+---
+
+## 🧰 Global CLI Suite
+
+Once `npm link` is run, all tools are executable directly from any folder in your terminal:
+
+| Command | Task | Description | Example |
+|---|---|---|---|
+| `pharos-state` | **Task 01** | Inspect smart contract state via Chain MCP in plain language | `pharos-state -c USDC` |
+| `pharos-events` | **Task 02** | Real-time event monitor for ProsPixel game via Chain MCP | `pharos-events -p 5000` |
+| `pharos-docs` | **Task 04** | Fast developer docs search with direct links and zero hallucination | `pharos-docs "how do I deploy a contract?"` |
+| `pharos-alert` | **Task 05** | On-chain alert bot for price, whale transfers & contract events | `pharos-alert --mode price --once` |
+
+### Running via NPM Scripts (Without Global Linking)
+
+If you prefer running directly from the repository without modifying system PATH:
+
+```bash
+# Task 01: Read Contract State
+npm run state:read -- -c USDC
+
+# Task 02: ProsPixel Event Monitor
+npm run event:monitor
+
+# Task 04: Doc Search CLI
+npm run docs:search -- "what is the mainnet chain ID?"
+
+# Task 05: On-Chain Alert Bot
+npm run alert:bot -- --mode transfer --min-amount 100 --once
 ```
