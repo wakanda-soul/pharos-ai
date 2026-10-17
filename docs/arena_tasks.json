@@ -15,8 +15,13 @@
     "tier": "Easy",
     "category": "Chain MCP",
     "points": 50,
-    "what_you_build": "",
-    "requirements": [],
+    "what_you_build": "A monitor that watches a Pharos contract for a specific event (e.g. Transfer, Deposit) and reports each new occurrence as it happens. It should keep running, not take a one-off snapshot.",
+    "requirements": [
+      "1. Uses Chain MCP log queries filtered by contract address and event signature.",
+      "2. Runs continuously (polling or block-by-block) and reports only new events, with no duplicates.",
+      "3. Decodes each event into readable fields (from, to, amount, tx hash, block).",
+      "4. Demonstrated catching at least one live or test event."
+    ],
     "url": "https://pharos-agent-arena.vercel.app/tasks/event-log-monitor"
   },
   {
