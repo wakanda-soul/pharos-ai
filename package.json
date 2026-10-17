@@ -14,6 +14,10 @@
     "build": "tsc",
     "test": "echo \"No tests yet\""
   },
+  "bin": {
+    "pharos-docs": "./tasks/04-doc-search-cli/bin/pharos-docs.js",
+    "pharos-alert": "./tasks/05-on-chain-alert-bot/bin/pharos-alert.js"
+  },
   "keywords": [
     "pharos",
     "ai-agent",
