@@ -41,12 +41,14 @@ All ecosystem URLs, network configs, API specifications, and Arena tasks are doc
 Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 
 ### Tier 1 — Easy (50 pts each)
-- [ ] `read-contract-state`: Read smart contract state via Chain MCP and present in plain language.
-- [ ] `event-log-monitor`: Watch for specific on-chain events/logs via Chain MCP.
-- [ ] `docs-mcp-onboarding`: Self-onboard using Developer Docs MCP.
-- [ ] `doc-search-cli`: Doc-search CLI on top of Developer Docs MCP.
+- [x] 🟢 **[Task 01: Read Contract State](tasks/01-read-contract-state)**: Read live smart contract state via Chain MCP and present in plain language.
+- [x] 🟢 **[Task 02: Event/Log Monitor (ProsPixel Game)](tasks/02-event-log-monitor)**: Real-time on-chain game event monitor for [prospixel.xyz](https://prospixel.xyz/) via Chain MCP.
+- [x] 🟢 **[Task 03: Docs MCP Onboarding Audit](tasks/03-docs-mcp-onboarding)**: Self-onboarding experience report and gap analysis using `@Pharos Docs MCP`.
+- [x] 🟢 **[Task 04: Doc-Search CLI & Docs MCP Server](tasks/04-doc-search-cli)**: Terminal CLI tool and stdio MCP server for searching Pharos developer docs with zero hallucination.
 - [ ] `on-chain-alert-bot`: Price, transfer, or contract alert bot.
 - [ ] `dapp-support-agent`: Explains why a transaction failed.
+
+> 🗺️ **Full Strategy & Sequential Execution Plan**: See **[ROADMAP.md](docs/ROADMAP.md)** for all 30 tasks, ranking ladders, and milestones.
 
 ### Tier 2 — Medium (100 pts each)
 - [ ] `threshold-guardian`: Evaluate multi-conditions before firing actions.
