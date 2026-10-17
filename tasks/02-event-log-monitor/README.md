@@ -1,27 +1,41 @@
-# Task 02: Event/Log Monitor
+# Task 02: On-Chain Event/Log Monitor (ProsPixel Game)
 
 > **Agent Arena Task**: [Event/Log Monitor](https://pharos-agent-arena.vercel.app/tasks/event-log-monitor)  
 > **Tier**: Easy  
 > **Category**: Chain MCP  
-> **Reward**: 50 pts (+50 with video)
+> **Reward**: 50 pts (+50 with video)  
+> **Target Game**: [PROS Pixel](https://prospixel.xyz/) — Collaborative Pixel Art Game on Pharos  
+> **Contract Address**: `0xf81Fb02F13917db6fa8f5A1F2e39a86EcE2A626a` (Pharos Mainnet `1672`)
 
 ---
 
 ## 📖 Overview
 
-A real-time on-chain event and log monitor that tracks smart contracts on the **Pharos** blockchain (`Chain ID: 1672`) via the **Pharos Chain MCP** (`https://mcp.pharos.xyz/mcp`). 
+A real-time on-chain game event monitor built for the **PROS Pixel** game ([prospixel.xyz](https://prospixel.xyz/)) on the **Pharos** blockchain. 
 
-Unlike static snapshot tools, this monitor runs **continuously block-by-block**, detects new events without duplicates, decodes raw log topics/data into human-readable parameters (addresses, formatted token amounts, transaction hashes), and prints live alerts.
+The monitor connects directly to the **Pharos Chain MCP** (`https://mcp.pharos.xyz/mcp`) over Streamable HTTP and polls for new on-chain events every **10 seconds**.
+
+For every action in the game, the monitor parses and displays:
+1. **Date & Time (UTC)** and exact **Block Number**.
+2. **Player Wallet Address** (`user` / `to` / `lastOwner`).
+3. **Action Performed**:
+   - 🎨 **Покупка пикселей** (`BatchPixelsBought`)
+   - 💰 **Клейм наград** (`Claimed`)
+   - 📈 **Премия за перекупленный пиксель** (`PixelPremiumDistributed`)
+   - 📝 **Регистрация игрока** (`Registered`)
+4. **Amount Paid**: Native PROS spent by the player.
+5. **What was Received**: Number of pixels with (X, Y) canvas coordinates or claimed PROS rewards.
+6. **Transaction Hash & Explorer Link**: Direct link to [pharosscan.xyz](https://www.pharosscan.xyz).
 
 ---
 
-## 🎯 Features
+## ⚙️ How It Works (via Chain MCP)
 
-1. **Chain MCP Log Filtering**: Employs the `get_logs` tool on Pharos Chain MCP filtered by contract address and event signature (e.g. `Transfer`, `Approval`).
-2. **Continuous Block-by-Block Execution**: Automatically tracks the latest block height (`get_block_number`), fetches logs for newly finalized blocks, and sleeps for a configurable poll interval.
-3. **Guaranteed Deduplication**: Employs an in-memory unique key tracker (`${txHash}-${logIndex}`) to ensure no log is ever reported twice.
-4. **Human-Readable Parameter Decoding**: Decodes event logs using Viem ABI decoders, calculates token decimals (USDC 6 decimals, WPROS 18 decimals), and prints clickable PharosScan explorer links.
-5. **Initial Backfill Demonstration**: Scans recent blocks on startup so reviewers immediately see live on-chain transfers before entering continuous watching mode.
+1. **Chain MCP Handshake**: Establishes session with `https://mcp.pharos.xyz/mcp`.
+2. **Log Query (`get_logs`)**: Queries event logs filtered by the ProsPixel contract `0xf81Fb02F13917db6fa8f5A1F2e39a86EcE2A626a`.
+3. **Continuous Polling**: Polls every 10 seconds block-by-block for newly finalized transactions.
+4. **Deduplication**: Tracks unique `${txHash}-${logIndex}` keys to guarantee zero duplicates.
+5. **ABI Event Decoding**: Decodes raw event data and indexed topics into structured game parameters.
 
 ---
 
@@ -30,57 +44,63 @@ Unlike static snapshot tools, this monitor runs **continuously block-by-block**,
 From the project root:
 
 ```bash
-# Run the default monitor (watches all ERC20 Transfer events with 20 blocks initial backfill)
+# Run the ProsPixel game monitor (polls every 10s, with initial recent activity scan)
 npm run task:02
 
-# Filter for a specific contract (e.g. USDC on Pharos Mainnet)
-npx tsx tasks/02-event-log-monitor/src/index.ts -c 0xc879c018db60520f4355c26ed1a6d572cdac1815
-
-# Customize polling interval (e.g. every 2 seconds) and backfill window
-npx tsx tasks/02-event-log-monitor/src/index.ts -p 2000 -b 50
+# Or customize polling interval and backfill blocks
+npx tsx tasks/02-event-log-monitor/src/index.ts -p 10000 -b 5000
 ```
 
 ---
 
-## 📋 Sample Live Output
+## 📋 Sample Terminal Stream Output
 
 ```text
-========================================================
-       📡  PHAROS ON-CHAIN EVENT & LOG MONITOR         
-========================================================
+================================================================================
+       🎮  PHAROS PROSPIXEL (https://prospixel.xyz/) GAME MONITOR              
+================================================================================
 Connecting to Pharos Chain MCP (https://mcp.pharos.xyz/mcp)...
-Connected: Pharos (Chain ID: 1672)
-Current Block Height: #20,492,935
-Event Filter:        Transfer
-Contract Filter:     All Contracts
-Polling Interval:    3000 ms
---------------------------------------------------------
-⏳ Scanning past 20 blocks (from #20,492,915 to #20,492,935) for live events...
+📡 Network:          Pharos (Chain ID: 1672)
+📍 Game Contract:    0xf81Fb02F13917db6fa8f5A1F2e39a86EcE2A626a
+📦 Current Block:    #20,493,477
+⏱️  Polling Interval: Every 10 seconds via Pharos MCP
+================================================================================
 
-🔔 [EVENT #1] Transfer on Block #20,492,920
-   📍 Contract: 0xc879...1815 (0xc879c018db60520f4355c26ed1a6d572cdac1815)
-   👤 From:     0x912c...f647 (0x912c9aDe24D44d8922f0866D8Dcb079f1363f647)
-   🎯 To:       0x9365...b470 (0x936564245B69f5a293b42cbd752E0eE3bb68b470)
-   💰 Amount:   39.4708 USDC (Raw: 39470813)
-   🔗 Tx Hash:  0x7697a1d789ba3a3e56c7960d35b057b465ca195bd36f67ab21717c671f8e42bb
-   🌐 Explorer: https://www.pharosscan.xyz/tx/0x7697a1d789ba3a3e56c7960d35b057b465ca195bd36f67ab21717c671f8e42bb
---------------------------------------------------------
-🔔 [EVENT #2] Transfer on Block #20,492,920
-   📍 Contract: 0x52c4...f0b0 (0x52c48d4213107b20bc583832b0d951fb9ca8f0b0)
-   👤 From:     0x9365...b470 (0x936564245B69f5a293b42cbd752E0eE3bb68b470)
-   🎯 To:       0x912c...f647 (0x912c9aDe24D44d8922f0866D8Dcb079f1363f647)
-   💰 Amount:   63.7636 WPROS (Raw: 63763560935597096960)
-   🔗 Tx Hash:  0x7697a1d789ba3a3e56c7960d35b057b465ca195bd36f67ab21717c671f8e42bb
-   🌐 Explorer: https://www.pharosscan.xyz/tx/0x7697a1d789ba3a3e56c7960d35b057b465ca195bd36f67ab21717c671f8e42bb
---------------------------------------------------------
-🟢 Continuous real-time monitor active. Waiting for new on-chain events... (Press Ctrl+C to stop)
+⏳ Scanning recent blocks (#20,488,477 -> #20,493,477) for latest game activity...
+
+📈 [17.10.2026, 14:51:54 UTC] Блок #20,488,976
+   ⚡ ДЕЙСТВИЕ:          Выплата премии за перекупленный пиксель (PixelPremiumDistributed)
+   👤 КОШЕЛЕК ВЛАДЕЛЬЦА: 0x84CE7ce5da712361216082a67CFa930c0B9E83f6
+   💸 СКОЛЬКО ЗАПЛАТИЛ:   0 PROS (пассивный доход)
+   🎁 ЧТО ПОЛУЧИЛ:       +0.431323749776713491 PROS премии за пиксель (414, 484) при цене 1.64313809438747997 PROS
+   🔗 ХЕШ ТРАНЗАКЦИИ:    0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
+   🌐 ССЫЛКА В ЭКСПЛОРЕР: https://www.pharosscan.xyz/tx/0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
+--------------------------------------------------------------------------------
+🎨 [17.10.2026, 14:51:54 UTC] Блок #20,488,976
+   ⚡ ДЕЙСТВИЕ:          Покупка пикселей в игре (BatchPixelsBought)
+   👤 КОШЕЛЕК ИГРОКА:    0x84CE7ce5da712361216082a67CFa930c0B9E83f6
+   💸 СКОЛЬКО ЗАПЛАТИЛ:   5.031273899080267659 PROS
+   🎁 ЧТО ПОЛУЧИЛ:       2 пиксель(-ей) на холсте (414, 484), (434, 621)
+   🤝 Инвайтер:          0xBC00E7866C5F2276320887735C435283A36dd987 (награда: 0.031970694710931257 PROS)
+   🔗 ХЕШ ТРАНЗАКЦИИ:    0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
+   🌐 ССЫЛКА В ЭКСПЛОРЕР: https://www.pharosscan.xyz/tx/0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
+--------------------------------------------------------------------------------
+💰 [17.10.2026, 14:52:08 UTC] Блок #20,488,991
+   ⚡ ДЕЙСТВИЕ:          Клейм наград из игры (Claimed)
+   👤 КОШЕЛЕК ИГРОКА:    0x84CE7ce5da712361216082a67CFa930c0B9E83f6
+   💸 СКОЛЬКО ЗАПЛАТИЛ:   0 PROS (только gas за транзакцию)
+   🎁 ЧТО ПОЛУЧИЛ:       4.6454 PROS (Тело: 3.653793681249286609 + Премия: 0.959120841327937733 + Реферальные: 0.032441595691834187)
+   🔗 ХЕШ ТРАНЗАКЦИИ:    0xd7d0188619e951b8b3312af40cf34510c5be2d191ad57dde7304a26bde1e602a
+   🌐 ССЫЛКА В ЭКСПЛОРЕР: https://www.pharosscan.xyz/tx/0xd7d0188619e951b8b3312af40cf34510c5be2d191ad57dde7304a26bde1e602a
+--------------------------------------------------------------------------------
+🟢 [LIVE MONITOR ACTIVE] Listening for new game events every 10s... (Ctrl+C to stop)
 ```
 
 ---
 
 ## ✅ Requirements Compliance Checklist
 
-- [x] **01. Uses Chain MCP log queries**: Invokes `get_logs` through `PharosMcpClient` with `address` and `topics`.
-- [x] **02. Runs continuously with no duplicates**: Tracks seen events via `${txHash}-${logIndex}` and polls block-by-block.
-- [x] **03. Decodes each event into readable fields**: Extracts `from`, `to`, `amount` (formatted with decimals), `tx hash`, and `block`.
-- [x] **04. Demonstrated catching live events**: Verified with live mainnet transfers on Pharos at block `#20,492,920+`.
+- [x] **01. Uses Chain MCP log queries**: Invokes `get_logs` through `PharosMcpClient` filtered by ProsPixel contract `0xf81Fb02F13917db6fa8f5A1F2e39a86EcE2A626a`.
+- [x] **02. Runs continuously with no duplicates**: Polls every 10 seconds block-by-block with strict deduplication (`${txHash}-${logIndex}`).
+- [x] **03. Decodes each event into readable fields**: Date & time, wallet, action performed, paid amount, received rewards/pixels, tx hash, explorer link.
+- [x] **04. Demonstrated catching live events**: Verified with real mainnet game transactions (pixels bought, premiums distributed, rewards claimed).
