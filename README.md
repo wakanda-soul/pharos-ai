@@ -45,7 +45,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] 🟢 **[Task 02: Event/Log Monitor (ProsPixel Game)](tasks/02-event-log-monitor)**: Real-time on-chain game event monitor for [prospixel.xyz](https://prospixel.xyz/) via Chain MCP.
 - [x] 🟢 **[Task 03: Docs MCP Onboarding Audit](tasks/03-docs-mcp-onboarding)**: Self-onboarding experience report and gap analysis using `@Pharos Docs MCP`.
 - [x] 🟢 **[Task 04: Doc-Search CLI & Docs MCP Server](tasks/04-doc-search-cli)**: Terminal CLI tool and stdio MCP server for searching Pharos developer docs with zero hallucination.
-- [ ] `on-chain-alert-bot`: Price, transfer, or contract alert bot.
+- [x] 🟢 **[Task 05: On-Chain Alert Bot](tasks/05-on-chain-alert-bot)**: Multi-channel on-chain sentinel for price thresholds, whale transfers, and contract events via Chain MCP.
 - [ ] `dapp-support-agent`: Explains why a transaction failed.
 
 > 🗺️ **Full Strategy & Sequential Execution Plan**: See **[ROADMAP.md](docs/ROADMAP.md)** for all 30 tasks, ranking ladders, and milestones.

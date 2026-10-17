@@ -35,6 +35,8 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 *.log
+logs/
+.state/
 *.tmp
 *.bak
 *.swp
