@@ -116,13 +116,13 @@ export class ProsPixelLogMonitor {
   private formatAndDisplayEvent(log: any): void {
     const blockNum = typeof log.blockNumber === "string" ? parseInt(log.blockNumber, 16) : log.blockNumber;
     
-    // Format timestamp
+    // Format timestamp in clean international format
     let dateStr = "Recent";
     if (log.blockTimestamp) {
       const ts = typeof log.blockTimestamp === "string" ? parseInt(log.blockTimestamp, 16) : log.blockTimestamp;
-      dateStr = new Date(ts * 1000).toLocaleString("ru-RU", { timeZone: "UTC" }) + " UTC";
+      dateStr = new Date(ts * 1000).toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC");
     } else {
-      dateStr = new Date().toLocaleString("ru-RU") + " (Local)";
+      dateStr = new Date().toISOString().replace("T", " ").replace(/\.\d+Z$/, " UTC");
     }
 
     try {
@@ -140,20 +140,20 @@ export class ProsPixelLogMonitor {
           const pixelCount = Array.isArray(args.x) ? args.x.length : 1;
           const coords = Array.isArray(args.x) && args.x.length <= 4
             ? args.x.map((xVal: number, i: number) => `(${xVal}, ${args.y[i]})`).join(", ")
-            : `${pixelCount} пикселей`;
+            : `${pixelCount} pixels`;
           const paidPros = formatEther(args.totalValue || 0n);
           const inviterReward = formatEther(args.totalInviterReward || 0n);
 
-          console.log(`🎨 [${dateStr}] Блок #${blockNum.toLocaleString()}`);
-          console.log(`   ⚡ ДЕЙСТВИЕ:          Покупка пикселей в игре (BatchPixelsBought)`);
-          console.log(`   👤 КОШЕЛЕК ИГРОКА:    ${args.user}`);
-          console.log(`   💸 СКОЛЬКО ЗАПЛАТИЛ:   ${paidPros} PROS`);
-          console.log(`   🎁 ЧТО ПОЛУЧИЛ:       ${pixelCount} пиксель(-ей) на холсте ${coords}`);
+          console.log(`🎨 [${dateStr}] Block #${blockNum.toLocaleString()}`);
+          console.log(`   ⚡ ACTION:        BatchPixelsBought (Canvas Pixels Painted)`);
+          console.log(`   👤 PLAYER WALLET: ${args.user}`);
+          console.log(`   💸 AMOUNT PAID:   ${paidPros} PROS`);
+          console.log(`   🎁 RECEIVED:      ${pixelCount} pixel(s) on canvas at ${coords}`);
           if (args.inviter && args.inviter !== "0x0000000000000000000000000000000000000000") {
-            console.log(`   🤝 Инвайтер:          ${args.inviter} (награда: ${inviterReward} PROS)`);
+            console.log(`   🤝 INVITER:       ${args.inviter} (Reward: ${inviterReward} PROS)`);
           }
-          console.log(`   🔗 ХЕШ ТРАНЗАКЦИИ:    ${log.transactionHash}`);
-          console.log(`   🌐 ССЫЛКА В ЭКСПЛОРЕР: ${txUrl}`);
+          console.log(`   🔗 TX HASH:       ${log.transactionHash}`);
+          console.log(`   🌐 EXPLORER:      ${txUrl}`);
           console.log("--------------------------------------------------------------------------------");
           break;
         }
@@ -168,13 +168,13 @@ export class ProsPixelLogMonitor {
             parseFloat(inviter)
           ).toFixed(4);
 
-          console.log(`💰 [${dateStr}] Блок #${blockNum.toLocaleString()}`);
-          console.log(`   ⚡ ДЕЙСТВИЕ:          Клейм наград из игры (Claimed)`);
-          console.log(`   👤 КОШЕЛЕК ИГРОКА:    ${args.to}`);
-          console.log(`   💸 СКОЛЬКО ЗАПЛАТИЛ:   0 PROS (только gas за транзакцию)`);
-          console.log(`   🎁 ЧТО ПОЛУЧИЛ:       ${totalReceived} PROS (Тело: ${principal} + Премия: ${premium} + Реферальные: ${inviter})`);
-          console.log(`   🔗 ХЕШ ТРАНЗАКЦИИ:    ${log.transactionHash}`);
-          console.log(`   🌐 ССЫЛКА В ЭКСПЛОРЕР: ${txUrl}`);
+          console.log(`💰 [${dateStr}] Block #${blockNum.toLocaleString()}`);
+          console.log(`   ⚡ ACTION:        Claimed (Game Rewards Withdrawn)`);
+          console.log(`   👤 PLAYER WALLET: ${args.to}`);
+          console.log(`   💸 AMOUNT PAID:   0 PROS (Gas only)`);
+          console.log(`   🎁 RECEIVED:      ${totalReceived} PROS (Principal: ${principal} + Premium: ${premium} + Referral: ${inviter})`);
+          console.log(`   🔗 TX HASH:       ${log.transactionHash}`);
+          console.log(`   🌐 EXPLORER:      ${txUrl}`);
           console.log("--------------------------------------------------------------------------------");
           break;
         }
@@ -183,45 +183,45 @@ export class ProsPixelLogMonitor {
           const premium = formatEther(args.premiumToSeller || 0n);
           const lastPrice = formatEther(args.lastPrice || 0n);
 
-          console.log(`📈 [${dateStr}] Блок #${blockNum.toLocaleString()}`);
-          console.log(`   ⚡ ДЕЙСТВИЕ:          Выплата премии за перекупленный пиксель (PixelPremiumDistributed)`);
-          console.log(`   👤 КОШЕЛЕК ВЛАДЕЛЬЦА: ${args.lastOwner}`);
-          console.log(`   💸 СКОЛЬКО ЗАПЛАТИЛ:   0 PROS (пассивный доход)`);
-          console.log(`   🎁 ЧТО ПОЛУЧИЛ:       +${premium} PROS премии за пиксель (${args.x}, ${args.y}) при цене ${lastPrice} PROS`);
-          console.log(`   🔗 ХЕШ ТРАНЗАКЦИИ:    ${log.transactionHash}`);
-          console.log(`   🌐 ССЫЛКА В ЭКСПЛОРЕР: ${txUrl}`);
+          console.log(`📈 [${dateStr}] Block #${blockNum.toLocaleString()}`);
+          console.log(`   ⚡ ACTION:        PixelPremiumDistributed (Passive Resale Premium)`);
+          console.log(`   👤 OWNER WALLET:  ${args.lastOwner}`);
+          console.log(`   💸 AMOUNT PAID:   0 PROS (Passive Income)`);
+          console.log(`   🎁 RECEIVED:      +${premium} PROS premium for pixel (${args.x}, ${args.y}) sold at ${lastPrice} PROS`);
+          console.log(`   🔗 TX HASH:       ${log.transactionHash}`);
+          console.log(`   🌐 EXPLORER:      ${txUrl}`);
           console.log("--------------------------------------------------------------------------------");
           break;
         }
 
         case "Registered": {
-          console.log(`📝 [${dateStr}] Блок #${blockNum.toLocaleString()}`);
-          console.log(`   ⚡ ДЕЙСТВИЕ:          Регистрация нового игрока (Registered)`);
-          console.log(`   👤 КОШЕЛЕК ИГРОКА:    ${args.user}`);
-          console.log(`   💸 СКОЛЬКО ЗАПЛАТИЛ:   0 PROS (бесплатная регистрация)`);
-          console.log(`   🎁 ЧТО ПОЛУЧИЛ:       Доступ к игре (Инвайтер: ${args.inviter})`);
-          console.log(`   🔗 ХЕШ ТРАНЗАКЦИИ:    ${log.transactionHash}`);
-          console.log(`   🌐 ССЫЛКА В ЭКСПЛОРЕР: ${txUrl}`);
+          console.log(`📝 [${dateStr}] Block #${blockNum.toLocaleString()}`);
+          console.log(`   ⚡ ACTION:        Registered (New Player Joined)`);
+          console.log(`   👤 PLAYER WALLET: ${args.user}`);
+          console.log(`   💸 AMOUNT PAID:   0 PROS (Free Registration)`);
+          console.log(`   🎁 RECEIVED:      Game Access (Inviter: ${args.inviter})`);
+          console.log(`   🔗 TX HASH:       ${log.transactionHash}`);
+          console.log(`   🌐 EXPLORER:      ${txUrl}`);
           console.log("--------------------------------------------------------------------------------");
           break;
         }
 
         default: {
-          console.log(`🔔 [${dateStr}] Блок #${blockNum.toLocaleString()}`);
-          console.log(`   ⚡ ДЕЙСТВИЕ:          ${decoded.eventName}`);
-          console.log(`   📍 КОНТРАКТ:          ${log.address}`);
-          console.log(`   🔗 ХЕШ ТРАНЗАКЦИИ:    ${log.transactionHash}`);
-          console.log(`   🌐 ССЫЛКА В ЭКСПЛОРЕР: ${txUrl}`);
+          console.log(`🔔 [${dateStr}] Block #${blockNum.toLocaleString()}`);
+          console.log(`   ⚡ ACTION:        ${decoded.eventName}`);
+          console.log(`   📍 CONTRACT:      ${log.address}`);
+          console.log(`   🔗 TX HASH:       ${log.transactionHash}`);
+          console.log(`   🌐 EXPLORER:      ${txUrl}`);
           console.log("--------------------------------------------------------------------------------");
           break;
         }
       }
     } catch {
       // Fallback
-      console.log(`🔔 [${dateStr}] Лог на блоке #${blockNum.toLocaleString()}`);
-      console.log(`   📍 Контракт:          ${log.address}`);
-      console.log(`   🔗 Хеш транзакции:    ${log.transactionHash}`);
-      console.log(`   🌐 Ссылка в эксплорер: https://www.pharosscan.xyz/tx/${log.transactionHash}`);
+      console.log(`🔔 [${dateStr}] Log at Block #${blockNum.toLocaleString()}`);
+      console.log(`   📍 Contract:      ${log.address}`);
+      console.log(`   🔗 Tx Hash:       ${log.transactionHash}`);
+      console.log(`   🌐 Explorer:      https://www.pharosscan.xyz/tx/${log.transactionHash}`);
       console.log("--------------------------------------------------------------------------------");
     }
   }
