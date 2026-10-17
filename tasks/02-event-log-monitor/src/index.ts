@@ -1,78 +1,83 @@
 #!/usr/bin/env node
 import { PharosMcpClient } from "../../../src/shared/mcp-client";
-import { ERC20_ABI, formatAddress, formatTokenAmount } from "../../../src/shared/chain";
-import { decodeEventLog, toEventSelector } from "viem";
+import { formatAddress } from "../../../src/shared/chain";
+import { decodeEventLog, parseAbi, formatEther } from "viem";
 import { Command } from "commander";
 
-// Common event signatures
-const EVENT_TOPICS: Record<string, `0x${string}`> = {
-  Transfer: "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-  Approval: "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+// Official PROS Pixel Game Contracts (https://prospixel.xyz/)
+export const PROS_PIXEL_CONTRACTS = {
+  mainnet: "0xf81Fb02F13917db6fa8f5A1F2e39a86EcE2A626a",
+  testnet: "0x09d1D3cf60A86963c42ca159DA5D1a2D73644cf7",
 };
 
-// Known token decimals on Pharos Mainnet
-const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
-  "0xc879c018db60520f4355c26ed1a6d572cdac1815": { symbol: "USDC", decimals: 6 },
-  "0x52c48d4213107b20bc583832b0d951fb9ca8f0b0": { symbol: "WPROS", decimals: 18 },
-  "0x51e2a24742db77604b881d6781ee16b5b8fcbe29": { symbol: "LINK", decimals: 18 },
-  "0x1f4b7011ee3d53969bb67f59428a9ec0477856e9": { symbol: "WETH", decimals: 18 },
-};
+// ABI for ProsPixel Game Events
+export const PROS_PIXEL_ABI = parseAbi([
+  "event BatchPixelsBought(address indexed user, address indexed inviter, uint256 indexed round, uint16[] x, uint16[] y, uint24[] colors, uint256 totalValue, uint256 totalInviterReward)",
+  "event Registered(address indexed user, address indexed inviter)",
+  "event Claimed(address indexed to, uint256 principal, uint256 premium, uint256 inviterReward)",
+  "event PixelPremiumDistributed(address indexed lastOwner, uint256 indexed round, uint16 x, uint16 y, uint256 lastPrice, uint256 premiumToSeller)",
+  "event FomoRewardClaimed(address indexed to, uint256 round, uint256 totalReward)",
+  "event ContributorRewardClaimed(address indexed to, uint256 round, uint256 totalReward)",
+  "event NextRound(uint256 round)",
+  "event PeriodFinalized(uint256 periodIndex)",
+  // Generic ERC20 fallback
+  "event Transfer(address indexed from, address indexed to, uint256 value)",
+  "event Approval(address indexed owner, address indexed spender, uint256 value)"
+]);
 
-interface MonitorOptions {
-  contract?: string;
-  event: string;
+interface MonitorConfig {
+  contractAddress: string;
   pollIntervalMs: number;
   backfillBlocks: number;
 }
 
-export class EventLogMonitor {
+export class ProsPixelLogMonitor {
   private client: PharosMcpClient;
   private seenEvents = new Set<string>();
   private lastCheckedBlock: number = 0;
-  private isRunning = false;
-  private options: MonitorOptions;
+  private isRunning: boolean = false;
+  private config: MonitorConfig;
 
-  constructor(options: MonitorOptions) {
-    this.options = options;
+  constructor(config: MonitorConfig) {
+    this.config = config;
     this.client = new PharosMcpClient();
   }
 
   async start(): Promise<void> {
-    console.log("========================================================");
-    console.log("       📡  PHAROS ON-CHAIN EVENT & LOG MONITOR         ");
-    console.log("========================================================");
+    console.log("================================================================================");
+    console.log("       🎮  PHAROS PROSPIXEL (https://prospixel.xyz/) GAME MONITOR              ");
+    console.log("================================================================================");
     console.log(`Connecting to Pharos Chain MCP (https://mcp.pharos.xyz/mcp)...`);
 
     await this.client.initialize();
     const chainInfo = await this.client.getChainInfo();
     const currentBlock = await this.client.getBlockNumber();
 
-    console.log(`Connected: ${chainInfo.name} (Chain ID: ${chainInfo.chainId})`);
-    console.log(`Current Block Height: #${currentBlock.toLocaleString()}`);
-    console.log(`Event Filter:        ${this.options.event}`);
-    console.log(`Contract Filter:     ${this.options.contract || "All Contracts"}`);
-    console.log(`Polling Interval:    ${this.options.pollIntervalMs} ms`);
-    console.log("--------------------------------------------------------");
+    console.log(`📡 Network:          ${chainInfo.name} (Chain ID: ${chainInfo.chainId})`);
+    console.log(`📍 Game Contract:    ${this.config.contractAddress}`);
+    console.log(`📦 Current Block:    #${currentBlock.toLocaleString()}`);
+    console.log(`⏱️  Polling Interval: Every ${this.config.pollIntervalMs / 1000} seconds via Pharos MCP`);
+    console.log("================================================================================\n");
 
-    // 1. Initial backfill scan to immediately catch and display recent events
-    const startBlock = Math.max(0, currentBlock - this.options.backfillBlocks);
-    console.log(`⏳ Scanning past ${this.options.backfillBlocks} blocks (from #${startBlock.toLocaleString()} to #${currentBlock.toLocaleString()}) for live events...\n`);
+    // 1. Initial backfill to display recent events immediately
+    const startBlock = Math.max(0, currentBlock - this.config.backfillBlocks);
+    console.log(`⏳ Scanning recent blocks (#${startBlock.toLocaleString()} -> #${currentBlock.toLocaleString()}) for latest game activity...\n`);
 
-    await this.pollLogs(startBlock, currentBlock);
+    await this.fetchLogsInRange(startBlock, currentBlock);
     this.lastCheckedBlock = currentBlock;
 
-    // 2. Continuous monitoring loop
+    // 2. Real-time continuous polling loop (every 10 seconds)
     this.isRunning = true;
-    console.log(`🟢 Continuous real-time monitor active. Waiting for new on-chain events... (Press Ctrl+C to stop)\n`);
+    console.log(`🟢 [LIVE MONITOR ACTIVE] Listening for new game events every ${this.config.pollIntervalMs / 1000}s... (Ctrl+C to stop)\n`);
 
     while (this.isRunning) {
-      await new Promise((resolve) => setTimeout(resolve, this.options.pollIntervalMs));
+      await new Promise((r) => setTimeout(r, this.config.pollIntervalMs));
       try {
         const latestBlock = await this.client.getBlockNumber();
         if (latestBlock > this.lastCheckedBlock) {
           const from = this.lastCheckedBlock + 1;
           const to = latestBlock;
-          await this.pollLogs(from, to);
+          await this.fetchLogsInRange(from, to);
           this.lastCheckedBlock = to;
         }
       } catch (err: any) {
@@ -83,68 +88,141 @@ export class EventLogMonitor {
 
   stop(): void {
     this.isRunning = false;
-    console.log("\n🛑 Event monitor stopped.");
+    console.log("\n🛑 ProsPixel Monitor stopped.");
   }
 
-  private async pollLogs(fromBlock: number, toBlock: number): Promise<void> {
-    const topic = EVENT_TOPICS[this.options.event] || EVENT_TOPICS.Transfer;
+  private async fetchLogsInRange(fromBlock: number, toBlock: number): Promise<void> {
+    // Pharos MCP limit is max 1000 blocks per call. Page through if range > 1000.
+    const step = 999;
+    for (let cur = fromBlock; cur <= toBlock; cur += step) {
+      const chunkTo = Math.min(cur + step - 1, toBlock);
+      const res = await this.client.callTool("get_logs", {
+        address: this.config.contractAddress,
+        fromBlock: cur,
+        toBlock: chunkTo,
+      });
 
-    const filter: Record<string, any> = {
-      topics: [topic],
-      fromBlock,
-      toBlock,
-    };
+      const logs: any[] = Array.isArray(res.parsed) ? res.parsed : [];
+      for (const log of logs) {
+        const eventKey = `${log.transactionHash}-${log.logIndex}`;
+        if (this.seenEvents.has(eventKey)) continue;
+        this.seenEvents.add(eventKey);
 
-    if (this.options.contract) {
-      filter.address = this.options.contract;
-    }
-
-    const res = await this.client.callTool("get_logs", filter);
-    const logs: any[] = Array.isArray(res.parsed) ? res.parsed : [];
-
-    for (const log of logs) {
-      const eventKey = `${log.transactionHash}-${log.logIndex}`;
-      if (this.seenEvents.has(eventKey)) {
-        continue; // Deduplicate
+        this.formatAndDisplayEvent(log);
       }
-      this.seenEvents.add(eventKey);
-
-      this.processAndPrintLog(log);
     }
   }
 
-  private processAndPrintLog(log: any): void {
+  private formatAndDisplayEvent(log: any): void {
     const blockNum = typeof log.blockNumber === "string" ? parseInt(log.blockNumber, 16) : log.blockNumber;
-    const contractAddr = (log.address || "").toLowerCase();
-    const tokenInfo = KNOWN_TOKENS[contractAddr] || { symbol: "TOKEN", decimals: 18 };
+    
+    // Format timestamp
+    let dateStr = "Recent";
+    if (log.blockTimestamp) {
+      const ts = typeof log.blockTimestamp === "string" ? parseInt(log.blockTimestamp, 16) : log.blockTimestamp;
+      dateStr = new Date(ts * 1000).toLocaleString("ru-RU", { timeZone: "UTC" }) + " UTC";
+    } else {
+      dateStr = new Date().toLocaleString("ru-RU") + " (Local)";
+    }
 
     try {
       const decoded = decodeEventLog({
-        abi: ERC20_ABI,
+        abi: PROS_PIXEL_ABI,
         data: log.data,
         topics: log.topics,
       });
 
-      const { from, to, value } = (decoded.args as any) || {};
+      const args: any = decoded.args || {};
+      const txUrl = `https://www.pharosscan.xyz/tx/${log.transactionHash}`;
 
-      console.log(`🔔 [EVENT #${this.seenEvents.size}] ${decoded.eventName} on Block #${blockNum.toLocaleString()}`);
-      console.log(`   📍 Contract: ${formatAddress(log.address)} (${log.address})`);
-      console.log(`   👤 From:     ${formatAddress(from)} (${from})`);
-      console.log(`   🎯 To:       ${formatAddress(to)} (${to})`);
-      if (value !== undefined) {
-        const formattedAmount = formatTokenAmount(value, tokenInfo.decimals);
-        console.log(`   💰 Amount:   ${formattedAmount} ${tokenInfo.symbol} (Raw: ${value.toString()})`);
+      switch (decoded.eventName) {
+        case "BatchPixelsBought": {
+          const pixelCount = Array.isArray(args.x) ? args.x.length : 1;
+          const coords = Array.isArray(args.x) && args.x.length <= 4
+            ? args.x.map((xVal: number, i: number) => `(${xVal}, ${args.y[i]})`).join(", ")
+            : `${pixelCount} пикселей`;
+          const paidPros = formatEther(args.totalValue || 0n);
+          const inviterReward = formatEther(args.totalInviterReward || 0n);
+
+          console.log(`🎨 [${dateStr}] Блок #${blockNum.toLocaleString()}`);
+          console.log(`   ⚡ ДЕЙСТВИЕ:          Покупка пикселей в игре (BatchPixelsBought)`);
+          console.log(`   👤 КОШЕЛЕК ИГРОКА:    ${args.user}`);
+          console.log(`   💸 СКОЛЬКО ЗАПЛАТИЛ:   ${paidPros} PROS`);
+          console.log(`   🎁 ЧТО ПОЛУЧИЛ:       ${pixelCount} пиксель(-ей) на холсте ${coords}`);
+          if (args.inviter && args.inviter !== "0x0000000000000000000000000000000000000000") {
+            console.log(`   🤝 Инвайтер:          ${args.inviter} (награда: ${inviterReward} PROS)`);
+          }
+          console.log(`   🔗 ХЕШ ТРАНЗАКЦИИ:    ${log.transactionHash}`);
+          console.log(`   🌐 ССЫЛКА В ЭКСПЛОРЕР: ${txUrl}`);
+          console.log("--------------------------------------------------------------------------------");
+          break;
+        }
+
+        case "Claimed": {
+          const principal = formatEther(args.principal || 0n);
+          const premium = formatEther(args.premium || 0n);
+          const inviter = formatEther(args.inviterReward || 0n);
+          const totalReceived = (
+            parseFloat(principal) +
+            parseFloat(premium) +
+            parseFloat(inviter)
+          ).toFixed(4);
+
+          console.log(`💰 [${dateStr}] Блок #${blockNum.toLocaleString()}`);
+          console.log(`   ⚡ ДЕЙСТВИЕ:          Клейм наград из игры (Claimed)`);
+          console.log(`   👤 КОШЕЛЕК ИГРОКА:    ${args.to}`);
+          console.log(`   💸 СКОЛЬКО ЗАПЛАТИЛ:   0 PROS (только gas за транзакцию)`);
+          console.log(`   🎁 ЧТО ПОЛУЧИЛ:       ${totalReceived} PROS (Тело: ${principal} + Премия: ${premium} + Реферальные: ${inviter})`);
+          console.log(`   🔗 ХЕШ ТРАНЗАКЦИИ:    ${log.transactionHash}`);
+          console.log(`   🌐 ССЫЛКА В ЭКСПЛОРЕР: ${txUrl}`);
+          console.log("--------------------------------------------------------------------------------");
+          break;
+        }
+
+        case "PixelPremiumDistributed": {
+          const premium = formatEther(args.premiumToSeller || 0n);
+          const lastPrice = formatEther(args.lastPrice || 0n);
+
+          console.log(`📈 [${dateStr}] Блок #${blockNum.toLocaleString()}`);
+          console.log(`   ⚡ ДЕЙСТВИЕ:          Выплата премии за перекупленный пиксель (PixelPremiumDistributed)`);
+          console.log(`   👤 КОШЕЛЕК ВЛАДЕЛЬЦА: ${args.lastOwner}`);
+          console.log(`   💸 СКОЛЬКО ЗАПЛАТИЛ:   0 PROS (пассивный доход)`);
+          console.log(`   🎁 ЧТО ПОЛУЧИЛ:       +${premium} PROS премии за пиксель (${args.x}, ${args.y}) при цене ${lastPrice} PROS`);
+          console.log(`   🔗 ХЕШ ТРАНЗАКЦИИ:    ${log.transactionHash}`);
+          console.log(`   🌐 ССЫЛКА В ЭКСПЛОРЕР: ${txUrl}`);
+          console.log("--------------------------------------------------------------------------------");
+          break;
+        }
+
+        case "Registered": {
+          console.log(`📝 [${dateStr}] Блок #${blockNum.toLocaleString()}`);
+          console.log(`   ⚡ ДЕЙСТВИЕ:          Регистрация нового игрока (Registered)`);
+          console.log(`   👤 КОШЕЛЕК ИГРОКА:    ${args.user}`);
+          console.log(`   💸 СКОЛЬКО ЗАПЛАТИЛ:   0 PROS (бесплатная регистрация)`);
+          console.log(`   🎁 ЧТО ПОЛУЧИЛ:       Доступ к игре (Инвайтер: ${args.inviter})`);
+          console.log(`   🔗 ХЕШ ТРАНЗАКЦИИ:    ${log.transactionHash}`);
+          console.log(`   🌐 ССЫЛКА В ЭКСПЛОРЕР: ${txUrl}`);
+          console.log("--------------------------------------------------------------------------------");
+          break;
+        }
+
+        default: {
+          console.log(`🔔 [${dateStr}] Блок #${blockNum.toLocaleString()}`);
+          console.log(`   ⚡ ДЕЙСТВИЕ:          ${decoded.eventName}`);
+          console.log(`   📍 КОНТРАКТ:          ${log.address}`);
+          console.log(`   🔗 ХЕШ ТРАНЗАКЦИИ:    ${log.transactionHash}`);
+          console.log(`   🌐 ССЫЛКА В ЭКСПЛОРЕР: ${txUrl}`);
+          console.log("--------------------------------------------------------------------------------");
+          break;
+        }
       }
-      console.log(`   🔗 Tx Hash:  ${log.transactionHash}`);
-      console.log(`   🌐 Explorer: https://www.pharosscan.xyz/tx/${log.transactionHash}`);
-      console.log("--------------------------------------------------------");
-    } catch (e: any) {
-      // Fallback for custom or undeclared formats
-      console.log(`🔔 [EVENT #${this.seenEvents.size}] Log at Block #${blockNum.toLocaleString()}`);
-      console.log(`   📍 Contract: ${log.address}`);
-      console.log(`   🔗 Tx Hash:  ${log.transactionHash}`);
-      console.log(`   📦 Data:     ${log.data}`);
-      console.log("--------------------------------------------------------");
+    } catch {
+      // Fallback
+      console.log(`🔔 [${dateStr}] Лог на блоке #${blockNum.toLocaleString()}`);
+      console.log(`   📍 Контракт:          ${log.address}`);
+      console.log(`   🔗 Хеш транзакции:    ${log.transactionHash}`);
+      console.log(`   🌐 Ссылка в эксплорер: https://www.pharosscan.xyz/tx/${log.transactionHash}`);
+      console.log("--------------------------------------------------------------------------------");
     }
   }
 }
@@ -152,16 +230,14 @@ export class EventLogMonitor {
 async function main() {
   const program = new Command();
   program
-    .name("event-log-monitor")
-    .description("Continuous on-chain event and log monitor via Pharos Chain MCP")
-    .option("-c, --contract <address>", "Contract address to filter on (default: any)")
-    .option("-e, --event <name>", "Event name to monitor (Transfer, Approval)", "Transfer")
-    .option("-p, --poll-interval <ms>", "Polling frequency in milliseconds", "3000")
-    .option("-b, --backfill <blocks>", "Number of recent blocks to scan on startup", "200")
+    .name("prospixel-monitor")
+    .description("Live Event & Log Monitor for ProsPixel (https://prospixel.xyz/) via Pharos Chain MCP")
+    .option("-c, --contract <address>", "Contract address to monitor", PROS_PIXEL_CONTRACTS.mainnet)
+    .option("-p, --poll-interval <ms>", "Polling frequency in milliseconds (default: 10000 = 10s)", "10000")
+    .option("-b, --backfill <blocks>", "Number of recent blocks to scan on launch for latest activity", "5000")
     .action(async (opts) => {
-      const monitor = new EventLogMonitor({
-        contract: opts.contract,
-        event: opts.event,
+      const monitor = new ProsPixelLogMonitor({
+        contractAddress: opts.contract,
         pollIntervalMs: parseInt(opts.pollInterval, 10),
         backfillBlocks: parseInt(opts.backfill, 10),
       });
