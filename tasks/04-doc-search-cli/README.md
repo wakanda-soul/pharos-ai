@@ -16,21 +16,47 @@ A developer CLI tool and Model Context Protocol (MCP) server built on top of the
 
 ---
 
-## 2. Installation & Quickstart
+## 2. Installation & Setup (On Any Machine)
 
-### Option A: Global CLI
+### Prerequisites
+- **Node.js**: `v18.0.0` or higher
+- **Git**
+- **curl**: Pre-installed on macOS, Linux, and Windows (PowerShell/WSL). Used as an automatic fallback for low-latency network resilience.
+
+### Step-by-Step Installation on a Fresh Machine
+
 ```bash
-# Run globally anywhere on the system
-pharos-docs "how do I deploy a contract?"
+# 1. Clone the repository
+git clone https://github.com/wakanda-soul/pharos-ai.git
+cd pharos-ai
+
+# 2. Install dependencies
+npm install
+
+# 3. Link the CLI globally (makes `pharos-docs` executable anywhere on your system)
+npm link
 ```
 
-### Option B: From Repository Root
+Once linked, verify the installation from any directory in your terminal:
 ```bash
-# Using tsx from repository
+pharos-docs --help
+```
+
+---
+
+### Alternative: Running Without Global Linking
+
+If you prefer not to link globally to your system PATH, you can run directly from the repository directory:
+
+```bash
+# Method A: Via npm script (recommended)
+npm run docs:search -- "how do I deploy a contract?"
+
+# Method B: Direct execution via tsx
 npx tsx tasks/04-doc-search-cli/src/cli.ts "what is the mainnet chain ID and RPC URL?"
 
-# Or via npm script
-npm run task:04 -- "how do I deploy a contract?"
+# Method C: Task runner shortcut
+npm run task:04 -- "how do I query events with get_logs?"
 ```
 
 ---
@@ -198,11 +224,17 @@ To use the Developer Docs MCP server inside Claude Desktop or Cursor:
   "mcpServers": {
     "pharos-docs": {
       "command": "npx",
-      "args": ["-y", "tsx", "/root/pharos-ai/tasks/04-doc-search-cli/src/docs-mcp-server.ts"]
+      "args": [
+        "-y",
+        "tsx",
+        "<PATH_TO_PHAROS_AI_REPO>/tasks/04-doc-search-cli/src/docs-mcp-server.ts"
+      ]
     }
   }
 }
 ```
+
+*(Replace `<PATH_TO_PHAROS_AI_REPO>` with the absolute path to your cloned repository, e.g. `/home/user/pharos-ai` or `C:/Users/user/pharos-ai`)*
 
 ### Available MCP Tools
 

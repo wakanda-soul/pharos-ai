@@ -28,7 +28,28 @@ Monitors live on-chain conditions on Pharos Pacific Mainnet (`Chain ID: 1672`) a
 
 ---
 
-## 🚀 Installation & Usage
+## 🚀 Installation & Setup (On Any Machine)
+
+### Prerequisites
+- **Node.js**: `v18.0.0` or higher
+- **Git**
+
+### Step-by-Step Setup
+```bash
+# 1. Clone repository
+git clone https://github.com/wakanda-soul/pharos-ai.git
+cd pharos-ai
+
+# 2. Install dependencies
+npm install
+
+# 3. Link globally (makes `pharos-alert` executable anywhere in terminal)
+npm link
+```
+
+---
+
+## 💻 CLI Usage & Commands
 
 ### 1. Run via Global CLI
 ```bash
@@ -45,7 +66,7 @@ pharos-alert --mode transfer --min-amount 100 --interval 10
 pharos-alert --mode price --min-price 3000 --once
 ```
 
-### 2. Run via NPM Script
+### 2. Run via NPM Script (Without Global Link)
 ```bash
 npm run task:05 -- --mode price --once
 npm run alert:bot -- --mode transfer --min-amount 50
