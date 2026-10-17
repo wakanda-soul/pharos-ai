@@ -19,10 +19,10 @@ For every action in the game, the monitor parses and displays:
 1. **Date & Time (UTC)** and exact **Block Number**.
 2. **Player Wallet Address** (`user` / `to` / `lastOwner`).
 3. **Action Performed**:
-   - 🎨 **Покупка пикселей** (`BatchPixelsBought`)
-   - 💰 **Клейм наград** (`Claimed`)
-   - 📈 **Премия за перекупленный пиксель** (`PixelPremiumDistributed`)
-   - 📝 **Регистрация игрока** (`Registered`)
+   - 🎨 **Buy / Paint Pixels** (`BatchPixelsBought`)
+   - 💰 **Claim Rewards** (`Claimed`)
+   - 📈 **Passive Resale Premium** (`PixelPremiumDistributed`)
+   - 📝 **Player Registration** (`Registered`)
 4. **Amount Paid**: Native PROS spent by the player.
 5. **What was Received**: Number of pixels with (X, Y) canvas coordinates or claimed PROS rewards.
 6. **Transaction Hash & Explorer Link**: Direct link to [pharosscan.xyz](https://www.pharosscan.xyz).
@@ -68,30 +68,30 @@ Connecting to Pharos Chain MCP (https://mcp.pharos.xyz/mcp)...
 
 ⏳ Scanning recent blocks (#20,488,477 -> #20,493,477) for latest game activity...
 
-📈 [17.10.2026, 14:51:54 UTC] Блок #20,488,976
-   ⚡ ДЕЙСТВИЕ:          Выплата премии за перекупленный пиксель (PixelPremiumDistributed)
-   👤 КОШЕЛЕК ВЛАДЕЛЬЦА: 0x84CE7ce5da712361216082a67CFa930c0B9E83f6
-   💸 СКОЛЬКО ЗАПЛАТИЛ:   0 PROS (пассивный доход)
-   🎁 ЧТО ПОЛУЧИЛ:       +0.431323749776713491 PROS премии за пиксель (414, 484) при цене 1.64313809438747997 PROS
-   🔗 ХЕШ ТРАНЗАКЦИИ:    0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
-   🌐 ССЫЛКА В ЭКСПЛОРЕР: https://www.pharosscan.xyz/tx/0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
+📈 [2026-10-17 14:51:54 UTC] Block #20,488,976
+   ⚡ ACTION:        PixelPremiumDistributed (Passive Resale Premium)
+   👤 OWNER WALLET:  0x84CE7ce5da712361216082a67CFa930c0B9E83f6
+   💸 AMOUNT PAID:   0 PROS (Passive Income)
+   🎁 RECEIVED:      +0.431323749776713491 PROS premium for pixel (414, 484) sold at 1.64313809438747997 PROS
+   🔗 TX HASH:       0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
+   🌐 EXPLORER:      https://www.pharosscan.xyz/tx/0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
 --------------------------------------------------------------------------------
-🎨 [17.10.2026, 14:51:54 UTC] Блок #20,488,976
-   ⚡ ДЕЙСТВИЕ:          Покупка пикселей в игре (BatchPixelsBought)
-   👤 КОШЕЛЕК ИГРОКА:    0x84CE7ce5da712361216082a67CFa930c0B9E83f6
-   💸 СКОЛЬКО ЗАПЛАТИЛ:   5.031273899080267659 PROS
-   🎁 ЧТО ПОЛУЧИЛ:       2 пиксель(-ей) на холсте (414, 484), (434, 621)
-   🤝 Инвайтер:          0xBC00E7866C5F2276320887735C435283A36dd987 (награда: 0.031970694710931257 PROS)
-   🔗 ХЕШ ТРАНЗАКЦИИ:    0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
-   🌐 ССЫЛКА В ЭКСПЛОРЕР: https://www.pharosscan.xyz/tx/0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
+🎨 [2026-10-17 14:51:54 UTC] Block #20,488,976
+   ⚡ ACTION:        BatchPixelsBought (Canvas Pixels Painted)
+   👤 PLAYER WALLET: 0x84CE7ce5da712361216082a67CFa930c0B9E83f6
+   💸 AMOUNT PAID:   5.031273899080267659 PROS
+   🎁 RECEIVED:      2 pixel(s) on canvas at (414, 484), (434, 621)
+   🤝 INVITER:       0xBC00E7866C5F2276320887735C435283A36dd987 (Reward: 0.031970694710931257 PROS)
+   🔗 TX HASH:       0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
+   🌐 EXPLORER:      https://www.pharosscan.xyz/tx/0xc51d8c6f0a7a68e8332cda6e464050d145fe7f864afed18d521db731d7be122e
 --------------------------------------------------------------------------------
-💰 [17.10.2026, 14:52:08 UTC] Блок #20,488,991
-   ⚡ ДЕЙСТВИЕ:          Клейм наград из игры (Claimed)
-   👤 КОШЕЛЕК ИГРОКА:    0x84CE7ce5da712361216082a67CFa930c0B9E83f6
-   💸 СКОЛЬКО ЗАПЛАТИЛ:   0 PROS (только gas за транзакцию)
-   🎁 ЧТО ПОЛУЧИЛ:       4.6454 PROS (Тело: 3.653793681249286609 + Премия: 0.959120841327937733 + Реферальные: 0.032441595691834187)
-   🔗 ХЕШ ТРАНЗАКЦИИ:    0xd7d0188619e951b8b3312af40cf34510c5be2d191ad57dde7304a26bde1e602a
-   🌐 ССЫЛКА В ЭКСПЛОРЕР: https://www.pharosscan.xyz/tx/0xd7d0188619e951b8b3312af40cf34510c5be2d191ad57dde7304a26bde1e602a
+💰 [2026-10-17 14:52:08 UTC] Block #20,488,991
+   ⚡ ACTION:        Claimed (Game Rewards Withdrawn)
+   👤 PLAYER WALLET: 0x84CE7ce5da712361216082a67CFa930c0B9E83f6
+   💸 AMOUNT PAID:   0 PROS (Gas only)
+   🎁 RECEIVED:      4.6454 PROS (Principal: 3.653793681249286609 + Premium: 0.959120841327937733 + Referral: 0.032441595691834187)
+   🔗 TX HASH:       0xd7d0188619e951b8b3312af40cf34510c5be2d191ad57dde7304a26bde1e602a
+   🌐 EXPLORER:      https://www.pharosscan.xyz/tx/0xd7d0188619e951b8b3312af40cf34510c5be2d191ad57dde7304a26bde1e602a
 --------------------------------------------------------------------------------
 🟢 [LIVE MONITOR ACTIVE] Listening for new game events every 10s... (Ctrl+C to stop)
 ```
