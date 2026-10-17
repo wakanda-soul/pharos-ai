@@ -39,15 +39,45 @@ For every action in the game, the monitor parses and displays:
 
 ---
 
-## 🚀 How to Run
+## 🚀 Installation & Setup (On Any Machine)
 
-From the project root:
+### Prerequisites
+- **Node.js**: `v18.0.0` or higher
+- **Git**
 
+### Step-by-Step Setup
+```bash
+# 1. Clone repository
+git clone https://github.com/wakanda-soul/pharos-ai.git
+cd pharos-ai
+
+# 2. Install dependencies
+npm install
+
+# 3. Link CLI globally (optional, makes `pharos-events` executable anywhere)
+npm link
+```
+
+---
+
+## 💻 How to Run
+
+### Option A: Global CLI (After `npm link`)
 ```bash
 # Run the ProsPixel game monitor (polls every 10s, with initial recent activity scan)
+pharos-events
+
+# Customize polling interval (e.g. 5s) and backfill block scan window
+pharos-events -p 5000 -b 5000
+```
+
+### Option B: From Repository (Without Global Link)
+```bash
+# Via npm script
+npm run event:monitor
 npm run task:02
 
-# Or customize polling interval and backfill blocks
+# Custom options via tsx
 npx tsx tasks/02-event-log-monitor/src/index.ts -p 10000 -b 5000
 ```
 

@@ -42,22 +42,52 @@ This tool inspects production ERC20 contracts on Pharos Mainnet:
 
 ---
 
-## 🚀 How to Run
+## 🚀 Installation & Setup (On Any Machine)
 
-From the project root:
+### Prerequisites
+- **Node.js**: `v18.0.0` or higher
+- **Git**
 
+### Step-by-Step Setup
+```bash
+# 1. Clone repository
+git clone https://github.com/wakanda-soul/pharos-ai.git
+cd pharos-ai
+
+# 2. Install dependencies
+npm install
+
+# 3. Link CLI globally (optional, makes `pharos-state` executable anywhere)
+npm link
+```
+
+---
+
+## 💻 How to Run
+
+### Option A: Global CLI (After `npm link`)
 ```bash
 # Query default USDC contract
-npm run task:01
+pharos-state
 
 # Query Wrapped PROS (WPROS)
-npx tsx tasks/01-read-contract-state/src/index.ts -c WPROS
+pharos-state -c WPROS
 
 # Query custom contract with a specific wallet address
-npx tsx tasks/01-read-contract-state/src/index.ts -c 0xc879c018db60520f4355c26ed1a6d572cdac1815 -h 0xa0c048d1afb32de4e4b8756a55e22fde5c74e932
+pharos-state -c 0xc879c018db60520f4355c26ed1a6d572cdac1815 -h 0xa0c048d1afb32de4e4b8756a55e22fde5c74e932
 
 # Machine-readable JSON output
-npx tsx tasks/01-read-contract-state/src/index.ts -c USDC --json
+pharos-state -c USDC --json
+```
+
+### Option B: From Repository (Without Global Link)
+```bash
+# Via npm script
+npm run state:read -- -c USDC
+npm run task:01
+
+# Via direct npx tsx
+npx tsx tasks/01-read-contract-state/src/index.ts -c WPROS
 ```
 
 ---
