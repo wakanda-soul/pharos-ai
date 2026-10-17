@@ -178,7 +178,7 @@ export class PharosDocsService {
   /**
    * Offline knowledge base for fundamental queries if the network is unavailable.
    */
-  private checkOfflineKnowledge(query: string): Partial<DocSearchResult> | null {
+  private checkOfflineKnowledge(query: string): Omit<DocSearchResult, "responseTimeMs"> | null {
     const q = query.toLowerCase();
 
     if (q.includes("chain id") || q.includes("rpc") || q.includes("network")) {
