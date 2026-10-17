@@ -27,7 +27,7 @@ Each task lives in its own directory under `tasks/` with an executable CLI scrip
 | 01 | `tasks/01-read-contract-state` | Read Contract State | Chain MCP | Easy | 50 | 🟢 Completed |
 | 02 | `tasks/02-event-log-monitor` | Event/Log Monitor | Chain MCP | Easy | 50 | 🟢 Completed |
 | 03 | `tasks/03-docs-mcp-onboarding` | Docs MCP Onboarding | Developer Docs MCP | Easy | 50 | 🟢 Completed |
-| 04 | `tasks/04-doc-search-cli` | Doc-Search CLI | Developer Docs MCP | Easy | 50 | ⚪ Pending |
+| 04 | `tasks/04-doc-search-cli` | Doc-Search CLI | Developer Docs MCP | Easy | 50 | 🟢 Completed |
 | 05 | `tasks/05-on-chain-alert-bot` | On-Chain Alert Bot | Trading / Monitoring | Easy | 50 | ⚪ Pending |
 | 06 | `tasks/06-dapp-support-agent` | dApp Support Agent | Support / Reporting | Easy | 50 | ⚪ Pending |
 
