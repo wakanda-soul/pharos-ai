@@ -76,7 +76,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [ ] `yield-optimizer`: Compare yields and rebalance.
 - [ ] `x402-agent-buyer`: Autonomous buyer calling x402-paywalled APIs within budget.
 - [ ] `doc-grounded-builder-agent`: Docs-grounded agent answering and executing tasks on Pharos.
-- [ ] `multi-protocol-aggregator`: Multi-protocol yield and liquidity aggregator.
+- [x] [`multi-protocol-aggregator`](tasks/30-multi-protocol-aggregator): Multi-protocol yield & liquidity aggregator across Harbor RWA, Morpho Blue, and FaroSwap with circuit breaker fault isolation.
 
 ---
 
@@ -113,6 +113,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-docs` | **Task 04** | Fast developer docs search with direct links and zero hallucination | `pharos-docs "how do I deploy a contract?"` |
 | `pharos-alert` | **Task 05** | On-chain alert bot for price, whale transfers & contract events | `pharos-alert --mode price --once` |
 | `pharos-support` | **Task 06** | Transaction failure diagnostic doctor & support ticket generator | `pharos-support --demo` |
+| `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
 
@@ -133,4 +134,8 @@ npm run alert:bot -- --mode transfer --min-amount 100 --once
 
 # Task 06: dApp Support Agent
 npm run support -- --demo
+
+# Task 30: Multi-Protocol Aggregator
+npm run aggregator -- rates
+npm run aggregator -- route --token USDC --amount 10000
 ```

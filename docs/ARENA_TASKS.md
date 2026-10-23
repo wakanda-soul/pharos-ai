@@ -282,9 +282,16 @@ Every task contains full build guidelines, requirements, points, and categories.
 ### 30. Multi-Protocol Aggregator (Hard, 200 pts)
 - **Category**: `Cross-tool / Advanced`
 - **Slug**: `multi-protocol-aggregator`
+- **Status**: 🟢 Ready to Submit (200 pts + 50 pts video walkthrough = 250 pts)
+- **Path**: `tasks/30-multi-protocol-aggregator`
 - **URL**: https://pharos-agent-arena.vercel.app/tasks/multi-protocol-aggregator
-- **What you build**: 
+- **What you build**: A Harbor-style autonomous agent extended across 3 real Pharos DeFi protocols (Harbor RWA Hub, Morpho Blue Lending curated by RockawayX, and FaroSwap AMM DEX). Features a unified CLI interface, automated Circuit Breaker fault isolation, a smart multi-criteria Yield Router with plain-English reasoning, and prepared Foundry `cast` deposit/withdraw transaction calldata.
 - **Requirements**:
+  - `01`: Integrates 3 distinct venues behind one interface (Harbor APC3M/VRPC/SharpByte, Morpho RockawayX-USDC, FaroSwap WPROS/USDC LP).
+  - `02`: Supports live queries (`rates`, `positions`) and prepared execution actions (`deposit`, `withdraw`).
+  - `03`: Routes each request to the best venue based on APY, tenor, TVL depth, and safety rating, explaining *why* it was chosen with key tradeoffs.
+  - `04`: Handles protocol downtime gracefully without breaking surviving protocols via a dedicated `CircuitBreaker`.
+  - `05`: Includes comprehensive architecture write-up, Mermaid diagrams, verified Pharos contract addresses, CLI walkthroughs, and automated Vitest test suite (`npm test`).
 
 ---
 

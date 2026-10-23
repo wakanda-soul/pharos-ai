@@ -74,7 +74,7 @@ Each task lives in its own directory under `tasks/` with an executable CLI scrip
 | 27 | `tasks/27-yield-optimizer` | Yield Optimizer | DeFi / Portfolio | Hard | 200 | ⚪ Pending |
 | 28 | `tasks/28-x402-agent-buyer` | x402 Agent Buyer | Payments | Hard | 200 | ⚪ Pending |
 | 29 | `tasks/29-doc-grounded-builder-agent` | Doc-Grounded Builder Agent | Cross-tool / Advanced | Hard | 200 | ⚪ Pending |
-| 30 | `tasks/30-multi-protocol-aggregator` | Multi-Protocol Aggregator | Cross-tool / Advanced | Hard | 200 | ⚪ Pending |
+| 30 | `tasks/30-multi-protocol-aggregator` | Multi-Protocol Aggregator | Cross-tool / Advanced | Hard | 200 | 🟢 Ready to Submit |
 
 ---
 
