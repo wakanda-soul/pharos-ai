@@ -28,7 +28,8 @@
     "pharos-docs": "./tasks/04-doc-search-cli/bin/pharos-docs.js",
     "pharos-alert": "./tasks/05-on-chain-alert-bot/bin/pharos-alert.js",
     "pharos-support": "./tasks/06-dapp-support-agent/bin/pharos-support.js",
-    "pharos-aggregator": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator.js"
+    "pharos-aggregator": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator.js",
+    "pharos-aggregator-mcp": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator-mcp.js"
   },
   "keywords": [
     "pharos",
