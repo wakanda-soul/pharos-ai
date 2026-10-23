@@ -18,6 +18,8 @@
     "task:30": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator:mcp": "tsx tasks/30-multi-protocol-aggregator/src/mcp-server.ts",
+    "aggregator:demo": "tsx tasks/30-multi-protocol-aggregator/src/demo-walkthrough.ts",
+    "demo": "tsx tasks/30-multi-protocol-aggregator/src/demo-walkthrough.ts",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest"
