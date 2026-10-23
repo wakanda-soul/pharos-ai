@@ -17,6 +17,7 @@
     "support": "tsx tasks/06-dapp-support-agent/src/cli.ts",
     "task:30": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
+    "aggregator:mcp": "tsx tasks/30-multi-protocol-aggregator/src/mcp-server.ts",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest"
