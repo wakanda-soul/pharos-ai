@@ -80,7 +80,11 @@ export const KNOWN_CUSTOM_ERRORS: Record<string, {
 export function matchKnownStringReverts(msg: string): DecodedError | null {
   const lower = msg.toLowerCase();
 
-  if (lower.includes("insufficient_output_amount") || lower.includes("too little received") || lower.includes("slippage")) {
+  if (
+    lower.includes("insufficient_output") ||
+    lower.includes("too little received") ||
+    lower.includes("slippage")
+  ) {
     return {
       category: "SLIPPAGE_EXCEEDED",
       name: "SlippageToleranceExceeded",

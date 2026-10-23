@@ -46,9 +46,9 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] 🟢 **[Task 03: Docs MCP Onboarding Audit](tasks/03-docs-mcp-onboarding)**: Self-onboarding experience report and gap analysis using `@Pharos Docs MCP`.
 - [x] 🟢 **[Task 04: Doc-Search CLI & Docs MCP Server](tasks/04-doc-search-cli)**: Terminal CLI tool and stdio MCP server for searching Pharos developer docs with zero hallucination.
 - [x] 🟢 **[Task 05: On-Chain Alert Bot](tasks/05-on-chain-alert-bot)**: Multi-channel on-chain sentinel for price thresholds, whale transfers, and contract events via Chain MCP.
-- [ ] `dapp-support-agent`: Explains why a transaction failed.
+- [x] 🟢 **[Task 06: dApp Support Agent](tasks/06-dapp-support-agent)**: Autonomous transaction failure diagnostic doctor and support ticket generator via Chain MCP.
 
-> 🗺️ **Full Strategy & Sequential Execution Plan**: See **[ROADMAP.md](docs/ROADMAP.md)** for all 30 tasks, ranking ladders, and milestones.
+> 🗺️ **Full Strategy & Sequential Execution Plan**: See **[ROADMAP.md](docs/ROADMAP.md)** for all 30 tasks, ranking ladders, and milestones. All 6 Tier 1 (Easy) tasks are now complete!
 
 ### Tier 2 — Medium (100 pts each)
 - [ ] `threshold-guardian`: Evaluate multi-conditions before firing actions.
@@ -112,6 +112,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-events` | **Task 02** | Real-time event monitor for ProsPixel game via Chain MCP | `pharos-events -p 5000` |
 | `pharos-docs` | **Task 04** | Fast developer docs search with direct links and zero hallucination | `pharos-docs "how do I deploy a contract?"` |
 | `pharos-alert` | **Task 05** | On-chain alert bot for price, whale transfers & contract events | `pharos-alert --mode price --once` |
+| `pharos-support` | **Task 06** | Transaction failure diagnostic doctor & support ticket generator | `pharos-support --demo` |
 
 ### Running via NPM Scripts (Without Global Linking)
 
@@ -129,4 +130,7 @@ npm run docs:search -- "what is the mainnet chain ID?"
 
 # Task 05: On-Chain Alert Bot
 npm run alert:bot -- --mode transfer --min-amount 100 --once
+
+# Task 06: dApp Support Agent
+npm run support -- --demo
 ```

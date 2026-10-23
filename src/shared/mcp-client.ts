@@ -1,4 +1,5 @@
 import { MCP_CONFIG } from "./config";
+import { execFileSync } from "node:child_process";
 
 export interface McpToolResult<T = any> {
   content?: Array<{ type: string; text?: string; [key: string]: any }>;
@@ -16,41 +17,76 @@ export class PharosMcpClient {
     this.url = url;
   }
 
+  private async post(body: any, customHeaders: Record<string, string> = {}): Promise<{ text: string; sessionId?: string | null }> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Accept: "text/event-stream, application/json",
+      ...customHeaders,
+    };
+    if (this.sessionId) {
+      headers["mcp-session-id"] = this.sessionId;
+    }
+
+    try {
+      const res = await fetch(this.url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(5000),
+      });
+      const returnedSessionId = res.headers.get("mcp-session-id");
+      const text = await res.text();
+      return { text, sessionId: returnedSessionId };
+    } catch {
+      // High-reliability system curl fallback
+      const curlHeaders: string[] = [];
+      for (const [k, v] of Object.entries(headers)) {
+        curlHeaders.push("-H", `${k}: ${v}`);
+      }
+      const out = execFileSync("curl", [
+        "-s",
+        "-i",
+        "--max-time", "8",
+        "-X", "POST",
+        this.url,
+        ...curlHeaders,
+        "-d", JSON.stringify(body),
+      ], { encoding: "utf-8" });
+
+      const headerEndIndex = out.indexOf("\r\n\r\n") !== -1 ? out.indexOf("\r\n\r\n") : out.indexOf("\n\n");
+      const headerPart = headerEndIndex !== -1 ? out.slice(0, headerEndIndex) : "";
+      const bodyPart = headerEndIndex !== -1 ? out.slice(headerEndIndex).trim() : out;
+
+      const sessionMatch = headerPart.match(/mcp-session-id:\s*([^\r\n]+)/i);
+      return { text: bodyPart, sessionId: sessionMatch ? sessionMatch[1].trim() : null };
+    }
+  }
+
   /**
    * Initializes the MCP connection and extracts the session ID.
    */
   async initialize(): Promise<void> {
     if (this.sessionId) return;
 
-    const res = await fetch(this.url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "text/event-stream, application/json",
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: ++this.messageId,
-        method: "initialize",
-        params: {
-          protocolVersion: "2024-11-05",
-          capabilities: {},
-          clientInfo: {
-            name: "pharos-ai-agent",
-            version: "1.0.0",
-          },
+    const { text, sessionId } = await this.post({
+      jsonrpc: "2.0",
+      id: ++this.messageId,
+      method: "initialize",
+      params: {
+        protocolVersion: "2024-11-05",
+        capabilities: {},
+        clientInfo: {
+          name: "pharos-ai-agent",
+          version: "1.0.0",
         },
-      }),
+      },
     });
 
-    const sessionId = res.headers.get("mcp-session-id");
     if (sessionId) {
       this.sessionId = sessionId;
     }
 
-    const text = await res.text();
     const data = this.parseSseOrJson(text);
-
     if (data.error) {
       throw new Error(`MCP Initialization failed: ${JSON.stringify(data.error)}`);
     }
@@ -149,33 +185,17 @@ export class PharosMcpClient {
   }
 
   private async sendRpc(method: string, params: any): Promise<any> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      Accept: "text/event-stream, application/json",
-    };
-
-    if (this.sessionId) {
-      headers["mcp-session-id"] = this.sessionId;
-    }
-
-    const res = await fetch(this.url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: ++this.messageId,
-        method,
-        params,
-      }),
+    const { text, sessionId } = await this.post({
+      jsonrpc: "2.0",
+      id: ++this.messageId,
+      method,
+      params,
     });
 
-    // Capture/update session ID if returned
-    const returnedSessionId = res.headers.get("mcp-session-id");
-    if (returnedSessionId) {
-      this.sessionId = returnedSessionId;
+    if (sessionId) {
+      this.sessionId = sessionId;
     }
 
-    const text = await res.text();
     return this.parseSseOrJson(text);
   }
 
