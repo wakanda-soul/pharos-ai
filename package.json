@@ -13,6 +13,8 @@
     "docs:mcp": "tsx tasks/04-doc-search-cli/src/docs-mcp-server.ts",
     "task:05": "tsx tasks/05-on-chain-alert-bot/src/cli.ts",
     "alert:bot": "tsx tasks/05-on-chain-alert-bot/src/cli.ts",
+    "task:06": "tsx tasks/06-dapp-support-agent/src/cli.ts",
+    "support": "tsx tasks/06-dapp-support-agent/src/cli.ts",
     "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest"
@@ -21,7 +23,8 @@
     "pharos-state": "./tasks/01-read-contract-state/bin/pharos-state.js",
     "pharos-events": "./tasks/02-event-log-monitor/bin/pharos-events.js",
     "pharos-docs": "./tasks/04-doc-search-cli/bin/pharos-docs.js",
-    "pharos-alert": "./tasks/05-on-chain-alert-bot/bin/pharos-alert.js"
+    "pharos-alert": "./tasks/05-on-chain-alert-bot/bin/pharos-alert.js",
+    "pharos-support": "./tasks/06-dapp-support-agent/bin/pharos-support.js"
   },
   "keywords": [
     "pharos",
