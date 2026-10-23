@@ -273,9 +273,29 @@ FaroSwap AMM DEX     | 🟢 CLOSED (OK) | 0          | <10 ms       | Operationa
 
 ---
 
+### 8. AI Agent Skill & MCP Server Integration
+
+In addition to the global CLI, this package provides a full **Model Context Protocol (MCP)** server and **Agent Skill** (`SKILL.md`) enabling autonomous agents on `ai.pharos.xyz`, Antigravity CLI, or Claude Desktop to act as Harbor-style yield managers.
+
+```bash
+# Launch the MCP Server via stdio
+npm run aggregator:mcp
+```
+
+#### Available MCP Tools for Autonomous Agents:
+* `get_pharos_rates`: Query real-time yields, TVL, and safety ratings across Harbor, Morpho, and FaroSwap.
+* `route_yield`: Intelligent multi-criteria yield routing with plain-English explanation and prepared calldata.
+* `get_user_positions`: Aggregate user positions across protocols and compute weighted average APY.
+* `prepare_deposit` & `prepare_withdraw`: Generate unsigned ERC-4626 / Uniswap V2 transactions.
+* `check_protocol_health`: Inspect circuit breaker state (`CLOSED`, `OPEN`, `HALF_OPEN`) and latency.
+
+The agent skill instructions are documented in [`SKILL.md`](./SKILL.md).
+
+---
+
 ## Automated Test Suite
 
-Run the full automated test suite to verify routing logic, circuit breaker transitions, and calldata encoding:
+Run the full automated test suite to verify routing logic, circuit breaker transitions, calldata encoding, and MCP server initialization:
 
 ```bash
 npm test
@@ -285,9 +305,10 @@ npm test
  ✓ tasks/30-multi-protocol-aggregator/test/router.test.ts (5 tests)
  ✓ tasks/30-multi-protocol-aggregator/test/circuit-breaker.test.ts (3 tests)
  ✓ tasks/30-multi-protocol-aggregator/test/calldata.test.ts (6 tests)
+ ✓ tasks/30-multi-protocol-aggregator/test/mcp-server.test.ts (1 test)
 
- Test Files  9 passed (9)
-      Tests  34 passed (34)
+ Test Files  10 passed (10)
+      Tests  35 passed (35)
 ```
 
 ---
