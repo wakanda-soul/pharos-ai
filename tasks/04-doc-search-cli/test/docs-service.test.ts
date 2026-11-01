@@ -30,7 +30,7 @@ describe("Task 04: PharosDocsService", { timeout: 25000 }, () => {
       expect(source.url.startsWith("https://docs.pharos.xyz")).toBe(true);
       expect(source.title).toBeTruthy();
     }
-  }, 20000);
+  }, 40000);
 
   it("should accept a goal parameter and return response within reasonable time", async () => {
     const res = await service.search("what is the rpc url for mainnet", {

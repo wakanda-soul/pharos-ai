@@ -50,7 +50,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [ ] `dry-run-executor`: Simulate transaction outcome & cost before submitting.
 - [ ] `batch-executor`: Bundle independent actions into one execution.
 - [ ] `policy-gatekeeper`: Policy, allowance, and spend checks before execution.
-- [ ] `skill-chain-mcp-flow`: Compose SkillEngine + Chain MCP.
+- [x] [`skill-chain-mcp-flow`](tasks/07-skill-chain-mcp-flow): Composed agent flow combining Pharos Chain MCP and SkillEngine into an autonomous dynamic treasury sentinel.
 - [ ] `docs-chain-mcp-agent`: Explain contract function with Docs MCP, then execute with Chain MCP.
 - [ ] `liquidation-watchdog`: Monitor lending position & alert before liquidation.
 - [ ] `natural-language-payment-agent`: NL prompt to prepared transaction.
@@ -108,6 +108,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-docs` | **Task 04** | Fast developer docs search with direct links and zero hallucination | `pharos-docs "how do I deploy a contract?"` |
 | `pharos-alert` | **Task 05** | On-chain alert bot for price, whale transfers & contract events | `pharos-alert --mode price --once` |
 | `pharos-support` | **Task 06** | Transaction failure diagnostic doctor & support ticket generator | `pharos-support --demo` |
+| `pharos-flow` | **Task 07** | Composed flow: Chain MCP live query -> SkillEngine decision -> Action synthesis | `pharos-flow demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
