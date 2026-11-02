@@ -135,10 +135,18 @@ export class X402PaywallServer {
       paymentMemoId: `memo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     };
 
-    // Extract X-PAYMENT or Authorization Header
-    const rawPaymentHeader = req.headers['x-payment'] ||
-      req.headers['X-Payment'] ||
-      req.headers['authorization'];
+    // Extract X-PAYMENT or Authorization Header case-insensitively
+    let rawPaymentHeader: string | undefined;
+    for (const [headerKey, headerVal] of Object.entries(req.headers)) {
+      if (headerVal && (
+        headerKey.toLowerCase() === 'x-payment' ||
+        headerKey.toLowerCase() === 'authorization' ||
+        headerKey.toLowerCase() === 'payment-authorization'
+      )) {
+        rawPaymentHeader = headerVal;
+        break;
+      }
+    }
 
     // If client provided no payment header -> Respond 402 with PAYMENT-REQUIRED header
     if (!rawPaymentHeader) {
@@ -175,11 +183,15 @@ export class X402PaywallServer {
     } catch {
       return {
         status: 402,
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'PAYMENT-REQUIRED': Buffer.from(JSON.stringify(requirement)).toString('base64'),
+        },
         body: {
           statusCode: 402,
           error: 'Malformed Payment Header',
           message: 'Unable to decode X-Payment header into valid Eip712PaymentAuthorization.',
+          paymentRequirement: requirement,
         },
       };
     }
@@ -196,6 +208,7 @@ export class X402PaywallServer {
         status: 402,
         headers: {
           'Content-Type': 'application/json',
+          'PAYMENT-REQUIRED': Buffer.from(JSON.stringify(requirement)).toString('base64'),
           'X-Payment-Rejected-Reason': settlementResult.errorMessage || 'Invalid payment',
         },
         body: {

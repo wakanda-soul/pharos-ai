@@ -85,12 +85,20 @@ export class X402FacilitatorEngine {
       };
     }
 
-    // 3. Price Verification (Enforces Requirement 05: No Underpayments!)
+    // 3. Price & Units Verification (Enforces Requirement 05: No Underpayments or Unit Tampering!)
     const requiredPriceNumber = parseFloat(requirement.price);
     if (authorization.decimalPriceUsdc < requiredPriceNumber) {
       return {
         isValid: false,
         rejectionReason: `Underpaid: authorization authorizes ${authorization.decimalPriceUsdc} USDC, but route requires ${requiredPriceNumber} USDC.`,
+      };
+    }
+
+    const unitsExpected = parseUnits(authorization.decimalPriceUsdc.toString(), ATLANTIC_TESTNET.usdcDecimals);
+    if (authorization.authorizedAmountUnits !== unitsExpected.toString()) {
+      return {
+        isValid: false,
+        rejectionReason: `Unit tampering detected: authorizedAmountUnits (${authorization.authorizedAmountUnits}) does not match decimal price (${unitsExpected.toString()}).`,
       };
     }
 
@@ -112,6 +120,13 @@ export class X402FacilitatorEngine {
     }
 
     // 6. Anti-Replay Nonce Verification
+    if (!authorization.nonce || authorization.nonce.length < 8) {
+      return {
+        isValid: false,
+        rejectionReason: 'Malformed nonce: nonces must provide at least 8 characters of high-entropy randomness.',
+      };
+    }
+
     if (this.settledNonces.has(authorization.nonce)) {
       return {
         isValid: false,
