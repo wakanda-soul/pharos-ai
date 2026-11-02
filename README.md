@@ -48,7 +48,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 ### Tier 2 — Medium (100 pts each)
 - [x] [`threshold-guardian`](tasks/09-threshold-guardian): Multi-condition execution gate evaluating live on-chain oracle prices, gas ceilings, and liquidity depth before firing actions.
 - [x] [`dry-run-executor`](tasks/10-dry-run-executor): Pre-flight transaction simulation engine: predicts success/revert, computes USD gas cost via Chainlink, state-diffs balances, and blocks execution on failure.
-- [ ] `batch-executor`: Bundle independent actions into one execution.
+- [x] [`batch-executor`](tasks/11-batch-executor): Multi-action bundling engine: executes 3+ actions in 1 Multicall3 transaction, cuts gas by 35%+, and isolates partial failures.
 - [ ] `policy-gatekeeper`: Policy, allowance, and spend checks before execution.
 - [x] [`skill-chain-mcp-flow`](tasks/07-skill-chain-mcp-flow): Composed agent flow combining Pharos Chain MCP and SkillEngine into an autonomous dynamic treasury sentinel.
 - [x] [`docs-chain-mcp-agent`](tasks/08-docs-chain-mcp-agent): Explain-Then-Act agent explaining contract functions via Docs MCP, executing on Pharos Mainnet, and contextualizing results.
@@ -112,6 +112,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-explain` | **Task 08** | Explain-Then-Act: Explain function via Docs MCP, execute via Chain MCP, and interpret | `pharos-explain explain oracle:latestRoundData` |
 | `pharos-guardian` | **Task 09** | SkillEngine Multi-condition execution gate: Oracle price, gas, and liquidity safety checks | `pharos-guardian demo` |
 | `pharos-dry-run` | **Task 10** | Pre-flight transaction simulator: Zero-broadcast simulation, gas pricing & state-diff gate | `pharos-dry-run demo` |
+| `pharos-batch` | **Task 11** | Multi-action bundling engine: Multicall3 execution, gas savings report & fault isolation | `pharos-batch demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -139,6 +140,9 @@ npm run guardian -- demo
 
 # Task 10: Dry-Run Executor
 npm run dry-run -- demo
+
+# Task 11: Batch Executor
+npm run batch -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates
