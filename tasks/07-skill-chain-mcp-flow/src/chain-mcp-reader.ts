@@ -153,19 +153,33 @@ export class ChainMcpReader {
       params,
     });
 
-    const out = execFileSync('curl', [
-      '-s',
-      '--max-time', '5',
-      '-H', 'Content-Type: application/json',
-      '-X', 'POST',
-      this.rpcUrl,
-      '-d', payload,
-    ], { encoding: 'utf-8' });
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      try {
+        const out = execFileSync('curl', [
+          '-s',
+          '--max-time', '5',
+          '-H', 'Content-Type: application/json',
+          '-X', 'POST',
+          this.rpcUrl,
+          '-d', payload,
+        ], { encoding: 'utf-8' });
 
-    const json = JSON.parse(out);
-    if (json.error) {
-      throw new Error(`RPC error: ${json.error.message}`);
+        const json = JSON.parse(out);
+        if (json.error) {
+          if (attempt < 4 && json.error.message?.includes('cu limit')) {
+            execFileSync('sleep', ['0.4']);
+            continue;
+          }
+          throw new Error(`RPC error: ${json.error.message}`);
+        }
+        return json.result;
+      } catch (err: any) {
+        if (attempt < 4 && err.message?.includes('cu limit')) {
+          execFileSync('sleep', ['0.4']);
+          continue;
+        }
+        if (attempt === 4) throw err;
+      }
     }
-    return json.result;
   }
 }
