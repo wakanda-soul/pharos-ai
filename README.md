@@ -49,7 +49,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] [`threshold-guardian`](tasks/09-threshold-guardian): Multi-condition execution gate evaluating live on-chain oracle prices, gas ceilings, and liquidity depth before firing actions.
 - [x] [`dry-run-executor`](tasks/10-dry-run-executor): Pre-flight transaction simulation engine: predicts success/revert, computes USD gas cost via Chainlink, state-diffs balances, and blocks execution on failure.
 - [x] [`batch-executor`](tasks/11-batch-executor): Multi-action bundling engine: executes 3+ actions in 1 Multicall3 transaction, cuts gas by 35%+, and isolates partial failures.
-- [ ] `policy-gatekeeper`: Policy, allowance, and spend checks before execution.
+- [x] [`policy-gatekeeper`](tasks/12-policy-gatekeeper): Zero-trust policy sentinel: enforces multi-asset spend limits, contract allowlists, and time windows with persistent audit logging.
 - [x] [`skill-chain-mcp-flow`](tasks/07-skill-chain-mcp-flow): Composed agent flow combining Pharos Chain MCP and SkillEngine into an autonomous dynamic treasury sentinel.
 - [x] [`docs-chain-mcp-agent`](tasks/08-docs-chain-mcp-agent): Explain-Then-Act agent explaining contract functions via Docs MCP, executing on Pharos Mainnet, and contextualizing results.
 - [ ] `liquidation-watchdog`: Monitor lending position & alert before liquidation.
@@ -113,6 +113,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-guardian` | **Task 09** | SkillEngine Multi-condition execution gate: Oracle price, gas, and liquidity safety checks | `pharos-guardian demo` |
 | `pharos-dry-run` | **Task 10** | Pre-flight transaction simulator: Zero-broadcast simulation, gas pricing & state-diff gate | `pharos-dry-run demo` |
 | `pharos-batch` | **Task 11** | Multi-action bundling engine: Multicall3 execution, gas savings report & fault isolation | `pharos-batch demo` |
+| `pharos-gatekeeper` | **Task 12** | Zero-trust execution policy sentinel: multi-asset spend limits, allowlists & audit log | `pharos-gatekeeper demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -143,6 +144,9 @@ npm run dry-run -- demo
 
 # Task 11: Batch Executor
 npm run batch -- demo
+
+# Task 12: Policy Gatekeeper
+npm run gatekeeper -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates
