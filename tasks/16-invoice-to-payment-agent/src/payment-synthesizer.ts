@@ -36,6 +36,7 @@ export class InvoicePaymentSynthesizer {
     const hasBlockingDiscrepancy = anomalies.some((a) => a.severity === 'BLOCKING_ERROR');
     const tokenSymbol = metadata.settlementCurrency || 'USDC';
     const isNativePros = tokenSymbol === 'PROS' || !tokenContract;
+    const isZeroPayee = !resolvedPayee || resolvedPayee === '0x0000000000000000000000000000000000000000';
 
     // Convert invoice reference into canonical UTF-8 hex memo
     // Attach invoice reference so on-chain reconciliation matches internal ledger
@@ -44,10 +45,12 @@ export class InvoicePaymentSynthesizer {
 
     let unsignedTx: PreparedUnsignedTransaction | undefined;
 
-    if (!hasBlockingDiscrepancy) {
+    if (!hasBlockingDiscrepancy && !isZeroPayee) {
       if (isNativePros) {
-        // Native PROS Transfer: transaction value carries the coins; data payload carries the memo
-        const rawWei = parseEther(metadata.totalBilledAmount.toString());
+        // Native PROS Transfer: transaction value carries coins; data payload carries reference memo
+        // Watch out: limit decimals to 18 to avoid viem parseEther precision crashes
+        const prosAmountString = metadata.totalBilledAmount.toFixed(18).replace(/\.?0+$/, '');
+        const rawWei = parseEther(prosAmountString);
         const gasLimit = 35000n; // Standard transfer with calldata memo headroom
 
         const castCmd = `cast send ${resolvedPayee} ` +
@@ -77,7 +80,9 @@ export class InvoicePaymentSynthesizer {
         // directly as calldata suffix. The EVM reads the first 68 bytes, while indexers
         // and explorers permanently store the invoice reference in the transaction calldata.
         const tokenDec = tokenDecimals || 6;
-        const rawUnits = parseUnits(metadata.totalBilledAmount.toString(), tokenDec);
+        // Watch out: format amount to token decimals so parseUnits never throws DecimalPlacesExceeded
+        const sanitizedDecimalString = metadata.totalBilledAmount.toFixed(tokenDec);
+        const rawUnits = parseUnits(sanitizedDecimalString, tokenDec);
         const standardCalldata = encodeFunctionData({
           abi: ERC20_ABI,
           functionName: 'transfer',

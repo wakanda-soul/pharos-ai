@@ -30,7 +30,9 @@ export class PlaintextMemoInvoiceParser implements InvoiceFormatParser {
     const refMatch = rawInvoiceBlob.match(
       /(?:invoice\s*(?:reference|id|number|#)|ref\s*#?)\s*[:=]\s*([^\r\n]+)/i
     );
-    const invoiceReference = refMatch ? refMatch[1].trim() : '';
+    let invoiceReference = refMatch ? refMatch[1].trim() : '';
+    // Watch out: strip markdown asterisks, backticks, or wrapping quotes from invoice ID
+    invoiceReference = invoiceReference.replace(/[*`"']/g, '').trim();
 
     // Payee search: address (0x...) or PNS domain (.pharos / .eth)
     let payeeAddressOrDomain = '';
@@ -38,7 +40,13 @@ export class PlaintextMemoInvoiceParser implements InvoiceFormatParser {
       /(?:payee|recipient|beneficiary|send\s*to|wallet)\s*[:=]\s*([^\r\n]+)/i
     );
     if (payeeMatch) {
-      payeeAddressOrDomain = payeeMatch[1].trim();
+      let candidate = payeeMatch[1].trim().replace(/[*`"']/g, '');
+      // Clean trailing parenthetical comments, e.g. "alice.pharos (finance multi-sig)"
+      const commentIdx = candidate.indexOf('(');
+      if (commentIdx > 0) {
+        candidate = candidate.slice(0, commentIdx).trim();
+      }
+      payeeAddressOrDomain = candidate;
     } else {
       // Direct raw address search if header omitted
       const standaloneAddressMatch = rawInvoiceBlob.match(/0x[a-fA-F0-9]{40}/);
