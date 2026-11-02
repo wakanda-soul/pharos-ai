@@ -13,7 +13,7 @@ export class SecureKeyProvider {
   static resolveSignerPrivateKey(): `0x${string}` {
     // 1. Check environment variable
     const envKey = process.env.EVM_PRIVATE_KEY?.trim();
-    if (envKey) {
+    if (envKey && envKey !== 'undefined' && envKey !== 'null') {
       if (!envKey.startsWith('0x')) {
         return `0x${envKey}` as `0x${string}`;
       }
