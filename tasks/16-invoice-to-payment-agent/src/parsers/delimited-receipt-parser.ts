@@ -11,10 +11,10 @@ import {
  */
 export class DelimitedReceiptParser implements InvoiceFormatParser {
   canHandle(rawInvoiceBlob: string): boolean {
-    const lines = rawInvoiceBlob.split('\n').map((l) => l.trim()).filter(Boolean);
-    // Detect key=value or key:value format
-    const kvLineCount = lines.filter((l) => l.includes('=') || (l.includes(':') && !l.startsWith('{'))).length;
-    return kvLineCount >= 3;
+    const lines = rawInvoiceBlob.split('\n').map((l) => l.trim()).filter((l) => Boolean(l) && !l.startsWith('#'));
+    // Delimited KV receipts use unambiguous KEY=VALUE format (e.g. ERP exports, webhook payloads)
+    const kvEqualsLines = lines.filter((l) => /^[A-Z0-9_-]+\s*=\s*.+/i.test(l)).length;
+    return kvEqualsLines >= 3;
   }
 
   parse(rawInvoiceBlob: string): InvoiceParsingResult {

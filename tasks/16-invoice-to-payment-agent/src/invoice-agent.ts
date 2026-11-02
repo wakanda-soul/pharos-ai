@@ -24,10 +24,14 @@ export class InvoiceToPaymentAgent {
     customSentinel?: InvoiceAnomalySentinel,
     customSynthesizer?: InvoicePaymentSynthesizer
   ) {
+    // Strategy evaluation order:
+    // 1. Structured JSON (RFC-8259 syntax)
+    // 2. Delimited / Key-Value pairs (e.g. ERP webhook payloads)
+    // 3. Plaintext Commercial Memo (general natural text & markdown)
     this.registeredParsers = customParsers ?? [
       new StructuredJsonInvoiceParser(),
-      new PlaintextMemoInvoiceParser(),
       new DelimitedReceiptParser(),
+      new PlaintextMemoInvoiceParser(),
     ];
     this.anomalySentinel = customSentinel ?? new InvoiceAnomalySentinel();
     this.paymentSynthesizer = customSynthesizer ?? new InvoicePaymentSynthesizer();
@@ -44,8 +48,8 @@ export class InvoiceToPaymentAgent {
       }
     }
 
-    // Default to plaintext memo heuristic if no strict structured match was met
-    const fallbackParser = this.registeredParsers[1];
+    // Default fallback to plaintext memo heuristic
+    const fallbackParser = this.registeredParsers[2];
     return fallbackParser.parse(rawInvoiceBlob);
   }
 
