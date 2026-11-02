@@ -47,7 +47,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 
 ### Tier 2 — Medium (100 pts each)
 - [x] [`threshold-guardian`](tasks/09-threshold-guardian): Multi-condition execution gate evaluating live on-chain oracle prices, gas ceilings, and liquidity depth before firing actions.
-- [ ] `dry-run-executor`: Simulate transaction outcome & cost before submitting.
+- [x] [`dry-run-executor`](tasks/10-dry-run-executor): Pre-flight transaction simulation engine: predicts success/revert, computes USD gas cost via Chainlink, state-diffs balances, and blocks execution on failure.
 - [ ] `batch-executor`: Bundle independent actions into one execution.
 - [ ] `policy-gatekeeper`: Policy, allowance, and spend checks before execution.
 - [x] [`skill-chain-mcp-flow`](tasks/07-skill-chain-mcp-flow): Composed agent flow combining Pharos Chain MCP and SkillEngine into an autonomous dynamic treasury sentinel.
@@ -111,6 +111,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-flow` | **Task 07** | Composed flow: Chain MCP live query -> SkillEngine decision -> Action synthesis | `pharos-flow demo` |
 | `pharos-explain` | **Task 08** | Explain-Then-Act: Explain function via Docs MCP, execute via Chain MCP, and interpret | `pharos-explain explain oracle:latestRoundData` |
 | `pharos-guardian` | **Task 09** | SkillEngine Multi-condition execution gate: Oracle price, gas, and liquidity safety checks | `pharos-guardian demo` |
+| `pharos-dry-run` | **Task 10** | Pre-flight transaction simulator: Zero-broadcast simulation, gas pricing & state-diff gate | `pharos-dry-run demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -135,6 +136,9 @@ npm run support -- --demo
 
 # Task 09: Threshold Guardian
 npm run guardian -- demo
+
+# Task 10: Dry-Run Executor
+npm run dry-run -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates
