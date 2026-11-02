@@ -34,28 +34,38 @@ export class LendingMathCalculator {
       blockNumber,
     } = params;
 
-    const collateralValueUsd = collateralAmountFormatted * collateralPriceUsd;
-    const debtValueUsd = debtAmountFormatted * debtPriceUsd;
+    // Clamp negative inputs to 0
+    const cleanCollateralAmount = Math.max(0, collateralAmountFormatted);
+    const cleanDebtAmount = Math.max(0, debtAmountFormatted);
+
+    const collateralValueUsd = cleanCollateralAmount * Math.max(0, collateralPriceUsd);
+    const debtValueUsd = cleanDebtAmount * Math.max(0, debtPriceUsd);
 
     // Health Factor = (Collateral Value * Liquidation Threshold) / Debt Value
-    // If debt is 0, Health Factor is essentially infinite (safe)
     let healthFactor = 999.0;
     if (debtValueUsd > 0) {
-      healthFactor = (collateralValueUsd * liquidationThreshold) / debtValueUsd;
+      if (collateralValueUsd === 0) {
+        // Zero collateral with outstanding debt is immediately insolvent
+        healthFactor = 0.0;
+      } else {
+        healthFactor = (collateralValueUsd * liquidationThreshold) / debtValueUsd;
+      }
     }
 
     // Current LTV = Debt Value / Collateral Value
     let currentLtv = 0;
     if (collateralValueUsd > 0) {
       currentLtv = debtValueUsd / collateralValueUsd;
+    } else if (debtValueUsd > 0) {
+      currentLtv = 999.0; // Insolvent
     }
 
     // Liquidation Price: The collateral price at which Health Factor drops to 1.0
     // HF = 1.0 => (collateralAmount * liqPrice * LT) = debtValueUsd
     // liqPrice = debtValueUsd / (collateralAmount * LT)
     let liquidationPriceUsd = 0;
-    if (collateralAmountFormatted > 0 && liquidationThreshold > 0) {
-      liquidationPriceUsd = debtValueUsd / (collateralAmountFormatted * liquidationThreshold);
+    if (cleanCollateralAmount > 0 && liquidationThreshold > 0) {
+      liquidationPriceUsd = debtValueUsd / (cleanCollateralAmount * liquidationThreshold);
     }
 
     const collateralRaw = BigInt(Math.floor(collateralAmountFormatted * 10 ** collateralAsset.decimals));

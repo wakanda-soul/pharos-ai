@@ -82,8 +82,12 @@ export class LiquidationWatchdogEngine {
     // Compute price buffer to liquidation
     let bufferPercent = 'N/A';
     if (position.collateralPriceUsd > 0 && position.liquidationPriceUsd > 0) {
-      const dropToLiquidation = ((position.collateralPriceUsd - position.liquidationPriceUsd) / position.collateralPriceUsd) * 100;
-      bufferPercent = `${Math.max(0, dropToLiquidation).toFixed(1)}% price drop remaining`;
+      if (position.collateralPriceUsd <= position.liquidationPriceUsd) {
+        bufferPercent = '0.0% (COLLATERAL UNDERWATER — LIQUIDATION THRESHOLD BREACHED)';
+      } else {
+        const dropToLiquidation = ((position.collateralPriceUsd - position.liquidationPriceUsd) / position.collateralPriceUsd) * 100;
+        bufferPercent = `${dropToLiquidation.toFixed(1)}% price drop remaining`;
+      }
     }
 
     const alertPayload: LiquidationAlertPayload = {
