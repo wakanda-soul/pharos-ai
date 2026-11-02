@@ -19,6 +19,8 @@
     "flow": "tsx tasks/07-skill-chain-mcp-flow/src/cli.ts",
     "task:08": "tsx tasks/08-docs-chain-mcp-agent/src/cli.ts",
     "explain": "tsx tasks/08-docs-chain-mcp-agent/src/cli.ts",
+    "task:09": "tsx tasks/09-threshold-guardian/src/cli.ts",
+    "guardian": "tsx tasks/09-threshold-guardian/src/cli.ts",
     "task:30": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator:mcp": "tsx tasks/30-multi-protocol-aggregator/src/mcp-server.ts",
@@ -36,6 +38,7 @@
     "pharos-support": "./tasks/06-dapp-support-agent/bin/pharos-support.js",
     "pharos-flow": "./tasks/07-skill-chain-mcp-flow/bin/pharos-flow.js",
     "pharos-explain": "./tasks/08-docs-chain-mcp-agent/bin/pharos-explain.js",
+    "pharos-guardian": "./tasks/09-threshold-guardian/bin/pharos-guardian.js",
     "pharos-aggregator": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator.js",
     "pharos-aggregator-mcp": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator-mcp.js"
   },
