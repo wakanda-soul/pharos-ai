@@ -27,6 +27,8 @@
     "batch": "tsx tasks/11-batch-executor/src/cli.ts",
     "task:12": "tsx tasks/12-policy-gatekeeper/src/cli.ts",
     "gatekeeper": "tsx tasks/12-policy-gatekeeper/src/cli.ts",
+    "task:13": "tsx tasks/13-gas-fee-optimizer/src/cli.ts",
+    "gas-opt": "tsx tasks/13-gas-fee-optimizer/src/cli.ts",
     "task:30": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator:mcp": "tsx tasks/30-multi-protocol-aggregator/src/mcp-server.ts",
@@ -48,6 +50,7 @@
     "pharos-dry-run": "./tasks/10-dry-run-executor/bin/pharos-dry-run.js",
     "pharos-batch": "./tasks/11-batch-executor/bin/pharos-batch.js",
     "pharos-gatekeeper": "./tasks/12-policy-gatekeeper/bin/pharos-gatekeeper.js",
+    "pharos-gas-opt": "./tasks/13-gas-fee-optimizer/bin/pharos-gas-opt.js",
     "pharos-aggregator": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator.js",
     "pharos-aggregator-mcp": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator-mcp.js"
   },
