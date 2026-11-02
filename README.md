@@ -53,7 +53,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] [`skill-chain-mcp-flow`](tasks/07-skill-chain-mcp-flow): Composed agent flow combining Pharos Chain MCP and SkillEngine into an autonomous dynamic treasury sentinel.
 - [x] [`docs-chain-mcp-agent`](tasks/08-docs-chain-mcp-agent): Explain-Then-Act agent explaining contract functions via Docs MCP, executing on Pharos Mainnet, and contextualizing results.
 - [ ] `liquidation-watchdog`: Monitor lending position & alert before liquidation.
-- [ ] `natural-language-payment-agent`: NL prompt to prepared transaction.
+- [x] [`natural-language-payment-agent`](tasks/14-natural-language-payment-agent): Intent-to-action payment synthesizer (Harbor pattern): parses plain language, resolves PNS domains, validates solvency, shows pre-flight summary with Chainlink USD, and outputs unsigned transactions.
 - [ ] `recurring-payment-agent`: Repeating on-chain payments.
 - [ ] `invoice-to-payment-agent`: Invoice parser to payment.
 - [ ] `x402-paywalled-api`: API charged per request with x402 on Pharos.
@@ -115,6 +115,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-batch` | **Task 11** | Multi-action bundling engine: Multicall3 execution, gas savings report & fault isolation | `pharos-batch demo` |
 | `pharos-gatekeeper` | **Task 12** | Zero-trust execution policy sentinel: multi-asset spend limits, allowlists & audit log | `pharos-gatekeeper demo` |
 | `pharos-gas-opt` | **Task 13** | Gas fee optimizer: reservation decay curve, opportunistic dip trigger & deadline SLA | `pharos-gas-opt demo` |
+| `pharos-nl-pay` | **Task 14** | Natural-language payment agent: free text parsing, PNS domains, pre-flight summary & unsigned tx | `pharos-nl-pay demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -151,6 +152,9 @@ npm run gatekeeper -- demo
 
 # Task 13: Gas Fee Optimizer
 npm run gas-opt -- demo
+
+# Task 14: Natural-Language Payment Agent
+npm run nl-pay -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates
