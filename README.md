@@ -58,7 +58,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [ ] `invoice-to-payment-agent`: Invoice parser to payment.
 - [ ] `x402-paywalled-api`: API charged per request with x402 on Pharos.
 - [ ] `whale-watching-agent`: Track and report significant address moves.
-- [ ] `gas-fee-optimizer`: Timing transaction submission for lowest gas.
+- [x] [`gas-fee-optimizer`](tasks/13-gas-fee-optimizer): Temporal volatility & deadline decay dispatcher: tracks gas percentiles, holds during congestion, triggers on dips, and guarantees zero-miss deadline SLA.
 - [ ] `wallet-risk-checker`: Suspicious address flagger.
 - [ ] `audit-log-agent`: Wallet activity reporter.
 - [ ] `weekly-digest-agent`: Periodic summary of wallet/protocol activity.
@@ -114,6 +114,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-dry-run` | **Task 10** | Pre-flight transaction simulator: Zero-broadcast simulation, gas pricing & state-diff gate | `pharos-dry-run demo` |
 | `pharos-batch` | **Task 11** | Multi-action bundling engine: Multicall3 execution, gas savings report & fault isolation | `pharos-batch demo` |
 | `pharos-gatekeeper` | **Task 12** | Zero-trust execution policy sentinel: multi-asset spend limits, allowlists & audit log | `pharos-gatekeeper demo` |
+| `pharos-gas-opt` | **Task 13** | Gas fee optimizer: reservation decay curve, opportunistic dip trigger & deadline SLA | `pharos-gas-opt demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -147,6 +148,9 @@ npm run batch -- demo
 
 # Task 12: Policy Gatekeeper
 npm run gatekeeper -- demo
+
+# Task 13: Gas Fee Optimizer
+npm run gas-opt -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates
