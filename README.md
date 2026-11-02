@@ -51,7 +51,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [ ] `batch-executor`: Bundle independent actions into one execution.
 - [ ] `policy-gatekeeper`: Policy, allowance, and spend checks before execution.
 - [x] [`skill-chain-mcp-flow`](tasks/07-skill-chain-mcp-flow): Composed agent flow combining Pharos Chain MCP and SkillEngine into an autonomous dynamic treasury sentinel.
-- [ ] `docs-chain-mcp-agent`: Explain contract function with Docs MCP, then execute with Chain MCP.
+- [x] [`docs-chain-mcp-agent`](tasks/08-docs-chain-mcp-agent): Explain-Then-Act agent explaining contract functions via Docs MCP, executing on Pharos Mainnet, and contextualizing results.
 - [ ] `liquidation-watchdog`: Monitor lending position & alert before liquidation.
 - [ ] `natural-language-payment-agent`: NL prompt to prepared transaction.
 - [ ] `recurring-payment-agent`: Repeating on-chain payments.
@@ -109,6 +109,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-alert` | **Task 05** | On-chain alert bot for price, whale transfers & contract events | `pharos-alert --mode price --once` |
 | `pharos-support` | **Task 06** | Transaction failure diagnostic doctor & support ticket generator | `pharos-support --demo` |
 | `pharos-flow` | **Task 07** | Composed flow: Chain MCP live query -> SkillEngine decision -> Action synthesis | `pharos-flow demo` |
+| `pharos-explain` | **Task 08** | Explain-Then-Act: Explain function via Docs MCP, execute via Chain MCP, and interpret | `pharos-explain explain oracle:latestRoundData` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
