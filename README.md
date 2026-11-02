@@ -54,7 +54,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] [`docs-chain-mcp-agent`](tasks/08-docs-chain-mcp-agent): Explain-Then-Act agent explaining contract functions via Docs MCP, executing on Pharos Mainnet, and contextualizing results.
 - [ ] `liquidation-watchdog`: Monitor lending position & alert before liquidation.
 - [x] [`natural-language-payment-agent`](tasks/14-natural-language-payment-agent): Intent-to-action payment synthesizer (Harbor pattern): parses plain language, resolves PNS domains, validates solvency, shows pre-flight summary with Chainlink USD, and outputs unsigned transactions.
-- [ ] `recurring-payment-agent`: Repeating on-chain payments.
+- [x] [`recurring-payment-agent`](tasks/15-recurring-payment-agent): Autonomous idempotent recurring payment manager: supports weekly & monthly schedules, solvency checks, double-pay locks, and audit ledger.
 - [ ] `invoice-to-payment-agent`: Invoice parser to payment.
 - [ ] `x402-paywalled-api`: API charged per request with x402 on Pharos.
 - [ ] `whale-watching-agent`: Track and report significant address moves.
@@ -116,6 +116,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-gatekeeper` | **Task 12** | Zero-trust execution policy sentinel: multi-asset spend limits, allowlists & audit log | `pharos-gatekeeper demo` |
 | `pharos-gas-opt` | **Task 13** | Gas fee optimizer: reservation decay curve, opportunistic dip trigger & deadline SLA | `pharos-gas-opt demo` |
 | `pharos-nl-pay` | **Task 14** | Natural-language payment agent: free text parsing, PNS domains, pre-flight summary & unsigned tx | `pharos-nl-pay demo` |
+| `pharos-recurring` | **Task 15** | Recurring payment agent: weekly & monthly schedules, failure handling & double-pay lock | `pharos-recurring demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -155,6 +156,9 @@ npm run gas-opt -- demo
 
 # Task 14: Natural-Language Payment Agent
 npm run nl-pay -- demo
+
+# Task 15: Recurring Payment Agent
+npm run recurring -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates
