@@ -46,7 +46,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 
 
 ### Tier 2 — Medium (100 pts each)
-- [ ] `threshold-guardian`: Evaluate multi-conditions before firing actions.
+- [x] [`threshold-guardian`](tasks/09-threshold-guardian): Multi-condition execution gate evaluating live on-chain oracle prices, gas ceilings, and liquidity depth before firing actions.
 - [ ] `dry-run-executor`: Simulate transaction outcome & cost before submitting.
 - [ ] `batch-executor`: Bundle independent actions into one execution.
 - [ ] `policy-gatekeeper`: Policy, allowance, and spend checks before execution.
@@ -110,6 +110,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-support` | **Task 06** | Transaction failure diagnostic doctor & support ticket generator | `pharos-support --demo` |
 | `pharos-flow` | **Task 07** | Composed flow: Chain MCP live query -> SkillEngine decision -> Action synthesis | `pharos-flow demo` |
 | `pharos-explain` | **Task 08** | Explain-Then-Act: Explain function via Docs MCP, execute via Chain MCP, and interpret | `pharos-explain explain oracle:latestRoundData` |
+| `pharos-guardian` | **Task 09** | SkillEngine Multi-condition execution gate: Oracle price, gas, and liquidity safety checks | `pharos-guardian demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -131,6 +132,9 @@ npm run alert:bot -- --mode transfer --min-amount 100 --once
 
 # Task 06: dApp Support Agent
 npm run support -- --demo
+
+# Task 09: Threshold Guardian
+npm run guardian -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates
