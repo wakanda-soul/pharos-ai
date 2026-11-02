@@ -34,6 +34,12 @@ export interface DecodedCallInfo {
   decimals?: number;
 }
 
+const KNOWN_TOKENS: Record<string, { symbol: string; decimals: number }> = {
+  '0xc879c018db60520f4355c26ed1a6d572cdac1815': { symbol: 'USDC', decimals: 6 },
+  '0x51e233d6dc220bcbe02330f81d1136b69fd571dc': { symbol: 'LINK', decimals: 18 },
+  '0x2077e62a046c3b88b4d8d1e2e7faad6bb06222b4': { symbol: 'WPROS', decimals: 18 },
+};
+
 export class StateInspector {
   constructor(private client: PublicClient) {}
 
@@ -53,8 +59,9 @@ export class StateInspector {
         data,
       });
 
-      let symbol = 'TOKEN';
-      let decimals = 18;
+      const known = KNOWN_TOKENS[to.toLowerCase()];
+      let symbol = known?.symbol ?? 'TOKEN';
+      let decimals = known?.decimals ?? 18;
 
       try {
         symbol = await this.client.readContract({
@@ -68,7 +75,7 @@ export class StateInspector {
           functionName: 'decimals',
         });
       } catch {
-        // Fallback defaults if contract doesn't implement ERC20 metadata
+        // Fallback defaults or known tokens if RPC fails or contract doesn't implement ERC20 metadata
       }
 
       if (decoded.functionName === 'transfer') {
