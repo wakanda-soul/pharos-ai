@@ -55,7 +55,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [ ] `liquidation-watchdog`: Monitor lending position & alert before liquidation.
 - [x] [`natural-language-payment-agent`](tasks/14-natural-language-payment-agent): Intent-to-action payment synthesizer (Harbor pattern): parses plain language, resolves PNS domains, validates solvency, shows pre-flight summary with Chainlink USD, and outputs unsigned transactions.
 - [x] [`recurring-payment-agent`](tasks/15-recurring-payment-agent): Autonomous idempotent recurring payment manager: supports weekly & monthly schedules, solvency checks, double-pay locks, and audit ledger.
-- [ ] `invoice-to-payment-agent`: Invoice parser to payment.
+- [x] [`invoice-to-payment-agent`](tasks/16-invoice-to-payment-agent): Autonomous multi-format invoice parser & payment synthesizer: ingests JSON, plaintext memos, and delimited receipts, enforces zero-guessing sentinels, and binds invoice reference in on-chain calldata.
 - [ ] `x402-paywalled-api`: API charged per request with x402 on Pharos.
 - [ ] `whale-watching-agent`: Track and report significant address moves.
 - [x] [`gas-fee-optimizer`](tasks/13-gas-fee-optimizer): Temporal volatility & deadline decay dispatcher: tracks gas percentiles, holds during congestion, triggers on dips, and guarantees zero-miss deadline SLA.
@@ -117,6 +117,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-gas-opt` | **Task 13** | Gas fee optimizer: reservation decay curve, opportunistic dip trigger & deadline SLA | `pharos-gas-opt demo` |
 | `pharos-nl-pay` | **Task 14** | Natural-language payment agent: free text parsing, PNS domains, pre-flight summary & unsigned tx | `pharos-nl-pay demo` |
 | `pharos-recurring` | **Task 15** | Recurring payment agent: weekly & monthly schedules, failure handling & double-pay lock | `pharos-recurring demo` |
+| `pharos-invoice` | **Task 16** | Invoice-to-payment agent: multi-format extraction, zero-guessing anomaly sentinel & calldata reference memo | `pharos-invoice demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -159,6 +160,9 @@ npm run nl-pay -- demo
 
 # Task 15: Recurring Payment Agent
 npm run recurring -- demo
+
+# Task 16: Invoice-to-Payment Agent
+npm run invoice -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates

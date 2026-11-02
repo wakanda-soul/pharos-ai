@@ -34,8 +34,9 @@ export class InvoicePaymentSynthesizer {
     anomalies: readonly InvoiceAnomalyFlag[]
   ): InvoicePaymentSummary {
     const hasBlockingDiscrepancy = anomalies.some((a) => a.severity === 'BLOCKING_ERROR');
-    const tokenSymbol = metadata.settlementCurrency || 'USDC';
-    const isNativePros = tokenSymbol === 'PROS' || !tokenContract;
+    // If currency is omitted from invoice metadata, do NOT default to USDC; keep as UNSPECIFIED
+    const tokenSymbol = metadata.settlementCurrency?.trim() ? metadata.settlementCurrency.trim() : 'UNSPECIFIED';
+    const isNativePros = tokenSymbol === 'PROS';
     const isZeroPayee = !resolvedPayee || resolvedPayee === '0x0000000000000000000000000000000000000000';
 
     // Convert invoice reference into canonical UTF-8 hex memo
@@ -45,7 +46,7 @@ export class InvoicePaymentSynthesizer {
 
     let unsignedTx: PreparedUnsignedTransaction | undefined;
 
-    if (!hasBlockingDiscrepancy && !isZeroPayee) {
+    if (!hasBlockingDiscrepancy && !isZeroPayee && tokenSymbol !== 'UNSPECIFIED') {
       if (isNativePros) {
         // Native PROS Transfer: transaction value carries coins; data payload carries reference memo
         // Watch out: limit decimals to 18 to avoid viem parseEther precision crashes
@@ -118,21 +119,27 @@ export class InvoicePaymentSynthesizer {
     }
 
     const estimatedGasFeePros = isNativePros ? '0.000035 PROS' : '0.000065 PROS';
-    const estimatedUsdVal = isNativePros
+    const estimatedUsdVal = tokenSymbol === 'PROS'
       ? `$${(metadata.totalBilledAmount * 2280).toFixed(2)}`
-      : `$${metadata.totalBilledAmount.toFixed(2)}`;
+      : tokenSymbol === 'USDC' || tokenSymbol === 'USD'
+      ? `$${metadata.totalBilledAmount.toFixed(2)}`
+      : 'UNKNOWN';
+
+    const billedAmountFormatted = tokenSymbol !== 'UNSPECIFIED'
+      ? `${metadata.totalBilledAmount.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 6,
+        })} ${tokenSymbol}`
+      : `${metadata.totalBilledAmount.toFixed(2)} [MISSING_CURRENCY]`;
 
     return {
       invoiceReference: sanitizedReference,
       vendorName: metadata.vendorLegalName || 'Unknown Vendor',
       payeeTarget: metadata.payeeAddressOrDomain,
       resolvedPayee,
-      billedAmountFormatted: `${metadata.totalBilledAmount.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 6,
-      })} ${tokenSymbol}`,
+      billedAmountFormatted,
       tokenSymbol,
-      tokenContract: tokenContract ?? 'NATIVE_PROS',
+      tokenContract: tokenContract ?? (isNativePros ? 'NATIVE_PROS' : 'UNSPECIFIED' as any),
       estimatedGasFeePros,
       estimatedUsdValuation: estimatedUsdVal,
       verificationStatus: hasBlockingDiscrepancy
