@@ -9,3 +9,4 @@ export * from './doc-planner.js';
 export * from './action-executor.js';
 export * from './chain-verifier.js';
 export * from './builder-agent.js';
+export * from './formatter.js';
