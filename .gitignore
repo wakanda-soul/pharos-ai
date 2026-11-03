@@ -53,3 +53,12 @@ published-digests/
 # Operating System Files
 .DS_Store
 Thumbs.db
+
+*.cookies
+*cookies*
+*.session
+arena_session.py
+arena_client.py
+screencasts/
+__pycache__/
+
