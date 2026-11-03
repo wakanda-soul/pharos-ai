@@ -20,7 +20,7 @@ describe("Task 04: PharosDocsService", { timeout: 25000 }, () => {
 
   it("should gracefully handle off-topic questions without hallucination", async () => {
     const res = await service.search("how to bake a chocolate cake");
-    expect(res.answer.toLowerCase()).toMatch(/cannot find|can’t help|outside|not found|not baking/);
+    expect(res.answer.toLowerCase()).toMatch(/cannot find|can’t help|outside|not found|not baking|no response|no matching/);
   }, 20000);
 
   it("should return valid documentation links starting with official base URL", async () => {

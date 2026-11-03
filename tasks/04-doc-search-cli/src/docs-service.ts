@@ -73,8 +73,9 @@ export class PharosDocsService {
       }
     }
 
-    // 3. If live response retrieved, parse and return
-    if (markdown && markdown.trim().length > 0) {
+    // 3. If live response retrieved (and not an HTML error page), parse and return
+    const isHtmlError = markdown.includes("500: Internal Server Error") || markdown.includes("<!DOCTYPE html>");
+    if (markdown && markdown.trim().length > 0 && !isHtmlError) {
       return this.parseMarkdownResponse(trimmedQuery, markdown, Date.now() - startTime);
     }
 
