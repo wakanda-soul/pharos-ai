@@ -204,7 +204,36 @@ export class ActivityCategorizer {
       }
     }
 
-    // 4. Native PROS Coin Transfers
+    // 4. Contract Interactions with methods or to known contracts (Staking, Lending, Governance)
+    const hasContractMethod = Boolean(
+      tx.functionMethodName &&
+        !['transfer', 'transferfrom'].includes(tx.functionMethodName.toLowerCase()),
+    );
+    const isContractEntity =
+      counterpartyLabel.toLowerCase().includes('vault') ||
+      counterpartyLabel.toLowerCase().includes('pool') ||
+      counterpartyLabel.toLowerCase().includes('bridge') ||
+      counterpartyLabel.toLowerCase().includes('reserve') ||
+      counterpartyLabel.toLowerCase().includes('staking') ||
+      counterpartyLabel.toLowerCase().includes('market');
+
+    if (hasContractMethod || isContractEntity) {
+      const formattedPros = tx.valueWei > 0n ? formatEther(tx.valueWei) : '0.00';
+      const valuation =
+        tx.valueWei > 0n
+          ? Math.round(Number(formattedPros) * (TOKEN_PRICES_USD.PROS ?? 1.5) * 100) / 100
+          : 0;
+
+      return {
+        category: 'CONTRACT_INTERACTION',
+        assetSymbol: tx.valueWei > 0n ? 'PROS' : 'N/A',
+        nominalAmountFormatted: formattedPros,
+        estimatedUsdValuation: valuation,
+        plainDescription: `Executed contract call "${tx.functionMethodName ?? 'invoke'}" on ${counterpartyLabel}${tx.valueWei > 0n ? ` with ${formattedPros} PROS attached` : ''}.`,
+      };
+    }
+
+    // 5. Native PROS Coin Transfers
     if (tx.valueWei > 0n) {
       const formattedPros = formatEther(tx.valueWei);
       const valuation = Math.round(Number(formattedPros) * (TOKEN_PRICES_USD.PROS ?? 1.5) * 100) / 100;
@@ -220,18 +249,6 @@ export class ActivityCategorizer {
       }
 
       if (tx.fromAddress.toLowerCase() === walletLower) {
-        // If contract interaction with value
-        const isContract = counterpartyLabel.toLowerCase().includes('vault') || counterpartyLabel.toLowerCase().includes('pool') || counterpartyLabel.toLowerCase().includes('bridge');
-        if (isContract) {
-          return {
-            category: 'CONTRACT_INTERACTION',
-            assetSymbol: 'PROS',
-            nominalAmountFormatted: formattedPros,
-            estimatedUsdValuation: valuation,
-            plainDescription: `Deposited ${formattedPros} PROS (~$${valuation.toLocaleString()} USD) into ${counterpartyLabel}.`,
-          };
-        }
-
         return {
           category: 'TRANSFER_OUT',
           assetSymbol: 'PROS',
@@ -242,7 +259,7 @@ export class ActivityCategorizer {
       }
     }
 
-    // 5. General Contract Interactions (e.g. Staking, Borrowing, Governance)
+    // 6. Fallback General Contract Interactions
     return {
       category: 'CONTRACT_INTERACTION',
       assetSymbol: 'PROS',
