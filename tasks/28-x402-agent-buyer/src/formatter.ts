@@ -35,7 +35,7 @@ export function formatSpendJournalTable(records: readonly SpendAuditJournalRecor
     const running = `$${rec.runningTotalSpendUsdc.toFixed(2)}`.padStart(9, ' ');
     const remaining = `$${rec.remainingBudgetUsdc.toFixed(2)}`.padStart(9, ' ');
 
-    let statusCol = rec.disposition;
+    let statusCol: string = rec.disposition;
     if (rec.disposition === 'SETTLED') statusCol = '🟢 SETTLED';
     else if (rec.disposition === 'HALTED_BUDGET_EXHAUSTED') statusCol = '🛑 HALTED (BUDGET)';
     else if (rec.disposition === 'REJECTED_PRICE_CAP') statusCol = '⚠️ REJECTED (CAP)';
