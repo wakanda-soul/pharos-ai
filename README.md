@@ -52,7 +52,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] [`policy-gatekeeper`](tasks/12-policy-gatekeeper): Zero-trust policy sentinel: enforces multi-asset spend limits, contract allowlists, and time windows with persistent audit logging.
 - [x] [`skill-chain-mcp-flow`](tasks/07-skill-chain-mcp-flow): Composed agent flow combining Pharos Chain MCP and SkillEngine into an autonomous dynamic treasury sentinel.
 - [x] [`docs-chain-mcp-agent`](tasks/08-docs-chain-mcp-agent): Explain-Then-Act agent explaining contract functions via Docs MCP, executing on Pharos Mainnet, and contextualizing results.
-- [ ] `liquidation-watchdog`: Monitor lending position & alert before liquidation.
+- [x] [`liquidation-watchdog`](tasks/18-liquidation-watchdog): Autonomous DeFi lending risk sentinel: tracks collateral, debt & Health Factor on Pharos Mainnet, triggers tiered alerts (Warning 1.30, Critical 1.10), and calculates exact debt repayment or collateral top-up remediation actions.
 - [x] [`natural-language-payment-agent`](tasks/14-natural-language-payment-agent): Intent-to-action payment synthesizer (Harbor pattern): parses plain language, resolves PNS domains, validates solvency, shows pre-flight summary with Chainlink USD, and outputs unsigned transactions.
 - [x] [`recurring-payment-agent`](tasks/15-recurring-payment-agent): Autonomous idempotent recurring payment manager: supports weekly & monthly schedules, solvency checks, double-pay locks, and audit ledger.
 - [x] [`invoice-to-payment-agent`](tasks/16-invoice-to-payment-agent): Autonomous multi-format invoice parser & payment synthesizer: ingests JSON, plaintext memos, and delimited receipts, enforces zero-guessing sentinels, and binds invoice reference in on-chain calldata.
@@ -119,6 +119,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-recurring` | **Task 15** | Recurring payment agent: weekly & monthly schedules, failure handling & double-pay lock | `pharos-recurring demo` |
 | `pharos-invoice` | **Task 16** | Invoice-to-payment agent: multi-format extraction, zero-guessing anomaly sentinel & calldata reference memo | `pharos-invoice demo` |
 | `pharos-x402` | **Task 17** | x402 paywalled API engine on Atlantic Testnet: paid endpoints (0.05/0.25 USDC), free /health, facilitator & client | `pharos-x402 demo` |
+| `pharos-watchdog` | **Task 18** | Liquidation watchdog sentinel: lending health factor monitoring, tiered alerts (1.30/1.10) & exact remediation actions | `pharos-watchdog demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -167,6 +168,9 @@ npm run invoice -- demo
 
 # Task 17: x402 Paywalled API
 npm run x402 -- demo
+
+# Task 18: Liquidation Watchdog
+npm run watchdog -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates

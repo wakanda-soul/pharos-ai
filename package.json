@@ -37,6 +37,8 @@
     "invoice": "tsx tasks/16-invoice-to-payment-agent/src/cli.ts",
     "task:17": "tsx tasks/17-x402-paywalled-api/src/cli.ts",
     "x402": "tsx tasks/17-x402-paywalled-api/src/cli.ts",
+    "task:18": "tsx tasks/18-liquidation-watchdog/src/cli.ts",
+    "watchdog": "tsx tasks/18-liquidation-watchdog/src/cli.ts",
     "task:30": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator:mcp": "tsx tasks/30-multi-protocol-aggregator/src/mcp-server.ts",
@@ -63,6 +65,7 @@
     "pharos-recurring": "./tasks/15-recurring-payment-agent/bin/pharos-recurring.js",
     "pharos-invoice": "./tasks/16-invoice-to-payment-agent/bin/pharos-invoice.js",
     "pharos-x402": "./tasks/17-x402-paywalled-api/bin/pharos-x402.js",
+    "pharos-watchdog": "./tasks/18-liquidation-watchdog/bin/pharos-watchdog.js",
     "pharos-aggregator": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator.js",
     "pharos-aggregator-mcp": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator-mcp.js"
   },
