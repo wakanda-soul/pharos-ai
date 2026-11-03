@@ -101,12 +101,16 @@ export class WalletRiskEvaluator {
   ): string {
     switch (riskLevel) {
       case 'HIGH': {
+        const criticalSignal = triggeredSignals.find((s) => s.severity === 'CRITICAL');
         const primaryReason =
-          triggeredSignals.find((s) => s.severity === 'CRITICAL')?.signalName ??
+          criticalSignal?.signalName ??
           triggeredSignals[0]?.signalName ??
           'Multiple security red flags';
+        const contextDetail = criticalSignal?.plainLanguageExplanation
+          ? ` [${criticalSignal.plainLanguageExplanation.split('.')[0]}]`
+          : '';
 
-        return `DO NOT TRANSACT · HIGH RISK DETECTED (Risk Score: ${score}/100). Primary Red Flag: ${primaryReason}. Interacting with this address presents an acute danger of asset theft, drainer execution, or unrecoverable smart contract exploit.`;
+        return `DO NOT TRANSACT · HIGH RISK DETECTED (Risk Score: ${score}/100). Primary Red Flag: ${primaryReason}${contextDetail}. Interacting with this address presents an acute danger of asset theft, drainer execution, or unrecoverable smart contract exploit.`;
       }
 
       case 'MEDIUM': {
