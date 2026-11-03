@@ -9,6 +9,7 @@ import {
   PlannedActionStep,
   DocCitationSource,
 } from './types.js';
+import { ZeroGuessingSentinel } from './zero-guessing-sentinel.js';
 
 export interface GroundedTopicKnowledge {
   readonly keywords: readonly string[];
@@ -141,11 +142,25 @@ export const GROUNDED_PHAROS_DOCS_CATALOG: readonly GroundedTopicKnowledge[] = [
 ];
 
 export class DocCitationPlanner {
+  private readonly sentinel: ZeroGuessingSentinel = new ZeroGuessingSentinel();
+
   /**
    * Evaluates natural-language requests against the official documentation corpus.
    * Synthesizes an action plan with exact citations, or refuses ungrounded topics.
    */
   public planFromDocs(userQuery: string): DocGroundedExecutionPlan {
+    const sentinelEval = this.sentinel.evaluateQueryGroundedness(userQuery);
+    if (!sentinelEval.isAllowed) {
+      return {
+        userQuery,
+        isDocsGrounded: false,
+        conceptualExplanation: '',
+        citedSources: [],
+        plannedSteps: [],
+        docCoverageDiagnosis: sentinelEval.diagnosticExplanation,
+      };
+    }
+
     const normalizedQuery = userQuery.toLowerCase().trim();
 
     // Find best matching documentation topic

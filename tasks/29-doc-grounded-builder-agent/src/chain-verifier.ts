@@ -73,8 +73,20 @@ export class ChainOutcomeVerifier {
           );
           continue;
         }
+
+        // Validate 4-byte EVM function selector
+        const calldata = executed.unsignedTransactionPayload.encodedCalldata;
+        if (planned.functionName === 'approve' && !calldata.startsWith('0x095ea7b3')) {
+          notes.push(`Selector validation failed: Expected approve 0x095ea7b3, got ${calldata.slice(0, 10)}.`);
+          continue;
+        }
+        if (planned.functionName === 'deposit' && !calldata.startsWith('0x6e553f65')) {
+          notes.push(`Selector validation failed: Expected deposit 0x6e553f65, got ${calldata.slice(0, 10)}.`);
+          continue;
+        }
+
         notes.push(
-          `Step #${planned.stepIndex} Verified: Unsigned calldata encoded for ${planned.functionSignature} on ${planned.targetContractName} (Gas: ${executed.unsignedTransactionPayload.estimatedGasLimit}). Zero key custody maintained.`
+          `Step #${planned.stepIndex} Verified: Unsigned calldata encoded for ${planned.functionSignature} on ${planned.targetContractName} (Selector: ${calldata.slice(0, 10)}, Gas: ${executed.unsignedTransactionPayload.estimatedGasLimit}). Zero key custody maintained.`
         );
       } else {
         if (executed.status !== 'SUCCESS') {
