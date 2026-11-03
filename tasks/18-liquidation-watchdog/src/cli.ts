@@ -5,7 +5,7 @@ import { LiquidationWatchdogEngine } from './watchdog-engine.js';
 import { OnChainPositionReader } from './position-reader.js';
 import { ConsoleNotificationChannel } from './alert-channels.js';
 import { WatchdogFormatter } from './formatter.js';
-import { WATCHDOG_SCENARIOS } from './scenarios.ts';
+import { WATCHDOG_SCENARIOS } from './scenarios.js';
 import { LendingPositionSnapshot } from './types.js';
 
 export function createCli(): Command {

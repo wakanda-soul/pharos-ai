@@ -81,6 +81,7 @@ export class InvoicePaymentSynthesizer {
         // directly as calldata suffix. The EVM reads the first 68 bytes, while indexers
         // and explorers permanently store the invoice reference in the transaction calldata.
         const tokenDec = tokenDecimals || 6;
+        const resolvedContract = tokenContract ?? ('0xc879c018db60520f4355c26ed1a6d572cdac1815' as `0x${string}`);
         // Watch out: format amount to token decimals so parseUnits never throws DecimalPlacesExceeded
         const sanitizedDecimalString = metadata.totalBilledAmount.toFixed(tokenDec);
         const rawUnits = parseUnits(sanitizedDecimalString, tokenDec);
@@ -94,21 +95,21 @@ export class InvoicePaymentSynthesizer {
         const calldataWithReference = concatHex([standardCalldata, invoiceMemoHex]);
         const gasLimit = 65000n;
 
-        const castCmd = `cast send ${tokenContract} ` +
+        const castCmd = `cast send ${resolvedContract} ` +
           `"transfer(address,uint256)" ${resolvedPayee} ${rawUnits.toString()} ` +
           `--data-suffix ${invoiceMemoHex} ` +
           `--rpc-url https://rpc.pharos.xyz`;
 
         unsignedTx = {
           chainId: this.pharosChainId,
-          to: tokenContract,
+          to: resolvedContract,
           data: calldataWithReference,
           valueWei: 0n,
           gasLimitEstimated: gasLimit,
           invoiceReferenceHexMemo: invoiceMemoHex,
           foundryCastCommand: castCmd,
           eip1193Payload: {
-            to: tokenContract,
+            to: resolvedContract,
             data: calldataWithReference,
             value: '0x0',
             gas: `0x${gasLimit.toString(16)}`,

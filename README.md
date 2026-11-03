@@ -57,7 +57,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] [`recurring-payment-agent`](tasks/15-recurring-payment-agent): Autonomous idempotent recurring payment manager: supports weekly & monthly schedules, solvency checks, double-pay locks, and audit ledger.
 - [x] [`invoice-to-payment-agent`](tasks/16-invoice-to-payment-agent): Autonomous multi-format invoice parser & payment synthesizer: ingests JSON, plaintext memos, and delimited receipts, enforces zero-guessing sentinels, and binds invoice reference in on-chain calldata.
 - [x] [`x402-paywalled-api`](tasks/17-x402-paywalled-api): HTTP-native micro-payment API engine on Atlantic Testnet: monetizes endpoints (0.05 & 0.25 USDC), free /health probe, embedded facilitator (/verify, /settle, /supported), and underpayment guards.
-- [ ] `whale-watching-agent`: Track and report significant address moves.
+- [x] [`whale-watching-agent`](tasks/19-whale-watching-agent): Autonomous high-impact capital surveillance agent: tracks $\ge 5$ addresses, multi-tier thresholds ($50k USD baseline & token quotas), verified entity labeling (FaroSwap, Harbor, Morpho, Binance, burns), and cross-whale activity summary digest.
 - [x] [`gas-fee-optimizer`](tasks/13-gas-fee-optimizer): Temporal volatility & deadline decay dispatcher: tracks gas percentiles, holds during congestion, triggers on dips, and guarantees zero-miss deadline SLA.
 - [ ] `wallet-risk-checker`: Suspicious address flagger.
 - [ ] `audit-log-agent`: Wallet activity reporter.
@@ -120,6 +120,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-invoice` | **Task 16** | Invoice-to-payment agent: multi-format extraction, zero-guessing anomaly sentinel & calldata reference memo | `pharos-invoice demo` |
 | `pharos-x402` | **Task 17** | x402 paywalled API engine on Atlantic Testnet: paid endpoints (0.05/0.25 USDC), free /health, facilitator & client | `pharos-x402 demo` |
 | `pharos-watchdog` | **Task 18** | Liquidation watchdog sentinel: lending health factor monitoring, tiered alerts (1.30/1.10) & exact remediation actions | `pharos-watchdog demo` |
+| `pharos-whale` | **Task 19** | Whale-watching agent: multi-whale tracking ($\ge 5$), threshold filtering, entity labeling & cross-whale digest | `pharos-whale demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -171,6 +172,9 @@ npm run x402 -- demo
 
 # Task 18: Liquidation Watchdog
 npm run watchdog -- demo
+
+# Task 19: Whale-Watching Agent
+npm run whale -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates

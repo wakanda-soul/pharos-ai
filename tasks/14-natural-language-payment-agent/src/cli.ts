@@ -10,6 +10,7 @@ const c = {
   yellow: '\x1b[33m',
   cyan: '\x1b[36m',
   magenta: '\x1b[35m',
+  white: '\x1b[37m',
   gray: '\x1b[90m',
 };
 
