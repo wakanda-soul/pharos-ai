@@ -15,6 +15,10 @@ const ERC4626_ABI = parseAbi([
   'function deposit(uint256 assets, address receiver) external returns (uint256 shares)',
 ]);
 
+const ERC20_ABI = parseAbi([
+  'function approve(address spender, uint256 amount) external returns (bool)',
+]);
+
 export const DEFAULT_OPTIMIZER_CONFIG: RebalanceEvaluationConfig = {
   minimumHoldingPeriodDays: 30,
   minimumNetGainHurdleUsd: 25.0, // Minimum $25 net profit to justify operational friction
@@ -94,14 +98,18 @@ export class YieldOptimizerEngine {
     const breakEvenDays =
       dailyIncrementalGross > 0
         ? Math.ceil(switchingFriction.totalFrictionUsd / dailyIncrementalGross)
-        : 999999;
+        : 0;
 
     // 6. Decision Gating (Requirement 03: Clear recommendation or Stay Put)
     let decision: RebalanceDecision = 'STAY_PUT';
     let decisionRationale = '';
     const preparedTransactions: UnsignedRebalanceTransaction[] = [];
 
-    if (grossApySpread <= 0) {
+    // Edge Case Check: Lockup Tenor Constraint
+    if (targetVenue.lockupTenorDays > 0 && holdingPeriodDays < targetVenue.lockupTenorDays) {
+      decision = 'STAY_PUT';
+      decisionRationale = `Stay put: Target vault '${targetVenue.vaultName}' imposes a mandatory lockup tenor of ${targetVenue.lockupTenorDays} days, which exceeds your planned holding horizon of ${holdingPeriodDays} days. Funds would be locked past your liquidity horizon.`;
+    } else if (grossApySpread <= 0) {
       decision = 'STAY_PUT';
       decisionRationale = `Stay put: Target vault '${targetVenue.vaultName}' (${targetVenue.apyPercent}% APY) does not offer a higher yield than current vault '${sourceVenue.vaultName}' (${sourceVenue.apyPercent}% APY). Gross spread is ${grossApySpread}%.`;
     } else if (holdingPeriodDays < breakEvenDays || projectedNetGainUsd <= 0) {
@@ -114,7 +122,7 @@ export class YieldOptimizerEngine {
       decision = 'REBALANCE_RECOMMENDED';
       decisionRationale = `Rebalance recommended: Moving $${capitalAmountUsd.toLocaleString('en-US')} USD from ${sourceVenue.protocolName} (${sourceVenue.apyPercent}% APY) to ${targetVenue.protocolName} (${targetVenue.apyPercent}% APY) yields an expected net gain of +$${projectedNetGainUsd.toFixed(2)} USD over ${holdingPeriodDays} days after deducting $${switchingFriction.totalFrictionUsd.toFixed(2)} USD in fees and gas. Break-even achieved in ${breakEvenDays} days.`;
 
-      // Synthesize Unsigned Transactions (Requirement 04: Non-custodial)
+      // Synthesize Unsigned Transactions (Requirement 04: Non-custodial 3-step pipeline)
       preparedTransactions.push(
         ...this.synthesizeUnsignedRebalanceTransactions(
           capitalAmountUsd,
@@ -148,6 +156,10 @@ export class YieldOptimizerEngine {
   /**
    * Synthesizes unsigned calldata payloads ready for user signature.
    * Requirement 04: The agent never holds keys.
+   * Creates 3-step dependent sequence:
+   *   Step 1: Withdraw/Redeem from source vault
+   *   Step 2: Approve underlying token for target vault
+   *   Step 3: Deposit/Supply into target vault
    */
   public synthesizeUnsignedRebalanceTransactions(
     capitalAmountUsd: number,
@@ -156,6 +168,7 @@ export class YieldOptimizerEngine {
     userWalletAddress: `0x${string}`
   ): UnsignedRebalanceTransaction[] {
     const rawAssetUnits = BigInt(Math.floor(capitalAmountUsd * 1e6)); // 6 decimals for USDC
+    const USDC_TOKEN_ADDRESS = '0xc879c018db60520f4355c26ed1a6d572cdac1815' as `0x${string}`;
 
     // Transaction 1: Withdraw from source vault
     const withdrawCalldata = encodeFunctionData({
@@ -175,15 +188,33 @@ export class YieldOptimizerEngine {
       castCommand: `cast send ${sourceVenue.contractAddress} "withdraw(uint256,address,address)" ${rawAssetUnits} ${userWalletAddress} ${userWalletAddress} --rpc-url https://rpc.pharos.xyz`,
     };
 
-    // Transaction 2: Deposit into target vault
+    // Transaction 2: Approve underlying token for target vault
+    const approveCalldata = encodeFunctionData({
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [targetVenue.contractAddress, rawAssetUnits],
+    });
+
+    const step2: UnsignedRebalanceTransaction = {
+      stepIndex: 2,
+      actionDescription: `Grant ${targetVenue.vaultName} allowance to spend $${capitalAmountUsd.toLocaleString('en-US')} USDC`,
+      targetContract: USDC_TOKEN_ADDRESS,
+      functionName: 'approve(address,uint256)',
+      calldata: approveCalldata,
+      valueWei: '0',
+      estimatedGasUnits: 65000,
+      castCommand: `cast send ${USDC_TOKEN_ADDRESS} "approve(address,uint256)" ${targetVenue.contractAddress} ${rawAssetUnits} --rpc-url https://rpc.pharos.xyz`,
+    };
+
+    // Transaction 3: Deposit into target vault
     const depositCalldata = encodeFunctionData({
       abi: ERC4626_ABI,
       functionName: 'deposit',
       args: [rawAssetUnits, userWalletAddress],
     });
 
-    const step2: UnsignedRebalanceTransaction = {
-      stepIndex: 2,
+    const step3: UnsignedRebalanceTransaction = {
+      stepIndex: 3,
       actionDescription: `Supply and deposit $${capitalAmountUsd.toLocaleString('en-US')} USDC into ${targetVenue.vaultName}`,
       targetContract: targetVenue.contractAddress,
       functionName: 'deposit(uint256,address)',
@@ -193,7 +224,7 @@ export class YieldOptimizerEngine {
       castCommand: `cast send ${targetVenue.contractAddress} "deposit(uint256,address)" ${rawAssetUnits} ${userWalletAddress} --rpc-url https://rpc.pharos.xyz`,
     };
 
-    return [step1, step2];
+    return [step1, step2, step3];
   }
 
   /**
