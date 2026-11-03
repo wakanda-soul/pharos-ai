@@ -37,6 +37,7 @@ yarn-error.log*
 *.log
 logs/
 audit-output/
+published-digests/
 .state/
 *.tmp
 *.bak
