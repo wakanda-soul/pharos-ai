@@ -24,6 +24,8 @@ export type WhaleFlowDirection =
   | 'DEFI_DEPOSIT'
   | 'DEFI_WITHDRAWAL'
   | 'DEX_SWAP'
+  | 'TOKEN_BURN'
+  | 'TOKEN_MINT'
   | 'CONTRACT_DEPLOYMENT';
 
 export interface EntityDirectoryEntry {

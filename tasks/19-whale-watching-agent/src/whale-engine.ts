@@ -146,10 +146,14 @@ export class WhaleWatchingEngine {
 
     // Determine counterparty details
     const counterpartyRawAddress = isOutbound ? rawPayload.toAddress : rawPayload.fromAddress;
-    const counterpartyDirectoryEntry = this.resolveCounterpartyMeta(
-      counterpartyRawAddress,
-      isOutbound ? toWhale : fromWhale,
-    );
+    const isPeerWhaleTransfer = Boolean(fromWhale && toWhale && !evaluation.isSelfTransfer);
+
+    const counterpartyDirectoryEntry = this.resolveCounterpartyMeta({
+      rawAddress: counterpartyRawAddress,
+      primaryWhale,
+      peerWhale: isPeerWhaleTransfer ? (isOutbound ? toWhale : fromWhale) : undefined,
+      isSelfTransfer: evaluation.isSelfTransfer,
+    });
 
     // Classify flow direction
     const flowDirection = this.deduceFlowDirection(
@@ -157,6 +161,7 @@ export class WhaleWatchingEngine {
       isOutbound,
       counterpartyDirectoryEntry.category,
       evaluation.isSelfTransfer,
+      counterpartyRawAddress,
     );
 
     // Synthesize human narrative explanation
@@ -170,6 +175,7 @@ export class WhaleWatchingEngine {
       counterpartyCategory: counterpartyDirectoryEntry.category,
       flowDirection,
       isOutbound,
+      isPeerWhaleTransfer,
     });
 
     const flowEvent: WhaleCapitalFlowEvent = {
@@ -221,31 +227,55 @@ export class WhaleWatchingEngine {
    * Helper to deduce counterparty entity info, prioritizing another monitored whale label.
    */
   private resolveCounterpartyMeta(
-    rawAddress: Address,
-    otherMonitoredWhale?: WatchedWhaleAddress,
+    params: {
+      rawAddress: Address;
+      primaryWhale: WatchedWhaleAddress;
+      peerWhale?: WatchedWhaleAddress;
+      isSelfTransfer: boolean;
+    },
   ): EntityDirectoryEntry {
-    if (otherMonitoredWhale) {
+    if (params.isSelfTransfer) {
       return {
-        address: otherMonitoredWhale.address,
-        canonicalLabel: `${otherMonitoredWhale.moniker} (Monitored Whale)`,
+        address: params.primaryWhale.address,
+        canonicalLabel: `${params.primaryWhale.moniker} (Self / Internal Account)`,
         category: 'WHALE_WALLET',
-        description: otherMonitoredWhale.notes ?? 'Peer monitored whale wallet',
+        description: 'Direct transaction between accounts owned by the same whale',
       };
     }
-    return this.entityRegistry.resolveCounterparty(rawAddress);
+
+    if (params.peerWhale) {
+      return {
+        address: params.peerWhale.address,
+        canonicalLabel: `${params.peerWhale.moniker} (Peer Monitored Whale)`,
+        category: 'WHALE_WALLET',
+        description: params.peerWhale.notes ?? 'Peer monitored whale wallet',
+      };
+    }
+
+    return this.entityRegistry.resolveCounterparty(params.rawAddress);
   }
 
   /**
-   * Deduces high-level economic action from counterparty category and transfer direction.
+   * Deduces high-level economic action from counterparty category, direction, and addresses.
    */
   private deduceFlowDirection(
     rawPayload: WhaleRawTransferPayload,
     isOutbound: boolean,
     category: CounterpartyEntityCategory,
     isSelfTransfer: boolean,
+    counterpartyAddress: Address,
   ): WhaleFlowDirection {
     if (isSelfTransfer) {
       return 'SELF_TRANSFER';
+    }
+
+    const normalizedCounterparty = counterpartyAddress.toLowerCase();
+    const isNullAddress =
+      normalizedCounterparty === '0x0000000000000000000000000000000000000000' ||
+      normalizedCounterparty === '0x000000000000000000000000000000000000dead';
+
+    if (isNullAddress) {
+      return isOutbound ? 'TOKEN_BURN' : 'TOKEN_MINT';
     }
 
     if (category === 'DEX') {
@@ -272,10 +302,15 @@ export class WhaleWatchingEngine {
     counterpartyCategory: CounterpartyEntityCategory;
     flowDirection: WhaleFlowDirection;
     isOutbound: boolean;
+    isPeerWhaleTransfer: boolean;
   }): string {
     const usdBadge =
       params.estimatedUsd > 0 ? ` (~$${params.estimatedUsd.toLocaleString()} USD)` : '';
     const assetString = `${params.formattedAmount} ${params.tokenSymbol}${usdBadge}`;
+
+    if (params.isPeerWhaleTransfer) {
+      return `${params.whaleMoniker} performed an inter-whale capital shift of ${assetString} directly with ${params.counterpartyLabel}. Major OTC or collaborative whale repositioning.`;
+    }
 
     switch (params.flowDirection) {
       case 'DEX_SWAP':
@@ -286,6 +321,12 @@ export class WhaleWatchingEngine {
 
       case 'DEFI_WITHDRAWAL':
         return `${params.whaleMoniker} unlocked & withdrew ${assetString} from ${params.counterpartyLabel}. May signal collateral deleveraging or risk mitigation ahead of market volatility.`;
+
+      case 'TOKEN_BURN':
+        return `${params.whaleMoniker} permanently burned ${assetString} by sending to ${params.counterpartyLabel}. Deflationary reduction in circulating supply.`;
+
+      case 'TOKEN_MINT':
+        return `${params.whaleMoniker} received newly minted or claimed issuance of ${assetString} from ${params.counterpartyLabel}. Net expansion of whale holding.`;
 
       case 'SELF_TRANSFER':
         return `${params.whaleMoniker} performed an internal self-transfer of ${assetString}. Portfolio reorganization across sub-vaults with zero net market delta.`;
