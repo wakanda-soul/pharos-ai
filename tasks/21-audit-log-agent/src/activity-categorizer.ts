@@ -87,7 +87,19 @@ export class ActivityCategorizer {
     estimatedUsdValuation: number;
     plainDescription: string;
   } {
-    // 1. Approvals Check
+    // 0. Edge Case: Reverted / Failed Transactions
+    // Incurred gas fees without executing token state shifts
+    if (!tx.isSuccess) {
+      return {
+        category: 'CONTRACT_INTERACTION',
+        assetSymbol: 'PROS',
+        nominalAmountFormatted: '0.00',
+        estimatedUsdValuation: 0,
+        plainDescription: `Failed / reverted transaction on ${counterpartyLabel}. Transaction was reverted by EVM; gas fee was expended with zero net asset transfer.`,
+      };
+    }
+
+    // 1. Approvals Check (Zero-value permission grants)
     const hasApprovals =
       (tx.tokenApprovals && tx.tokenApprovals.length > 0) ||
       tx.functionMethodName?.toLowerCase().includes('approve') ||
@@ -98,18 +110,18 @@ export class ActivityCategorizer {
       const token = approval?.tokenSymbol ?? 'ERC20';
       const spenderMeta = approval ? resolveAuditCounterparty(approval.spenderAddress) : { label: counterpartyLabel };
       const isUnlimited = approval?.isUnlimited ?? true;
-      const amountStr = isUnlimited ? 'Unlimited (MaxUint256)' : formatUnits(approval?.rawAllowance ?? 0n, 18);
+      const amountStr = isUnlimited ? 'Unlimited Allowance' : formatUnits(approval?.rawAllowance ?? 0n, 18);
 
       return {
         category: 'TOKEN_APPROVAL',
         assetSymbol: token,
         nominalAmountFormatted: amountStr,
         estimatedUsdValuation: 0,
-        plainDescription: `Granted ${isUnlimited ? 'unlimited' : amountStr} ${token} spending approval to ${spenderMeta.label}.`,
+        plainDescription: `Granted ${isUnlimited ? 'unlimited' : amountStr} ${token} spending allowance to ${spenderMeta.label}. Permission grant (non-cashflow).`,
       };
     }
 
-    // 2. Swaps Check
+    // 2. Swaps Check (Handles multi-hop routing)
     const isDexInteraction =
       counterpartyLabel.toLowerCase().includes('faroswap') ||
       counterpartyLabel.toLowerCase().includes('router') ||
@@ -118,21 +130,26 @@ export class ActivityCategorizer {
 
     if (isDexInteraction) {
       const transfers = tx.tokenTransfers ?? [];
-      const sent = transfers.find((t) => t.fromAddress.toLowerCase() === walletLower);
-      const received = transfers.find((t) => t.toAddress.toLowerCase() === walletLower);
+      // Isolate the user wallet's actual input and output tokens, ignoring intermediate router hops
+      const sentTransfers = transfers.filter((t) => t.fromAddress.toLowerCase() === walletLower);
+      const receivedTransfers = transfers.filter((t) => t.toAddress.toLowerCase() === walletLower);
 
       let swapDescription = `Executed token swap via ${counterpartyLabel}`;
-      let primaryAsset = 'DEX Token';
+      let primaryAsset = 'DEX Asset';
       let formattedAmount = '0.00';
       let valuation = 0;
 
-      if (sent && received) {
-        const sentFormatted = formatUnits(sent.rawAmount, sent.decimals);
-        const recvFormatted = formatUnits(received.rawAmount, received.decimals);
-        swapDescription = `Swapped ${sentFormatted} ${sent.tokenSymbol} for ${recvFormatted} ${received.tokenSymbol} via ${counterpartyLabel}.`;
-        primaryAsset = `${sent.tokenSymbol} ➔ ${received.tokenSymbol}`;
+      if (sentTransfers.length > 0 && receivedTransfers.length > 0) {
+        const primarySent = sentTransfers[0];
+        const primaryReceived = receivedTransfers[receivedTransfers.length - 1]; // Final leg of swap
+
+        const sentFormatted = formatUnits(primarySent.rawAmount, primarySent.decimals);
+        const recvFormatted = formatUnits(primaryReceived.rawAmount, primaryReceived.decimals);
+
+        swapDescription = `Swapped ${sentFormatted} ${primarySent.tokenSymbol} for ${recvFormatted} ${primaryReceived.tokenSymbol} via ${counterpartyLabel}.`;
+        primaryAsset = `${primarySent.tokenSymbol} ➔ ${primaryReceived.tokenSymbol}`;
         formattedAmount = `${sentFormatted} / ${recvFormatted}`;
-        const price = TOKEN_PRICES_USD[sent.tokenSymbol] ?? 1.0;
+        const price = TOKEN_PRICES_USD[primarySent.tokenSymbol] ?? 1.0;
         valuation = Math.round(Number(sentFormatted) * price * 100) / 100;
       } else if (tx.valueWei > 0n) {
         const prosVal = formatEther(tx.valueWei);

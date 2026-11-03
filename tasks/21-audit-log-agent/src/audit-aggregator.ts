@@ -124,7 +124,10 @@ export class WalletAuditEngine {
       stats.count += 1;
       stats.usdVolume += entry.estimatedUsdValuation;
 
-      if (entry.assetSymbol && entry.assetSymbol !== 'N/A') {
+      // Approvals are permission authorizations, NOT cashflow volume transfers
+      if (entry.category === 'TOKEN_APPROVAL') {
+        stats.tokens.set(entry.assetSymbol, 0);
+      } else if (entry.assetSymbol && entry.assetSymbol !== 'N/A') {
         const cleanNominal = parseFloat(entry.nominalAmountFormatted.replace(/[^0-9.-]/g, '')) || 0;
         const currentTokenSum = stats.tokens.get(entry.assetSymbol) ?? 0;
         stats.tokens.set(entry.assetSymbol, currentTokenSum + cleanNominal);
@@ -137,9 +140,15 @@ export class WalletAuditEngine {
         totalTxs > 0 ? Math.round((stats.count / totalTxs) * 1000) / 10 : 0;
 
       const tokenVolumeTally: Record<string, string> = {};
-      for (const [token, amount] of stats.tokens.entries()) {
-        const sign = amount > 0 ? '+' : '';
-        tokenVolumeTally[token] = `${sign}${amount.toLocaleString(undefined, { maximumFractionDigits: 4 })}`;
+      if (category === 'TOKEN_APPROVAL') {
+        for (const token of stats.tokens.keys()) {
+          tokenVolumeTally[token] = 'Active Allowance Permission';
+        }
+      } else {
+        for (const [token, amount] of stats.tokens.entries()) {
+          const sign = amount > 0 ? '+' : '';
+          tokenVolumeTally[token] = `${sign}${amount.toLocaleString(undefined, { maximumFractionDigits: 4 })}`;
+        }
       }
 
       return {
