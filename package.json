@@ -53,6 +53,8 @@
     "arbitrage": "tsx tasks/24-arbitrage-scanner/src/cli.ts",
     "task:25": "tsx tasks/25-trend-watcher/src/cli.ts",
     "trend": "tsx tasks/25-trend-watcher/src/cli.ts",
+    "task:26": "tsx tasks/26-portfolio-assistant/src/cli.ts",
+    "portfolio": "tsx tasks/26-portfolio-assistant/src/cli.ts",
     "task:30": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator:mcp": "tsx tasks/30-multi-protocol-aggregator/src/mcp-server.ts",
@@ -87,6 +89,7 @@
     "pharos-saga": "./tasks/23-saga-executor/bin/pharos-saga.js",
     "pharos-arbitrage": "./tasks/24-arbitrage-scanner/bin/pharos-arbitrage.js",
     "pharos-trend": "./tasks/25-trend-watcher/bin/pharos-trend.js",
+    "pharos-portfolio": "./tasks/26-portfolio-assistant/bin/pharos-portfolio.js",
     "pharos-aggregator": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator.js",
     "pharos-aggregator-mcp": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator-mcp.js"
   },

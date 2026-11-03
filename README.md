@@ -67,7 +67,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] [`saga-executor`](tasks/23-saga-executor): Autonomous multi-step dependent workflow skill: executes 3-step DeFi pipeline (Approve → Swap → Deposit) with receipt verification, exponential backoff retries with gas escalation, and automated reverse compensating rollbacks upon failure.
 - [x] [`arbitrage-scanner`](tasks/24-arbitrage-scanner): Multi-venue cross-DEX price scanner netting protocol fees, dynamic slippage & EVM gas, gating execution above hurdle thresholds with simulation safety.
 - [x] [`trend-watcher`](tasks/25-trend-watcher): Multi-observation trend evaluator & persistent state ledger with crash recovery, trigger moment visualization and noise spike filter.
-- [ ] `portfolio-assistant`: Natural-language cross-protocol portfolio assistant.
+- [x] [`portfolio-assistant`](tasks/26-portfolio-assistant): Natural-language cross-protocol portfolio assistant generalizing Harbor's query pattern with contract provenance and zero-guessing sentinels.
 - [ ] `yield-optimizer`: Compare yields and rebalance.
 - [ ] `x402-agent-buyer`: Autonomous buyer calling x402-paywalled APIs within budget.
 - [ ] `doc-grounded-builder-agent`: Docs-grounded agent answering and executing tasks on Pharos.
@@ -127,6 +127,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-saga` | **Task 23** | Autonomous saga orchestrator: 3-step DeFi pipeline, receipt checks, retries & reverse rollbacks | `pharos-saga demo` |
 | `pharos-arbitrage` | **Task 24** | Multi-venue cross-DEX arbitrage scanner: fee netting waterfall, threshold gate & simulated calldata | `pharos-arbitrage demo` |
 | `pharos-trend` | **Task 25** | Multi-observation trend evaluator & persistent state ledger with crash recovery & noise filter | `pharos-trend demo` |
+| `pharos-portfolio` | **Task 26** | Natural-language cross-protocol portfolio assistant: yield, asset location & provenance | `pharos-portfolio demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -199,6 +200,9 @@ npm run arbitrage -- demo
 
 # Task 25: Trend Watcher
 npm run trend -- demo
+
+# Task 26: Portfolio Assistant
+npm run portfolio -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates
