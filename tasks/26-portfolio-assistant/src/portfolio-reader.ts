@@ -56,12 +56,14 @@ export class PortfolioReader {
    */
   private createProvenance(
     protocolName: string,
-    contractAddress: `0x${string}`
+    contractAddress: `0x${string}`,
+    pinnedBlockNumber?: number
   ): ContractProvenance {
+    const blockNumber = pinnedBlockNumber ?? this.currentBlockNumber;
     return {
       protocolName,
       contractAddress,
-      blockNumber: this.currentBlockNumber,
+      blockNumber,
       queriedAtIso: new Date().toISOString(),
       explorerUrl: `${CURRENT_EXPLORER_BASE}/${contractAddress}`,
     };
@@ -73,8 +75,10 @@ export class PortfolioReader {
    */
   public async readWalletBalances(
     walletAddress: `0x${string}`,
-    mockOverrides?: Partial<Record<string, number>>
+    mockOverrides?: Partial<Record<string, number>>,
+    pinnedBlock?: number
   ): Promise<WalletBalanceRecord[]> {
+    const block = pinnedBlock ?? this.currentBlockNumber;
     const prosBalance = mockOverrides?.PROS ?? 1250.0;
     const usdcBalance = mockOverrides?.USDC ?? 4200.0;
     const usdtBalance = mockOverrides?.USDT ?? 850.0;
@@ -89,7 +93,7 @@ export class PortfolioReader {
         balanceNumeric: prosBalance,
         priceUsd: 1.48,
         balanceUsd: Number((prosBalance * 1.48).toFixed(2)),
-        provenance: this.createProvenance('Pharos Consensus Engine', PHAROS_CONTRACT_REGISTRY.NATIVE_PROS),
+        provenance: this.createProvenance('Pharos Consensus Engine', PHAROS_CONTRACT_REGISTRY.NATIVE_PROS, block),
       },
       {
         tokenSymbol: 'USDC',
@@ -100,7 +104,7 @@ export class PortfolioReader {
         balanceNumeric: usdcBalance,
         priceUsd: 1.00,
         balanceUsd: Number((usdcBalance * 1.00).toFixed(2)),
-        provenance: this.createProvenance('Circle USDC Token Contract', PHAROS_CONTRACT_REGISTRY.USDC_TOKEN),
+        provenance: this.createProvenance('Circle USDC Token Contract', PHAROS_CONTRACT_REGISTRY.USDC_TOKEN, block),
       },
       {
         tokenSymbol: 'USDT',
@@ -111,7 +115,7 @@ export class PortfolioReader {
         balanceNumeric: usdtBalance,
         priceUsd: 1.00,
         balanceUsd: Number((usdtBalance * 1.00).toFixed(2)),
-        provenance: this.createProvenance('Tether USD Token Contract', PHAROS_CONTRACT_REGISTRY.USDT_TOKEN),
+        provenance: this.createProvenance('Tether USD Token Contract', PHAROS_CONTRACT_REGISTRY.USDT_TOKEN, block),
       },
     ];
 
@@ -130,8 +134,10 @@ export class PortfolioReader {
       morphoUsd?: number;
       faroswapUsd?: number;
       morphoDebtUsd?: number;
-    }
+    },
+    pinnedBlock?: number
   ): Promise<ProtocolPositionRecord[]> {
+    const block = pinnedBlock ?? this.currentBlockNumber;
     const harborApc3mAmount = mockOverrides?.harborApc3mUsd ?? 15000.0;
     const harborVrpcAmount = mockOverrides?.harborVrpcUsd ?? 8500.0;
     const morphoSupplyAmount = mockOverrides?.morphoUsd ?? 10000.0;
@@ -150,7 +156,7 @@ export class PortfolioReader {
         depositedUsd: harborApc3mAmount,
         apyPercent: 13.8,
         annualYieldUsd: Number(((harborApc3mAmount * 13.8) / 100).toFixed(2)),
-        provenance: this.createProvenance('Harbor Protocol', PHAROS_CONTRACT_REGISTRY.HARBOR_APC3M_VAULT),
+        provenance: this.createProvenance('Harbor Protocol', PHAROS_CONTRACT_REGISTRY.HARBOR_APC3M_VAULT, block),
       },
 
       // 2. Harbor RWA: VRPC Vault (Private Credit Floating Yield)
@@ -164,7 +170,7 @@ export class PortfolioReader {
         depositedUsd: harborVrpcAmount,
         apyPercent: 16.5,
         annualYieldUsd: Number(((harborVrpcAmount * 16.5) / 100).toFixed(2)),
-        provenance: this.createProvenance('Harbor Protocol', PHAROS_CONTRACT_REGISTRY.HARBOR_VRPC_VAULT),
+        provenance: this.createProvenance('Harbor Protocol', PHAROS_CONTRACT_REGISTRY.HARBOR_VRPC_VAULT, block),
       },
 
       // 3. Morpho Blue: RockawayX Curated Market (Supply + Debt position)
@@ -181,8 +187,11 @@ export class PortfolioReader {
         borrowedAmount: `${morphoDebtAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} USDC`,
         borrowedNumeric: morphoDebtAmount,
         borrowedUsd: morphoDebtAmount,
-        healthFactor: Number((morphoSupplyAmount / (morphoDebtAmount * 1.15)).toFixed(2)), // e.g. 3.48
-        provenance: this.createProvenance('Morpho Blue Protocol', PHAROS_CONTRACT_REGISTRY.MORPHO_ROCKAWAYX_MARKET),
+        healthFactor:
+          morphoDebtAmount > 0
+            ? Number((morphoSupplyAmount / (morphoDebtAmount * 1.15)).toFixed(2))
+            : 999, // Unleveraged
+        provenance: this.createProvenance('Morpho Blue Protocol', PHAROS_CONTRACT_REGISTRY.MORPHO_ROCKAWAYX_MARKET, block),
       },
 
       // 4. FaroSwap AMM: PROS/USDC Concentrated Liquidity Pool
@@ -196,7 +205,7 @@ export class PortfolioReader {
         depositedUsd: faroswapAmount,
         apyPercent: 22.4,
         annualYieldUsd: Number(((faroswapAmount * 22.4) / 100).toFixed(2)),
-        provenance: this.createProvenance('FaroSwap AMM Router & Factory', PHAROS_CONTRACT_REGISTRY.FAROSWAP_PROS_USDC_POOL),
+        provenance: this.createProvenance('FaroSwap AMM Router & Factory', PHAROS_CONTRACT_REGISTRY.FAROSWAP_PROS_USDC_POOL, block),
       },
     ];
 
@@ -217,9 +226,10 @@ export class PortfolioReader {
       morphoDebtUsd?: number;
     }
   ): Promise<PortfolioAggregateSnapshot> {
+    const pinnedBlock = this.currentBlockNumber;
     const [walletBalances, protocolPositions] = await Promise.all([
-      this.readWalletBalances(walletAddress, mockBalances),
-      this.readProtocolPositions(walletAddress, mockPositions),
+      this.readWalletBalances(walletAddress, mockBalances, pinnedBlock),
+      this.readProtocolPositions(walletAddress, mockPositions, pinnedBlock),
     ]);
 
     const totalWalletTokensUsd = walletBalances.reduce((sum, b) => sum + b.balanceUsd, 0);

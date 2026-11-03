@@ -123,9 +123,9 @@ export class PortfolioAssistantEngine {
     const upperSymbol = targetTokenSymbol.toUpperCase();
     const figures: ProvenanceCitationFigure[] = [];
 
-    // Find in wallet
+    // Find in wallet (filter for non-zero or matching tokens)
     const matchingWalletTokens = snapshot.walletBalances.filter(
-      (b) => b.tokenSymbol.toUpperCase() === upperSymbol
+      (b) => b.tokenSymbol.toUpperCase() === upperSymbol && b.balanceNumeric > 0
     );
     for (const token of matchingWalletTokens) {
       figures.push({
@@ -135,11 +135,12 @@ export class PortfolioAssistantEngine {
       });
     }
 
-    // Find in DeFi protocols
+    // Find in DeFi protocols (filter for positive deposit)
     const matchingPositions = snapshot.protocolPositions.filter(
       (p) =>
-        p.assetSymbol.toUpperCase().includes(upperSymbol) ||
-        p.vaultName.toUpperCase().includes(upperSymbol)
+        p.depositedNumeric > 0 &&
+        (p.assetSymbol.toUpperCase().includes(upperSymbol) ||
+         p.vaultName.toUpperCase().includes(upperSymbol))
     );
     for (const pos of matchingPositions) {
       figures.push({
@@ -212,9 +213,10 @@ export class PortfolioAssistantEngine {
     );
     const topPosition = sortedPositions[0];
 
-    const shareOfPortfolioPercent = Number(
-      ((topPosition.depositedUsd / snapshot.totalNetWorthUsd) * 100).toFixed(1)
-    );
+    const shareOfPortfolioPercent =
+      snapshot.totalNetWorthUsd > 0
+        ? Number(((topPosition.depositedUsd / snapshot.totalNetWorthUsd) * 100).toFixed(1))
+        : 100.0;
 
     const figures: ProvenanceCitationFigure[] = [
       {

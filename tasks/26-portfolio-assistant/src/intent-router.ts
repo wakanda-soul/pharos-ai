@@ -18,6 +18,7 @@ const UNSUPPORTED_PROTOCOLS: Record<string, string> = {
   uniswap: 'Uniswap',
   curve: 'Curve Finance',
   maker: 'MakerDAO',
+  makerdao: 'MakerDAO',
   sushiswap: 'SushiSwap',
   sushi: 'SushiSwap',
   balancer: 'Balancer',
@@ -27,6 +28,10 @@ const UNSUPPORTED_PROTOCOLS: Record<string, string> = {
   ethena: 'Ethena',
   spark: 'Spark Protocol',
   pancakeswap: 'PancakeSwap',
+  pendle: 'Pendle Finance',
+  gmx: 'GMX',
+  aerodrome: 'Aerodrome',
+  camelot: 'Camelot DEX',
 };
 
 /**
