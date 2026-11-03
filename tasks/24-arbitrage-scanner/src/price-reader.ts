@@ -63,7 +63,7 @@ export class MultiSourcePriceReader {
 
     // AMM price fluctuates based on recent swap flows
     let ammSpotPriceUsd = 1.50;
-    let liquidityDepthUsd = 850000; // $850k pool depth
+    let liquidityDepthUsd = 1500000; // $1.5M pool depth
 
     if (scenario === 'WIDE_ARBITRAGE') {
       // Large whale dump pushed AMM price temporarily lower ($1.432 vs Oracle $1.500 => +4.7% spread)

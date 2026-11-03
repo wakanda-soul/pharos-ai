@@ -19,7 +19,7 @@ export const DEFAULT_SCANNER_CONFIG: ScannerConfiguration = {
   capitalAllocationUsd: 10000, // $10,000 USD trade size
   minimumNetProfitThresholdUsd: 30.0, // Minimum $30 USD hurdle
   minimumNetBasisPoints: 25, // Minimum 25 bps (0.25%)
-  maximumAllowedSlippageBps: 50, // Max 50 bps price impact
+  maximumAllowedSlippageBps: 100, // Max 100 bps (1.00%) price impact ceiling
   isSimulationOnly: true,
 };
 
