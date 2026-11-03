@@ -24,6 +24,11 @@ export class SagaOrchestrator {
     customFaultClassifier?: FaultClassifier,
   ) {
     this.workflowSteps = customSteps || DEFAULT_DEFI_SAGA_STEPS;
+    if (this.workflowSteps.length < 3) {
+      throw new Error(
+        `Invalid saga configuration: workflow requires at least 3 dependent steps, but received ${this.workflowSteps.length} (Requirement 01).`,
+      );
+    }
     this.faultClassifier = customFaultClassifier || new FaultClassifier();
     this.stateJournal = new SagaStateJournal();
   }
@@ -135,6 +140,7 @@ export class SagaOrchestrator {
     }
 
     // 2. Compensating Rollback Path (Requirement 03: Defined compensation path when a step fails)
+    const forwardStepsSucceededCount = completedStepsStack.length;
     let compensatingStepsCount = 0;
     if (isAbortedWithFailure) {
       this.stateJournal.logTransition({
@@ -181,7 +187,7 @@ export class SagaOrchestrator {
     }
 
     const completedAtIso = new Date().toISOString();
-    const isFullySuccessful = !isAbortedWithFailure && completedStepsStack.length === this.workflowSteps.length;
+    const isFullySuccessful = !isAbortedWithFailure && forwardStepsSucceededCount === this.workflowSteps.length;
     const finalPhase = isFullySuccessful
       ? 'COMPLETED_SUCCESS'
       : isAbortedWithFailure
@@ -211,7 +217,7 @@ export class SagaOrchestrator {
       isFullySuccessful,
       wasCompensated: isAbortedWithFailure && compensatingStepsCount > 0,
       totalStepsDefined: this.workflowSteps.length,
-      stepsCompletedSuccessfully: isFullySuccessful ? this.workflowSteps.length : completedStepsStack.length,
+      stepsCompletedSuccessfully: forwardStepsSucceededCount,
       compensatingStepsExecuted: compensatingStepsCount,
       totalGasExpendedPros: context.accumulatedGasExpensePros,
       stateJournalEvents: this.stateJournal.getTransitionEvents(),

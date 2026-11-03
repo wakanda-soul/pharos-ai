@@ -102,6 +102,12 @@ export const ApproveRouterStep: SagaStepDefinition = {
     }
 
     const reversalSummary = `Revoked token spending allowance for FaroSwap Router (${routerAddress}). Allowance reset to 0 ${asset.tokenSymbol}.`;
+    context.stepOutputRegistry[ApproveRouterStep.stepIdentifier] = {
+      ...(context.stepOutputRegistry[ApproveRouterStep.stepIdentifier] as Record<string, unknown>),
+      allowanceRevoked: true,
+      currentAllowance: '0',
+      revocationBlock: compensationReceipt.blockNumber,
+    };
     context.executionNotes.push(`Compensating Step 1 Rollback: ${reversalSummary} (${compensationReceipt.explorerUrl})`);
 
     return {
@@ -206,6 +212,13 @@ export const SwapTokenStep: SagaStepDefinition = {
 
     const restoredUsdc = (parseFloat(originalInput.nominalAmount) * 0.998).toFixed(2); // Minus small 0.2% AMM fee
     const reversalSummary = `Executed compensating reverse swap on FaroSwap: returned ${intermediate?.nominalAmount || 'all'} PROS and restored ~${restoredUsdc} ${originalInput.tokenSymbol} to wallet.`;
+    context.stepOutputRegistry[SwapTokenStep.stepIdentifier] = {
+      ...(context.stepOutputRegistry[SwapTokenStep.stepIdentifier] as Record<string, unknown>),
+      swapReversed: true,
+      restoredUsdcAmount: restoredUsdc,
+      reverseSwapBlock: compensationReceipt.blockNumber,
+    };
+    context.swappedIntermediateAsset = undefined;
     context.executionNotes.push(`Compensating Step 2 Rollback: ${reversalSummary} (${compensationReceipt.explorerUrl})`);
 
     return {
@@ -313,6 +326,12 @@ export const DepositCollateralStep: SagaStepDefinition = {
     }
 
     const reversalSummary = `Withdrew ${deposited?.nominalAmount || 'all'} PROS collateral from Harbor Lending Pool (${harborPoolAddress}). hPROS collateral burned.`;
+    context.stepOutputRegistry[DepositCollateralStep.stepIdentifier] = {
+      ...(context.stepOutputRegistry[DepositCollateralStep.stepIdentifier] as Record<string, unknown>),
+      collateralWithdrawn: true,
+      withdrawalBlock: compensationReceipt.blockNumber,
+    };
+    context.depositedFinalAsset = undefined;
     context.executionNotes.push(`Compensating Step 3 Rollback: ${reversalSummary} (${compensationReceipt.explorerUrl})`);
 
     return {
