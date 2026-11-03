@@ -49,6 +49,8 @@
     "digest": "tsx tasks/22-weekly-digest-agent/src/cli.ts",
     "task:23": "tsx tasks/23-saga-executor/src/cli.ts",
     "saga": "tsx tasks/23-saga-executor/src/cli.ts",
+    "task:24": "tsx tasks/24-arbitrage-scanner/src/cli.ts",
+    "arbitrage": "tsx tasks/24-arbitrage-scanner/src/cli.ts",
     "task:30": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator:mcp": "tsx tasks/30-multi-protocol-aggregator/src/mcp-server.ts",
@@ -81,6 +83,7 @@
     "pharos-audit": "./tasks/21-audit-log-agent/bin/pharos-audit.js",
     "pharos-digest": "./tasks/22-weekly-digest-agent/bin/pharos-digest.js",
     "pharos-saga": "./tasks/23-saga-executor/bin/pharos-saga.js",
+    "pharos-arbitrage": "./tasks/24-arbitrage-scanner/bin/pharos-arbitrage.js",
     "pharos-aggregator": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator.js",
     "pharos-aggregator-mcp": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator-mcp.js"
   },
