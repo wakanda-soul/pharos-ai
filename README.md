@@ -69,7 +69,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] [`trend-watcher`](tasks/25-trend-watcher): Multi-observation trend evaluator & persistent state ledger with crash recovery, trigger moment visualization and noise spike filter.
 - [x] [`portfolio-assistant`](tasks/26-portfolio-assistant): Natural-language cross-protocol portfolio assistant generalizing Harbor's query pattern with contract provenance and zero-guessing sentinels.
 - [x] [`yield-optimizer`](tasks/27-yield-optimizer): Cross-protocol yield surveillance & rebalance optimizer factoring in exit/entry fees, gas drag, holding horizons & unsigned calldata.
-- [ ] `x402-agent-buyer`: Autonomous buyer calling x402-paywalled APIs within budget.
+- [x] [`x402-agent-buyer`](tasks/28-x402-agent-buyer): Autonomous micro-payment buyer agent with per-call price caps, cumulative budget sentinel, safe retries & itemized audit journal.
 - [ ] `doc-grounded-builder-agent`: Docs-grounded agent answering and executing tasks on Pharos.
 - [x] [`multi-protocol-aggregator`](tasks/30-multi-protocol-aggregator): Multi-protocol yield & liquidity aggregator across Harbor RWA, Morpho Blue, and FaroSwap with circuit breaker fault isolation.
 
@@ -129,6 +129,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-trend` | **Task 25** | Multi-observation trend evaluator & persistent state ledger with crash recovery & noise filter | `pharos-trend demo` |
 | `pharos-portfolio` | **Task 26** | Natural-language cross-protocol portfolio assistant: yield, asset location & provenance | `pharos-portfolio demo` |
 | `pharos-yield` | **Task 27** | Cross-protocol yield optimizer: friction waterfall, holding amortization & unsigned calldata | `pharos-yield demo` |
+| `pharos-x402-buyer` | **Task 28** | Autonomous x402 buyer: spend budget, per-call price caps, safe idempotent retries & audit ledger | `pharos-x402-buyer demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)

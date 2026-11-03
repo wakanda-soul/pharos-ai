@@ -57,6 +57,8 @@
     "portfolio": "tsx tasks/26-portfolio-assistant/src/cli.ts",
     "task:27": "tsx tasks/27-yield-optimizer/src/cli.ts",
     "yield": "tsx tasks/27-yield-optimizer/src/cli.ts",
+    "task:28": "tsx tasks/28-x402-agent-buyer/src/cli.ts",
+    "buyer": "tsx tasks/28-x402-agent-buyer/src/cli.ts",
     "task:30": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator:mcp": "tsx tasks/30-multi-protocol-aggregator/src/mcp-server.ts",
@@ -93,6 +95,7 @@
     "pharos-trend": "./tasks/25-trend-watcher/bin/pharos-trend.js",
     "pharos-portfolio": "./tasks/26-portfolio-assistant/bin/pharos-portfolio.js",
     "pharos-yield": "./tasks/27-yield-optimizer/bin/pharos-yield.js",
+    "pharos-x402-buyer": "./tasks/28-x402-agent-buyer/bin/pharos-x402-buyer.js",
     "pharos-aggregator": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator.js",
     "pharos-aggregator-mcp": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator-mcp.js"
   },
