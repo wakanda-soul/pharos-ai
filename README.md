@@ -64,7 +64,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] [`weekly-digest-agent`](tasks/22-weekly-digest-agent): Autonomous periodic summary & activity reporting agent: configurable schedule (weekly by default), period metrics comparison (turnover, txs, cashflow, gas), top 3 notable events with PharosScan links, and multi-channel delivery (Discord, Telegram, Email, published HTML page).
 
 ### Tier 3 — Hard (200 pts each)
-- [ ] `saga-executor`: Multi-step workflow (approve → swap → deposit) with rollback.
+- [x] [`saga-executor`](tasks/23-saga-executor): Autonomous multi-step dependent workflow skill: executes 3-step DeFi pipeline (Approve → Swap → Deposit) with receipt verification, exponential backoff retries with gas escalation, and automated reverse compensating rollbacks upon failure.
 - [ ] `arbitrage-scanner`: Price scanner netting fees and executing if profitable.
 - [ ] `trend-watcher`: Multi-observation trend evaluator across runs.
 - [ ] `portfolio-assistant`: Natural-language cross-protocol portfolio assistant.
@@ -124,6 +124,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-risk` | **Task 20** | Pre-transaction security checker: evaluates 5 risk signals, threat scorecards (0-100) & LOW/MEDIUM/HIGH guidance | `pharos-risk demo` |
 | `pharos-audit` | **Task 21** | Wallet activity reconciliation agent: 5-category breakdown, totals, notable txs & Markdown/CSV export | `pharos-audit demo` |
 | `pharos-digest` | **Task 22** | Weekly activity digest agent: configurable schedule, period comparison, top 3 events & multi-channel/HTML delivery | `pharos-digest demo` |
+| `pharos-saga` | **Task 23** | Autonomous saga orchestrator: 3-step DeFi pipeline, receipt checks, retries & reverse rollbacks | `pharos-saga demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -187,6 +188,9 @@ npm run audit -- demo
 
 # Task 22: Weekly Digest Agent
 npm run digest -- demo
+
+# Task 23: Saga Executor
+npm run saga -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates
