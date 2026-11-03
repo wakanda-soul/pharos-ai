@@ -186,13 +186,28 @@ export function evaluateApprovalAnomaliesSignal(profile: OnChainAccountProfile):
  * Brand new accounts with low transaction count created right before a transaction are prime phishing vectors.
  */
 export function evaluateFundingFreshnessSignal(profile: OnChainAccountProfile): EvaluatedRiskSignal {
+  // Edge Case: Completely uninitialized address with zero nonce and zero balance
+  // (e.g., a friend's new wallet receiving its first inbound transfer)
+  if (profile.accountType === 'UNINITIALIZED_ZERO_NONCE' || (profile.transactionCount === 0 && Number(profile.nativeBalanceEther) === 0)) {
+    return {
+      signalCategory: 'FUNDING_FRESHNESS',
+      signalName: 'Uninitialized Recipient Address (Zero Nonce)',
+      isTriggered: true,
+      severity: 'LOW',
+      scoreContribution: 10,
+      plainLanguageExplanation:
+        'This address has zero prior on-chain transactions and holds zero balance. It appears to be a brand new or uninitialized wallet. Normal for first-time payment recipients, but verify address spelling with the owner.',
+      observedEvidence: 'Zero historical transactions (nonce: 0) and zero native coin balance.',
+    };
+  }
+
   const isBrandNew = profile.accountAgeHours < 12;
   const hasVeryLowHistory = profile.transactionCount <= 2;
 
   if (isBrandNew && hasVeryLowHistory) {
     return {
       signalCategory: 'FUNDING_FRESHNESS',
-      signalName: 'Freshly Created Burner Wallet',
+      signalName: 'Freshly Created Active Burner Wallet',
       isTriggered: true,
       severity: 'HIGH',
       scoreContribution: 25,

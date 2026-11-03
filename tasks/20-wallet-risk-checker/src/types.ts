@@ -21,7 +21,7 @@ export type RiskSignalCategory =
   | 'APPROVAL_ANOMALIES'
   | 'FUNDING_FRESHNESS';
 
-export type SignalSeverity = 'BENIGN' | 'LOW' | 'MEDIUM' | 'CRITICAL';
+export type SignalSeverity = 'BENIGN' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
 export interface EvaluatedRiskSignal {
   readonly signalCategory: RiskSignalCategory;

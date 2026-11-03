@@ -40,7 +40,8 @@ export class OnChainHistoryAnalyzer {
         this.client.getBlockNumber().catch(() => 1500000n),
       ]);
 
-      const hasBytecode = Boolean(bytecode && bytecode !== '0x');
+      const cleanBytecode = bytecode ? bytecode.trim().toLowerCase() : '';
+      const hasBytecode = cleanBytecode.length > 2 && cleanBytecode !== '0x0';
       const accountType: AccountType = hasBytecode
         ? 'SMART_CONTRACT'
         : transactionCount === 0
