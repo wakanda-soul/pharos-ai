@@ -19,6 +19,7 @@ export class PersistentObservationStore {
   private readonly temporaryFilePath: string;
   private inMemoryObservationsMap: Map<string, TemporalObservationRecord> = new Map();
   private isStorageHydrated: boolean = false;
+  private lastObservedFileMtimeMs: number = 0;
 
   constructor(customStorageFilePath?: string) {
     if (customStorageFilePath) {
@@ -40,11 +41,14 @@ export class PersistentObservationStore {
   /**
    * Reads the persistent JSON ledger from disk and populates the in-memory index.
    * If the file does not exist, starts with an empty clean ledger.
+   * Also verifies file mtime to synchronize across external CLI process restarts.
    */
   public hydrateFromPersistentDisk(): void {
-    // Avoid re-reading if already hydrated unless forced
     if (fs.existsSync(this.storageFilePath)) {
       try {
+        const fileStats = fs.statSync(this.storageFilePath);
+        this.lastObservedFileMtimeMs = fileStats.mtimeMs;
+
         const rawFileContent = fs.readFileSync(this.storageFilePath, 'utf-8');
         if (!rawFileContent || rawFileContent.trim().length === 0) {
           this.inMemoryObservationsMap.clear();
@@ -71,9 +75,28 @@ export class PersistentObservationStore {
       }
     } else {
       this.inMemoryObservationsMap.clear();
+      this.lastObservedFileMtimeMs = 0;
     }
 
     this.isStorageHydrated = true;
+  }
+
+  /**
+   * Refreshes in-memory cache if the persistent file was modified on disk by another process.
+   */
+  private synchronizeDiskStateIfModified(): void {
+    if (!fs.existsSync(this.storageFilePath)) {
+      if (this.inMemoryObservationsMap.size > 0) {
+        this.inMemoryObservationsMap.clear();
+        this.lastObservedFileMtimeMs = 0;
+      }
+      return;
+    }
+
+    const currentStats = fs.statSync(this.storageFilePath);
+    if (currentStats.mtimeMs > this.lastObservedFileMtimeMs || !this.isStorageHydrated) {
+      this.hydrateFromPersistentDisk();
+    }
   }
 
   /**
@@ -84,9 +107,7 @@ export class PersistentObservationStore {
    * Returns true if newly ingested and persisted, false if duplicate skipped.
    */
   public ingestObservation(observation: TemporalObservationRecord): boolean {
-    if (!this.isStorageHydrated) {
-      this.hydrateFromPersistentDisk();
-    }
+    this.synchronizeDiskStateIfModified();
 
     // Check 1: Direct key collision on observationId
     if (this.inMemoryObservationsMap.has(observation.observationId)) {
@@ -118,9 +139,13 @@ export class PersistentObservationStore {
    * Uses write-to-temporary followed by renameSync to guarantee zero half-written files.
    */
   private commitToPersistentDisk(activeMetricKey: string): void {
-    const allRecordsChronological = Array.from(this.inMemoryObservationsMap.values()).sort(
-      (a, b) => a.timestampMs - b.timestampMs
-    );
+    const allRecordsChronological = Array.from(this.inMemoryObservationsMap.values()).sort((a, b) => {
+      // Primary sort by timestamp, secondary sort by observationId for deterministic stability
+      if (a.timestampMs !== b.timestampMs) {
+        return a.timestampMs - b.timestampMs;
+      }
+      return a.observationId.localeCompare(b.observationId);
+    });
 
     const snapshotPayload: PersistentLedgerSnapshot = {
       version: 1,
@@ -137,19 +162,26 @@ export class PersistentObservationStore {
 
     // Atomic filesystem swap guarantees consistency even during sudden sigkills
     fs.renameSync(this.temporaryFilePath, this.storageFilePath);
+
+    if (fs.existsSync(this.storageFilePath)) {
+      this.lastObservedFileMtimeMs = fs.statSync(this.storageFilePath).mtimeMs;
+    }
   }
 
   /**
    * Retrieves all chronological observations for a given metric.
    */
   public queryObservationsForMetric(metricKey: string): TemporalObservationRecord[] {
-    if (!this.isStorageHydrated) {
-      this.hydrateFromPersistentDisk();
-    }
+    this.synchronizeDiskStateIfModified();
 
     return Array.from(this.inMemoryObservationsMap.values())
       .filter((record) => record.metricKey === metricKey)
-      .sort((a, b) => a.timestampMs - b.timestampMs);
+      .sort((a, b) => {
+        if (a.timestampMs !== b.timestampMs) {
+          return a.timestampMs - b.timestampMs;
+        }
+        return a.observationId.localeCompare(b.observationId);
+      });
   }
 
   /**

@@ -117,13 +117,23 @@ export class TrendWatcherEngine {
       const prev = historicalObservations[i - 1];
       const curr = historicalObservations[i];
       const deltaAbs = curr.numericValue - prev.numericValue;
-      const deltaPct = (deltaAbs / prev.numericValue) * 100;
+
+      // Safe division: prevent NaN/Infinity if previous baseline was 0
+      const deltaPct = prev.numericValue !== 0 ? (deltaAbs / Math.abs(prev.numericValue)) * 100 : 0;
+
+      // Temporal gap expiration check: if gap exceeds maximum allowed, streak expires
+      const timeDeltaMs = curr.timestampMs - prev.timestampMs;
+      const isWithinTimeWindow =
+        !this.evaluationConfig.maximumObservationGapMs ||
+        timeDeltaMs <= this.evaluationConfig.maximumObservationGapMs;
 
       let matches = false;
-      if (this.evaluationConfig.trendDirection === 'DOWNTREND' || this.evaluationConfig.trendDirection === 'OUTFLOW') {
-        matches = deltaAbs < 0;
-      } else if (this.evaluationConfig.trendDirection === 'UPTREND') {
-        matches = deltaAbs > 0;
+      if (isWithinTimeWindow) {
+        if (this.evaluationConfig.trendDirection === 'DOWNTREND' || this.evaluationConfig.trendDirection === 'OUTFLOW') {
+          matches = deltaAbs < 0;
+        } else if (this.evaluationConfig.trendDirection === 'UPTREND') {
+          matches = deltaAbs > 0;
+        }
       }
 
       transitions.push({
@@ -154,24 +164,34 @@ export class TrendWatcherEngine {
       const streakStartIndex = historicalObservations.length - 1 - consecutiveMatchingSteps;
       const streakStartValue = historicalObservations[streakStartIndex].numericValue;
       const latestValue = historicalObservations[historicalObservations.length - 1].numericValue;
-      cumulativeDeltaPercent = ((latestValue - streakStartValue) / streakStartValue) * 100;
+      cumulativeDeltaPercent =
+        streakStartValue !== 0 ? ((latestValue - streakStartValue) / Math.abs(streakStartValue)) * 100 : 0;
     }
 
     // Step C: Noise / Single Spike Detection (Requirement 05)
-    // If the latest transition was a spike in the direction, but the preceding transition was the exact opposite
-    // or if only 1 step moved (e.g. 100 -> 80), verify if it is an isolated tick
-    const isSingleStepOnly = consecutiveMatchingSteps === 1;
-    const isRecentSnapback = transitions.length >= 2 &&
-      transitions[transitions.length - 1].matchesDirection &&
-      !transitions[transitions.length - 2].matchesDirection;
+    // Case 1: An isolated spike happened on the previous tick and immediately reversed back to mean
+    const latestTransition = transitions[transitions.length - 1];
+    const previousTransition = transitions.length >= 2 ? transitions[transitions.length - 2] : undefined;
+
+    const hadErraticPreviousSpike =
+      previousTransition &&
+      Math.abs(previousTransition.deltaPercentage) >= 5 &&
+      !latestTransition.matchesDirection &&
+      Math.abs(latestTransition.deltaPercentage) >= 4;
+
+    // Case 2: Currently at a single isolated spike that hasn't been confirmed over time
+    const isSingleStepOnly = consecutiveObservationsCount < this.evaluationConfig.minimumConsecutiveReadings;
+    const isHighVolatilitySingleTick =
+      consecutiveMatchingSteps === 1 && Math.abs(latestTransition.deltaPercentage) >= 5;
 
     // Step D: Evaluate against Threshold Rules
-    const thresholdMet = consecutiveMatchingSteps >= this.evaluationConfig.minimumConsecutiveReadings;
+    const thresholdMet = consecutiveObservationsCount >= this.evaluationConfig.minimumConsecutiveReadings;
     const magnitudeMet = Math.abs(cumulativeDeltaPercent) >= this.evaluationConfig.minimumCumulativeDeltaPercent;
 
     if (thresholdMet && magnitudeMet) {
       // Find exact observation that crossed the hurdle (Requirement 04)
-      const exactTriggeringIndex = historicalObservations.length - 1 - (consecutiveMatchingSteps - this.evaluationConfig.minimumConsecutiveReadings);
+      const exactTriggeringIndex =
+        historicalObservations.length - 1 - (consecutiveObservationsCount - this.evaluationConfig.minimumConsecutiveReadings);
       const triggeringObservation = historicalObservations[exactTriggeringIndex];
 
       return {
@@ -184,13 +204,28 @@ export class TrendWatcherEngine {
         cumulativePercentageDelta: Number(cumulativeDeltaPercent.toFixed(2)),
         triggeringObservation,
         evaluatedObservations: historicalObservations,
-        justificationRationale: `Trend confirmed: ${consecutiveMatchingSteps} consecutive observations sustained in direction '${this.evaluationConfig.trendDirection}' (${cumulativeDeltaPercent.toFixed(2)}% net change), meeting the threshold of >= ${this.evaluationConfig.minimumConsecutiveReadings}.`,
+        justificationRationale: `Trend confirmed: ${consecutiveObservationsCount} consecutive observations sustained in direction '${this.evaluationConfig.trendDirection}' (${cumulativeDeltaPercent.toFixed(2)}% net change), meeting the threshold of >= ${this.evaluationConfig.minimumConsecutiveReadings}.`,
         evaluatedAtIso,
       };
     }
 
-    // If a spike occurred on a single tick but did not sustain across consecutive checks
-    if (isSingleStepOnly && Math.abs(transitions[transitions.length - 1].deltaPercentage) > 5) {
+    // Single spike snapback or single isolated tick rejection (Requirement 05)
+    if (hadErraticPreviousSpike) {
+      return {
+        evaluationId,
+        metricKey: this.evaluationConfig.metricKey,
+        isTrendConfirmed: false,
+        status: 'NOISY_SPIKE_REJECTED',
+        consecutiveConfirmedCount: 0,
+        thresholdRequired: this.evaluationConfig.minimumConsecutiveReadings,
+        cumulativePercentageDelta: 0,
+        evaluatedObservations: historicalObservations,
+        justificationRationale: `Transient noise rejected: previous spike of ${previousTransition.deltaPercentage.toFixed(2)}% snapped back by ${latestTransition.deltaPercentage.toFixed(2)}% in the subsequent observation. Multi-observation filter held action.`,
+        evaluatedAtIso,
+      };
+    }
+
+    if (isHighVolatilitySingleTick) {
       return {
         evaluationId,
         metricKey: this.evaluationConfig.metricKey,
@@ -200,7 +235,7 @@ export class TrendWatcherEngine {
         thresholdRequired: this.evaluationConfig.minimumConsecutiveReadings,
         cumulativePercentageDelta: Number(cumulativeDeltaPercent.toFixed(2)),
         evaluatedObservations: historicalObservations,
-        justificationRationale: `Transient price spike rejected as noise: single reading moved ${transitions[transitions.length - 1].deltaPercentage.toFixed(2)}%, but lacks multi-observation persistence (${consecutiveMatchingSteps}/${this.evaluationConfig.minimumConsecutiveReadings} confirmed). Action suppressed.`,
+        justificationRationale: `Transient price spike rejected as noise: single reading moved ${latestTransition.deltaPercentage.toFixed(2)}%, but lacks multi-observation persistence (${consecutiveObservationsCount}/${this.evaluationConfig.minimumConsecutiveReadings} readings). Action suppressed.`,
         evaluatedAtIso,
       };
     }
@@ -215,7 +250,7 @@ export class TrendWatcherEngine {
         thresholdRequired: this.evaluationConfig.minimumConsecutiveReadings,
         cumulativePercentageDelta: Number(cumulativeDeltaPercent.toFixed(2)),
         evaluatedObservations: historicalObservations,
-        justificationRationale: `Accumulating trend: ${consecutiveMatchingSteps} consecutive moves detected in direction '${this.evaluationConfig.trendDirection}' (${cumulativeDeltaPercent.toFixed(2)}%), waiting for required threshold of ${this.evaluationConfig.minimumConsecutiveReadings}.`,
+        justificationRationale: `Accumulating trend: ${consecutiveObservationsCount} consecutive readings detected in direction '${this.evaluationConfig.trendDirection}' (${cumulativeDeltaPercent.toFixed(2)}%), waiting for required threshold of ${this.evaluationConfig.minimumConsecutiveReadings}.`,
         evaluatedAtIso,
       };
     }
