@@ -48,13 +48,17 @@ export class ProfitCalculator {
 
     // 3. Dynamic Slippage Estimation
     // Slippage grows proportionally with trade size relative to pool liquidity depth
-    const poolDepth = Math.min(
-      buyVenue.liquidityDepthUsd || 500000,
-      sellVenue.liquidityDepthUsd || 500000,
+    // Guard against zero pool depth to avoid division by zero or NaN
+    const poolDepth = Math.max(
+      1000,
+      Math.min(
+        buyVenue.liquidityDepthUsd ?? 500000,
+        sellVenue.liquidityDepthUsd ?? 500000,
+      ),
     );
 
     // Slippage formula: (TradeSize / (2 * PoolDepth)) * 10000 bps
-    const rawSlippageBps = Math.min(250, (tradeCapitalUsd / (2 * poolDepth)) * 10000);
+    const rawSlippageBps = Math.min(500, (tradeCapitalUsd / (2 * poolDepth)) * 10000);
     const slippageBps = Number(rawSlippageBps.toFixed(1));
     const estimatedSlippageUsd = (tradeCapitalUsd * slippageBps) / 10000;
 

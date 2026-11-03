@@ -68,22 +68,36 @@ export class ArbitrageScannerEngine {
     const scanId = `scan-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
     const timestampIso = new Date().toISOString();
 
+    if (this.activeConfig.capitalAllocationUsd <= 0) {
+      throw new Error(
+        `Invalid configuration: capitalAllocationUsd must be greater than zero, received ${this.activeConfig.capitalAllocationUsd}`,
+      );
+    }
+
     // 1. Requirement 01: Reads prices from at least 2 sources in the same scan
     const quotes = await this.priceReader.scanPriceSources(this.activeConfig.targetAssetPair, scenario);
     if (quotes.length < 2) {
       throw new Error(`Insufficient price sources: scanner requires at least 2 sources, found ${quotes.length}`);
     }
 
-    // 2. Pairwise analysis: Find lowest ask (buy venue) and highest bid (sell venue)
+    // 2. Pairwise analysis across distinct venues: find the pair (buy, sell) that maximizes price spread
     let bestBuyVenue = quotes[0];
     let bestSellVenue = quotes[1];
+    let maxSpreadDiff = -Infinity;
 
-    for (const q of quotes) {
-      if (q.quotedPriceUsd < bestBuyVenue.quotedPriceUsd) {
-        bestBuyVenue = q;
-      }
-      if (q.quotedPriceUsd > bestSellVenue.quotedPriceUsd) {
-        bestSellVenue = q;
+    for (let i = 0; i < quotes.length; i++) {
+      for (let j = 0; j < quotes.length; j++) {
+        if (i === j) continue;
+        const buyCandidate = quotes[i];
+        const sellCandidate = quotes[j];
+        if (buyCandidate.sourceIdentifier === sellCandidate.sourceIdentifier) continue;
+
+        const diff = sellCandidate.quotedPriceUsd - buyCandidate.quotedPriceUsd;
+        if (diff > maxSpreadDiff) {
+          maxSpreadDiff = diff;
+          bestBuyVenue = buyCandidate;
+          bestSellVenue = sellCandidate;
+        }
       }
     }
 
