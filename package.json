@@ -43,6 +43,8 @@
     "whale": "tsx tasks/19-whale-watching-agent/src/cli.ts",
     "task:20": "tsx tasks/20-wallet-risk-checker/src/cli.ts",
     "risk": "tsx tasks/20-wallet-risk-checker/src/cli.ts",
+    "task:21": "tsx tasks/21-audit-log-agent/src/cli.ts",
+    "audit": "tsx tasks/21-audit-log-agent/src/cli.ts",
     "task:30": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator": "tsx tasks/30-multi-protocol-aggregator/src/cli.ts",
     "aggregator:mcp": "tsx tasks/30-multi-protocol-aggregator/src/mcp-server.ts",
@@ -72,6 +74,7 @@
     "pharos-watchdog": "./tasks/18-liquidation-watchdog/bin/pharos-watchdog.js",
     "pharos-whale": "./tasks/19-whale-watching-agent/bin/pharos-whale.js",
     "pharos-risk": "./tasks/20-wallet-risk-checker/bin/pharos-risk.js",
+    "pharos-audit": "./tasks/21-audit-log-agent/bin/pharos-audit.js",
     "pharos-aggregator": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator.js",
     "pharos-aggregator-mcp": "./tasks/30-multi-protocol-aggregator/bin/pharos-aggregator-mcp.js"
   },

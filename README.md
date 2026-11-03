@@ -60,7 +60,7 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] [`whale-watching-agent`](tasks/19-whale-watching-agent): Autonomous high-impact capital surveillance agent: tracks $\ge 5$ addresses, multi-tier thresholds ($50k USD baseline & token quotas), verified entity labeling (FaroSwap, Harbor, Morpho, Binance, burns), and cross-whale activity summary digest.
 - [x] [`gas-fee-optimizer`](tasks/13-gas-fee-optimizer): Temporal volatility & deadline decay dispatcher: tracks gas percentiles, holds during congestion, triggers on dips, and guarantees zero-miss deadline SLA.
 - [x] [`wallet-risk-checker`](tasks/20-wallet-risk-checker): Autonomous pre-transaction security audit agent: analyzes 5 signals (contract age, bytecode transparency, blacklist linkage, unlimited allowances, and funding freshness), outputs LOW/MEDIUM/HIGH risk levels with plain-language advice.
-- [ ] `audit-log-agent`: Wallet activity reporter.
+- [x] [`audit-log-agent`](tasks/21-audit-log-agent): Autonomous on-chain transaction reconciliation & compliance agent: groups activity into 5 categories, calculates category accounting totals, flags notable high-value/reverted transactions with PharosScan links, and exports Markdown & RFC-4180 CSV reports.
 - [ ] `weekly-digest-agent`: Periodic summary of wallet/protocol activity.
 
 ### Tier 3 — Hard (200 pts each)
@@ -122,6 +122,7 @@ Once `npm link` is run, all tools are executable directly from any folder in you
 | `pharos-watchdog` | **Task 18** | Liquidation watchdog sentinel: lending health factor monitoring, tiered alerts (1.30/1.10) & exact remediation actions | `pharos-watchdog demo` |
 | `pharos-whale` | **Task 19** | Whale-watching agent: multi-whale tracking ($\ge 5$), threshold filtering, entity labeling & cross-whale digest | `pharos-whale demo` |
 | `pharos-risk` | **Task 20** | Pre-transaction security checker: evaluates 5 risk signals, threat scorecards (0-100) & LOW/MEDIUM/HIGH guidance | `pharos-risk demo` |
+| `pharos-audit` | **Task 21** | Wallet activity reconciliation agent: 5-category breakdown, totals, notable txs & Markdown/CSV export | `pharos-audit demo` |
 | `pharos-aggregator` | **Task 30** | Multi-protocol yield router across Harbor, Morpho & FaroSwap with circuit breaker | `pharos-aggregator route --token USDC --amount 10000` |
 
 ### Running via NPM Scripts (Without Global Linking)
@@ -179,6 +180,9 @@ npm run whale -- demo
 
 # Task 20: Wallet Risk Checker
 npm run risk -- demo
+
+# Task 21: Audit-Log Agent
+npm run audit -- demo
 
 # Task 30: Multi-Protocol Aggregator
 npm run aggregator -- rates

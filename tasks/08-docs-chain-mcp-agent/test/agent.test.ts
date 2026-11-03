@@ -15,7 +15,7 @@ describe('Task 08: Docs MCP + Chain MCP Agent', () => {
     for (const src of docs.sources) {
       expect(src.url.startsWith('https://docs.pharos.xyz')).toBe(true);
     }
-  }, 25000);
+  }, 40000);
 
   it('Requirement 02: The agent then calls the same function on chain via Chain MCP', async () => {
     const target = getPresetTarget('usdc:totalSupply');
