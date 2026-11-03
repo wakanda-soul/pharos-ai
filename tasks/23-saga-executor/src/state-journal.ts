@@ -88,7 +88,7 @@ export class SagaStateJournal {
     for (const ev of this.transitionEvents) {
       const timeStr = ev.timestampIso.slice(11, 19); // HH:mm:ss
       const statusIcon = this.getPhaseIcon(ev.sagaPhase);
-      const stepTag = ev.orderIndex !== undefined ? `[Step ${ev.orderIndex}: ${ev.stepName || ''}]` : `[${ev.sagaPhase}]`;
+      const stepTag = ev.orderIndex !== undefined ? `[Step ${ev.orderIndex}: ${ev.stepName || ''}] (${ev.sagaPhase})` : `[${ev.sagaPhase}]`;
       const attemptTag = ev.attemptNumber > 1 ? `(Attempt ${ev.attemptNumber})` : '';
 
       lines.push(`│ ${timeStr} ${statusIcon} ${stepTag.padEnd(30)} ${attemptTag.padEnd(14)} │`);
