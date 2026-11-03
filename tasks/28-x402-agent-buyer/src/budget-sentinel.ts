@@ -88,12 +88,13 @@ export class SpendBudgetSentinel {
       };
     }
 
-    // Guard 3: Challenge expiration check (reject stale challenges to avoid expired nonces)
-    if (requirement.validUntilTimestamp <= currentEpochSeconds) {
+    // Guard 3: Challenge expiration check (reject stale challenges or challenges with < 5s buffer to avoid expired nonces in transit)
+    const MINIMUM_EXPIRATION_BUFFER_SECONDS = 5;
+    if (requirement.validUntilTimestamp <= currentEpochSeconds + MINIMUM_EXPIRATION_BUFFER_SECONDS) {
       return {
         isApproved: false,
         rejectionReason: 'CHALLENGE_TIMELOCK_EXPIRED',
-        detailedDiagnostic: `Payment challenge expired at timestamp ${requirement.validUntilTimestamp} (current: ${currentEpochSeconds}). Refusing stale payment request.`,
+        detailedDiagnostic: `Payment challenge expires at timestamp ${requirement.validUntilTimestamp} (current: ${currentEpochSeconds}, required buffer: ${MINIMUM_EXPIRATION_BUFFER_SECONDS}s). Refusing stale payment challenge to protect against mid-flight invalidation.`,
         proposedCostUsdc: parsedCostUsdc,
         authorizedPerCallLimitUsdc: this.policy.maxPerCallLimitUsdc,
         historicalSpendTallyUsdc: safeHistoricalSpend,

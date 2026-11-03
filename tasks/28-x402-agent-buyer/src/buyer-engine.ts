@@ -34,6 +34,8 @@ export class X402AgentBuyer {
   private readonly payerAddress: `0x${string}`;
   private readonly mockServer?: MockX402Server;
   private readonly customFetchTransport?: BuyerEngineOptions['customFetchTransport'];
+  // Concurrency guard: prevents race conditions when concurrent tasks submit the same idempotency token
+  private readonly inFlightIdempotencyTokens: Set<string> = new Set();
 
   constructor(options: BuyerEngineOptions) {
     this.policy = options.policy;
@@ -131,10 +133,17 @@ export class X402AgentBuyer {
   ): Promise<APIPurchaseOutcome<T>> {
     const { endpointUrl, intendedPurpose, idempotencyKey } = request;
 
+    // Edge Case Guard: Validate non-empty idempotency token to avoid cross-call collisions
+    if (!idempotencyKey || typeof idempotencyKey !== 'string' || idempotencyKey.trim().length === 0) {
+      throw new Error('APIPurchaseRequest requires a valid non-empty string idempotencyKey.');
+    }
+
+    const sanitizedIdempotencyKey = idempotencyKey.trim();
+
     // Safety Step 1: Idempotency deduplication check
     // If this exact request was already successfully purchased, return previous receipt without recharging!
-    if (this.journal.hasSettledIdempotencyKey(idempotencyKey)) {
-      const existingReceipt = this.journal.getReceiptByIdempotencyKey(idempotencyKey)!;
+    if (this.journal.hasSettledIdempotencyKey(sanitizedIdempotencyKey)) {
+      const existingReceipt = this.journal.getReceiptByIdempotencyKey(sanitizedIdempotencyKey)!;
       return {
         isSuccess: true,
         httpStatusCode: 200,
@@ -144,200 +153,219 @@ export class X402AgentBuyer {
       };
     }
 
-    // Safety Step 2: Probe the endpoint to receive 402 challenge or immediate data
-    let initialProbeRes: { status: number; headers: Record<string, string>; body: any };
+    // Safety Step 1b: In-flight concurrency lock to prevent simultaneous race conditions
+    if (this.inFlightIdempotencyTokens.has(sanitizedIdempotencyKey)) {
+      return {
+        isSuccess: false,
+        httpStatusCode: 409,
+        failureReason: `Concurrent execution conflict: Idempotency token '${sanitizedIdempotencyKey}' is already in-flight.`,
+        retryCount: 0,
+        isReplayDeduplicated: false,
+      };
+    }
+
+    this.inFlightIdempotencyTokens.add(sanitizedIdempotencyKey);
+
     try {
-      initialProbeRes = await this.dispatchHttpRequest(endpointUrl);
-    } catch (networkError: any) {
-      return {
-        isSuccess: false,
-        httpStatusCode: 500,
-        failureReason: `Network probe failed: ${networkError.message || networkError}`,
-        retryCount: 0,
-        isReplayDeduplicated: false,
-      };
-    }
-
-    // If 200 OK without challenge, the endpoint was free/unmetered
-    if (initialProbeRes.status === 200) {
-      return {
-        isSuccess: true,
-        httpStatusCode: 200,
-        payload: initialProbeRes.body as T,
-        retryCount: 0,
-        isReplayDeduplicated: false,
-      };
-    }
-
-    // If not 402 Payment Required, return the unexpected HTTP status
-    if (initialProbeRes.status !== 402) {
-      return {
-        isSuccess: false,
-        httpStatusCode: initialProbeRes.status,
-        failureReason: `Unexpected HTTP status ${initialProbeRes.status} received from endpoint.`,
-        retryCount: 0,
-        isReplayDeduplicated: false,
-      };
-    }
-
-    // Safety Step 3: Extract and parse x402 payment challenge
-    let requirement: X402PaymentRequirement | undefined;
-    const reqHeader =
-      initialProbeRes.headers['x-payment-requirement'] ||
-      initialProbeRes.headers['X-Payment-Requirement'];
-
-    if (reqHeader) {
+      // Safety Step 2: Probe the endpoint to receive 402 challenge or immediate data
+      let initialProbeRes: { status: number; headers: Record<string, string>; body: any };
       try {
-        requirement = JSON.parse(reqHeader);
-      } catch {
-        // Fallback to body
+        initialProbeRes = await this.dispatchHttpRequest(endpointUrl);
+      } catch (networkError: any) {
+        return {
+          isSuccess: false,
+          httpStatusCode: 500,
+          failureReason: `Network probe failed: ${networkError.message || networkError}`,
+          retryCount: 0,
+          isReplayDeduplicated: false,
+        };
       }
-    }
 
-    if (!requirement && initialProbeRes.body && initialProbeRes.body.requirement) {
-      requirement = initialProbeRes.body.requirement;
-    }
+      // If 200 OK without challenge, the endpoint was free/unmetered
+      if (initialProbeRes.status === 200) {
+        return {
+          isSuccess: true,
+          httpStatusCode: 200,
+          payload: initialProbeRes.body as T,
+          retryCount: 0,
+          isReplayDeduplicated: false,
+        };
+      }
 
-    if (!requirement) {
-      return {
-        isSuccess: false,
-        httpStatusCode: 402,
-        failureReason: 'Endpoint returned 402 Payment Required but omitted valid X402PaymentRequirement challenge.',
-        retryCount: 0,
-        isReplayDeduplicated: false,
+      // If not 402 Payment Required, return the unexpected HTTP status
+      if (initialProbeRes.status !== 402) {
+        return {
+          isSuccess: false,
+          httpStatusCode: initialProbeRes.status,
+          failureReason: `Unexpected HTTP status ${initialProbeRes.status} received from endpoint.`,
+          retryCount: 0,
+          isReplayDeduplicated: false,
+        };
+      }
+
+      // Safety Step 3: Extract and parse x402 payment challenge with case-insensitive header fallback
+      let requirement: X402PaymentRequirement | undefined;
+      const normalizedHeaders: Record<string, string> = {};
+      for (const [k, v] of Object.entries(initialProbeRes.headers)) {
+        normalizedHeaders[k.toLowerCase()] = v;
+      }
+
+      const reqHeader = normalizedHeaders['x-payment-requirement'];
+      if (reqHeader) {
+        try {
+          requirement = typeof reqHeader === 'string' ? JSON.parse(reqHeader) : reqHeader;
+        } catch {
+          // Fallback to body
+        }
+      }
+
+      if (!requirement && initialProbeRes.body && initialProbeRes.body.requirement) {
+        requirement = initialProbeRes.body.requirement;
+      }
+
+      if (!requirement) {
+        return {
+          isSuccess: false,
+          httpStatusCode: 402,
+          failureReason: 'Endpoint returned 402 Payment Required but omitted valid X402PaymentRequirement challenge.',
+          retryCount: 0,
+          isReplayDeduplicated: false,
+        };
+      }
+
+      // Safety Step 4: Pre-flight budget sentinel evaluation
+      const clearance = this.sentinel.evaluatePreFlight(
+        requirement,
+        this.journal.getRunningTotalSpendUsdc()
+      );
+
+      if (!clearance.isApproved) {
+        // Record rejection/halt in audit journal for transparency
+        this.journal.recordHaltOrRejection(
+          endpointUrl,
+          intendedPurpose,
+          clearance.proposedCostUsdc,
+          clearance.rejectionReason!,
+          clearance.detailedDiagnostic,
+          sanitizedIdempotencyKey
+        );
+
+        return {
+          isSuccess: false,
+          httpStatusCode: 402,
+          failureReason: clearance.detailedDiagnostic,
+          retryCount: 0,
+          isReplayDeduplicated: false,
+        };
+      }
+
+      // Safety Step 5: Construct idempotent payment authorization
+      // We bind the transaction hash deterministically to the idempotency key so retry attempts never mint new debits!
+      const targetPriceUsdc = clearance.proposedCostUsdc;
+      const txHash = this.generateDeterministicTxHash(
+        requirement.payTo,
+        targetPriceUsdc,
+        sanitizedIdempotencyKey
+      );
+
+      const paymentAuthorizationPayload = {
+        scheme: 'exact',
+        network: requirement.network,
+        payerAddress: this.payerAddress,
+        recipientAddress: requirement.payTo,
+        pricePaidUsdc: targetPriceUsdc,
+        currency: requirement.currency,
+        idempotencyKey: sanitizedIdempotencyKey,
+        transactionHash: txHash,
+        authorizedAtTimestamp: Math.floor(Date.now() / 1000),
       };
-    }
 
-    // Safety Step 4: Pre-flight budget sentinel evaluation
-    const clearance = this.sentinel.evaluatePreFlight(
-      requirement,
-      this.journal.getRunningTotalSpendUsdc()
-    );
+      const paymentAuthHeader = `x402 ${JSON.stringify(paymentAuthorizationPayload)}`;
 
-    if (!clearance.isApproved) {
-      // Record rejection/halt in audit journal for transparency
+      // Safety Step 6: Safe retry loop for fulfillment
+      // Transient 5xx drops are retried safely using the EXACT same idempotency token and transaction hash
+      let attempts = 0;
+      const maxRetries = this.policy.maxSafeRetries || 3;
+      let lastError: string | undefined;
+
+      while (attempts <= maxRetries) {
+        try {
+          attempts++;
+          const fulfillmentRes = await this.dispatchHttpRequest(endpointUrl, {
+            'Authorization': paymentAuthHeader,
+            'X-Payment-Proof': JSON.stringify(paymentAuthorizationPayload),
+          });
+
+          if (fulfillmentRes.status === 200) {
+            // Success! Record settlement in immutable audit journal
+            const receipt: ItemizedPaymentReceipt = {
+              receiptId: `rcpt_${randomBytes(6).toString('hex')}`,
+              idempotencyKey: sanitizedIdempotencyKey,
+              endpointUrl,
+              whatItBought: requirement.resourceDescription || intendedPurpose,
+              chargedPriceUsdc: targetPriceUsdc,
+              currency: requirement.currency,
+              transactionHash: txHash,
+              explorerUrl: `${PHAROS_ATLANTIC_CHAIN.explorerBaseUrl}/tx/${txHash}`,
+              payerAddress: this.payerAddress,
+              recipientAddress: requirement.payTo,
+              settledAtIso: new Date().toISOString(),
+              runningTotalSpendUsdc: roundToMicroUnits(this.journal.getRunningTotalSpendUsdc() + targetPriceUsdc),
+              remainingBudgetUsdc: roundToMicroUnits(this.journal.getRemainingBudgetUsdc() - targetPriceUsdc),
+              retryAttemptsUsed: attempts - 1,
+            };
+
+            this.journal.recordSettlement(receipt);
+
+            return {
+              isSuccess: true,
+              httpStatusCode: 200,
+              payload: fulfillmentRes.body as T,
+              paymentReceipt: receipt,
+              retryCount: attempts - 1,
+              isReplayDeduplicated: false,
+            };
+          }
+
+          if (fulfillmentRes.status >= 500 && attempts <= maxRetries) {
+            // Transient server error: retry safely with same payload
+            lastError = `Server returned transient error HTTP ${fulfillmentRes.status}. Retrying...`;
+            if (this.policy.retryBackoffMs > 0) {
+              await new Promise((resolve) => setTimeout(resolve, this.policy.retryBackoffMs));
+            }
+            continue;
+          }
+
+          // Non-retryable error
+          lastError = `Payment rejected by endpoint with status HTTP ${fulfillmentRes.status}: ${JSON.stringify(fulfillmentRes.body)}`;
+          break;
+        } catch (err: any) {
+          lastError = `Network error during fulfillment: ${err.message || err}`;
+          if (attempts <= maxRetries && this.policy.retryBackoffMs > 0) {
+            await new Promise((resolve) => setTimeout(resolve, this.policy.retryBackoffMs));
+          }
+        }
+      }
+
+      // If retries failed, record failure without debiting money
       this.journal.recordHaltOrRejection(
         endpointUrl,
         intendedPurpose,
-        clearance.proposedCostUsdc,
-        clearance.rejectionReason!,
-        clearance.detailedDiagnostic,
-        idempotencyKey
+        targetPriceUsdc,
+        'FAILED_RPC_ABORTED' as any,
+        lastError || 'Fulfillment retries exhausted.',
+        sanitizedIdempotencyKey
       );
 
       return {
         isSuccess: false,
-        httpStatusCode: 402,
-        failureReason: clearance.detailedDiagnostic,
-        retryCount: 0,
+        httpStatusCode: 500,
+        failureReason: lastError,
+        retryCount: attempts - 1,
         isReplayDeduplicated: false,
       };
+    } finally {
+      this.inFlightIdempotencyTokens.delete(sanitizedIdempotencyKey);
     }
-
-    // Safety Step 5: Construct idempotent payment authorization
-    // We bind the transaction hash deterministically to the idempotency key so retry attempts never mint new debits!
-    const targetPriceUsdc = clearance.proposedCostUsdc;
-    const txHash = this.generateDeterministicTxHash(
-      requirement.payTo,
-      targetPriceUsdc,
-      idempotencyKey
-    );
-
-    const paymentAuthorizationPayload = {
-      scheme: 'exact',
-      network: requirement.network,
-      payerAddress: this.payerAddress,
-      recipientAddress: requirement.payTo,
-      pricePaidUsdc: targetPriceUsdc,
-      currency: requirement.currency,
-      idempotencyKey,
-      transactionHash: txHash,
-      authorizedAtTimestamp: Math.floor(Date.now() / 1000),
-    };
-
-    const paymentAuthHeader = `x402 ${JSON.stringify(paymentAuthorizationPayload)}`;
-
-    // Safety Step 6: Safe retry loop for fulfillment
-    // Transient 5xx drops are retried safely using the EXACT same idempotency token and transaction hash
-    let attempts = 0;
-    const maxRetries = this.policy.maxSafeRetries || 3;
-    let lastError: string | undefined;
-
-    while (attempts <= maxRetries) {
-      try {
-        attempts++;
-        const fulfillmentRes = await this.dispatchHttpRequest(endpointUrl, {
-          'Authorization': paymentAuthHeader,
-          'X-Payment-Proof': JSON.stringify(paymentAuthorizationPayload),
-        });
-
-        if (fulfillmentRes.status === 200) {
-          // Success! Record settlement in immutable audit journal
-          const receipt: ItemizedPaymentReceipt = {
-            receiptId: `rcpt_${randomBytes(6).toString('hex')}`,
-            idempotencyKey,
-            endpointUrl,
-            whatItBought: requirement.resourceDescription || intendedPurpose,
-            chargedPriceUsdc: targetPriceUsdc,
-            currency: requirement.currency,
-            transactionHash: txHash,
-            explorerUrl: `${PHAROS_ATLANTIC_CHAIN.explorerBaseUrl}/tx/${txHash}`,
-            payerAddress: this.payerAddress,
-            recipientAddress: requirement.payTo,
-            settledAtIso: new Date().toISOString(),
-            runningTotalSpendUsdc: roundToMicroUnits(this.journal.getRunningTotalSpendUsdc() + targetPriceUsdc),
-            remainingBudgetUsdc: roundToMicroUnits(this.journal.getRemainingBudgetUsdc() - targetPriceUsdc),
-            retryAttemptsUsed: attempts - 1,
-          };
-
-          this.journal.recordSettlement(receipt);
-
-          return {
-            isSuccess: true,
-            httpStatusCode: 200,
-            payload: fulfillmentRes.body as T,
-            paymentReceipt: receipt,
-            retryCount: attempts - 1,
-            isReplayDeduplicated: false,
-          };
-        }
-
-        if (fulfillmentRes.status >= 500 && attempts <= maxRetries) {
-          // Transient server error: retry safely with same payload
-          lastError = `Server returned transient error HTTP ${fulfillmentRes.status}. Retrying...`;
-          if (this.policy.retryBackoffMs > 0) {
-            await new Promise((resolve) => setTimeout(resolve, this.policy.retryBackoffMs));
-          }
-          continue;
-        }
-
-        // Non-retryable error
-        lastError = `Payment rejected by endpoint with status HTTP ${fulfillmentRes.status}: ${JSON.stringify(fulfillmentRes.body)}`;
-        break;
-      } catch (err: any) {
-        lastError = `Network error during fulfillment: ${err.message || err}`;
-        if (attempts <= maxRetries && this.policy.retryBackoffMs > 0) {
-          await new Promise((resolve) => setTimeout(resolve, this.policy.retryBackoffMs));
-        }
-      }
-    }
-
-    // If retries failed, record failure without debiting money
-    this.journal.recordHaltOrRejection(
-      endpointUrl,
-      intendedPurpose,
-      targetPriceUsdc,
-      'FAILED_RPC_ABORTED' as any,
-      lastError || 'Fulfillment retries exhausted.',
-      idempotencyKey
-    );
-
-    return {
-      isSuccess: false,
-      httpStatusCode: 500,
-      failureReason: lastError,
-      retryCount: attempts - 1,
-      isReplayDeduplicated: false,
-    };
   }
 }
