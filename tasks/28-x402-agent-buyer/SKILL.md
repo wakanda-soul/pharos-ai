@@ -8,8 +8,8 @@ description: Autonomous x402 micro-payment client agent with strict spend budget
 This skill equips autonomous AI agents with the ability to safely query and pay for HTTP-402 paywalled endpoints on Pharos Atlantic Testnet (`eip155:688689`).
 
 ## Capabilities
-1. **Multi-Endpoint Negotiation**: Dispatches requests, handles HTTP 402 challenge responses (`WWW-Authenticate: x402`), and unpacks requirements.
-2. **Financial Guardrails Sentinel**: Enforces per-call price ceilings (`maxPerCallLimitUsdc`) and total expenditure budgets (`totalSpendBudgetUsdc`).
+1. **Multi-Endpoint Negotiation**: Dispatches requests, handles HTTP 402 challenge responses (`WWW-Authenticate: x402`), and unpacks payment requirements.
+2. **Financial Guardrails**: Enforces per-call price ceilings (`maxPerCallLimitUsdc`) and total expenditure budgets (`totalSpendBudgetUsdc`).
 3. **Idempotent Retry Engine**: Protects against double-spend hazards during transient network drops (HTTP 5xx) by binding settlement transaction hashes to idempotency keys.
 4. **Itemized Audit Ledger**: Automatically logs sequence index, endpoint URL, purchased asset, price, tx hash, running total spend, and remaining budget.
 

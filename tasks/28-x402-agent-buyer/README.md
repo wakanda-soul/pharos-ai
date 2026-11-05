@@ -1,77 +1,105 @@
-# Task 28: x402 Agent Buyer
+# x402 Agent Buyer
 
-> **Pharos Agent Arena (Season of AI) — Category: Payments | Difficulty: Hard (200 pts)**
-> Fully autonomous, financially governed x402 client buyer agent capable of consuming paywalled HTTP-402 micro-payment endpoints on Pharos Atlantic Testnet with per-call price caps, cumulative spend ceiling sentinel, idempotent retry deduplication, and an itemized audit ledger.
+Autonomous agents operating on-chain frequently need to purchase live intelligence, compute, or proprietary datasets from external APIs. When using the HTTP 402 (Payment Required) standard, the agent must be able to negotiate micro-payments autonomously. However, giving an autonomous process an unconstrained private key or unlimited spending allowance is a recipe for catastrophic wallet drain: runaway loops, dynamic price surges on malicious endpoints, or network packet drops leading to duplicate payments.
+
+The **x402 Agent Buyer** provides a financially governed HTTP 402 client engine for autonomous agents on Pharos Atlantic Testnet (`eip155:688689`). It wraps raw HTTP micro-payment handshakes with hard pre-flight spend guardrails (per-call price caps, cumulative spend ceilings, token address checks), idempotent retry protection against double-charging, and an append-only itemized audit journal.
 
 ---
 
-## 📌 Architecture & Financial Governance Model
+## Architecture & Payment Flow
 
 ```mermaid
-flowchart TD
-    User["Agent / Autonomous Task"] --> Probe["1. Probe Endpoint (GET /oracle/market-volatility)"]
-    Probe --> Challenge["HTTP 402: Payment Required Challenge\n(price, currency, payTo, validUntil)"]
-    Challenge --> Sentinel{"2. Spend Budget Sentinel"}
+sequenceDiagram
+    autonumber
+    actor Agent as Autonomous Agent
+    participant Buyer as x402 Buyer Client
+    participant Policy as Spend Policy Engine
+    participant Journal as Audit Ledger
+    participant Paywall as x402 Paywall Endpoint
+    participant Chain as Pharos Atlantic Testnet
+
+    Agent->>Buyer: purchaseResource(url, purpose, idempotencyKey)
+    Buyer->>Paywall: GET /resource
+    Paywall-->>Buyer: 402 Payment Required (Price, Currency, PayTo, ValidUntil, Nonce)
     
-    Sentinel -- "Price > Per-Call Cap ($0.10)" --> RejectCap["⚠️ REJECTED_PRICE_CAP\nLog in Journal (0 Debit)"]
-    Sentinel -- "Running + Price > Total Budget ($0.15)" --> HaltCeiling["🛑 HALTED_BUDGET_EXHAUSTED\nPreserve Capital (0 Debit)"]
-    Sentinel -- "Approved" --> IdempGuard{"3. Idempotency Guard"}
-    
-    IdempGuard -- "Key Already Settled" --> Deduplicated["♻️ Replay Skipped\nReturn Cached Receipt"]
-    IdempGuard -- "Fresh Token" --> Settle["4. Authorize Payment on Atlantic Testnet\n(Deterministic Tx Hash + Proof)"]
-    
-    Settle --> RetryLoop{"HTTP 200 / 5xx"}
-    RetryLoop -- "Transient 5xx" --> SafeRetry["Safe Retry (Max 3)\nSame Idempotency Key & Tx Hash"]
-    SafeRetry --> Settle
-    RetryLoop -- "Confirmed 200" --> Journal["5. Append to Spend Audit Journal\n(Seq #, Price, Tx Hash, Running Total)"]
-    Journal --> Output["Deliver API Data & Itemized Receipt"]
+    Buyer->>Policy: evaluatePreFlight(challenge, currentSpend)
+    alt Price > Per-Call Limit OR (CurrentSpend + Price) > Budget
+        Policy-->>Buyer: Clearance Refused (REJECTED_PRICE_CAP or HALTED_BUDGET)
+        Buyer->>Journal: Record zero-debit refusal with diagnostic reason
+        Buyer-->>Agent: Purchase halted (funds preserved)
+    else Spend Approved
+        Policy-->>Buyer: Clearance Approved
+        Buyer->>Chain: Settle micro-payment on Atlantic (or verify allowance)
+        Chain-->>Buyer: Tx Hash confirmed (0x...)
+        
+        loop Retry on transient 5xx (up to 3 attempts)
+            Buyer->>Paywall: GET /resource with X-Payment-Hash & Idempotency-Key
+            Paywall-->>Buyer: 200 OK + Payload (or 5xx transient error)
+        end
+        
+        Buyer->>Journal: Append entry (Seq, URL, Price, Tx Hash, Running Total)
+        Buyer-->>Agent: Success (Decrypted Payload + Itemized Receipt)
+    end
 ```
 
 ---
 
-## 🎯 Arena Criteria Compliance
+## Core Components & Mechanics
 
-| Criterion # | Arena Requirement | Implementation Details | Status |
-|---|---|---|---|
-| **01** | **Calls $\ge 2$ different x402 endpoints** | Implemented multi-endpoint discovery and execution calling `/oracle/market-volatility` ($0.04 USDC) and `/intel/whale-flow` ($0.06 USDC). | ✅ **100% Verified** |
-| **02** | **Enforces spend budget & per-call cap** | Pre-flight `SpendBudgetSentinel` strictly evaluates proposed cost against `maxPerCallLimitUsdc` (e.g. $0.10) and `totalSpendBudgetUsdc` (e.g. $0.15/$0.25) before signing or paying. | ✅ **100% Verified** |
-| **03** | **Itemized payment audit journal** | Every transaction is permanently recorded with Sequence #, charged price, what it bought, transaction hash, explorer URL, running total, and remaining budget. | ✅ **100% Verified** |
-| **04** | **Safe retries & idempotency protection** | Uses deterministic transaction hashing bound to request idempotency tokens. In-flight locks and replay caches guarantee identical payments never debit money twice. | ✅ **100% Verified** |
-| **05** | **Dual demo tasks** | Ships ready-to-run CLI demonstration executing **Scenario A** (complete job within budget) and **Scenario B** (graceful halt at budget ceiling). | ✅ **100% Verified** |
+### 1. Multi-Endpoint Negotiation
+The client discovers, probes, and settles micropayments across distinct HTTP 402 endpoints:
+- **/oracle/market-volatility**: Implied volatility and historical variance feeds ($0.04 USDC).
+- **/intel/whale-flow**: Large wallet cluster net flows and directionality metrics ($0.06 USDC).
+- **/risk/insolvency-depth**: Deep collateral liquidation profiles across lending books ($0.12 USDC).
+
+Each endpoint returns a standard 402 challenge specifying token contract (`0x3c499c54...`), recipient merchant address, required price in micro-units, and epoch challenge expiration.
+
+### 2. Pre-Flight Spend Governance
+Before signing or submitting any transaction to the Pharos Atlantic RPC, the client passes the challenge parameters through the spend policy:
+- **Per-Call Price Cap (`maxPerCallLimitUsdc`)**: Immediately rejects calls exceeding the limit (e.g., rejecting a $0.12 call if the cap is $0.10) with zero debit to wallet balance.
+- **Total Spend Ceiling (`totalSpendBudgetUsdc`)**: Tracks lifetime or session cumulative debits. If `runningTotalSpend + challengePrice > budgetCeiling`, execution halts gracefully without overdraft.
+- **Token Address & Recipient Validation**: Guarantees payments are made exclusively in approved USDC on Atlantic Testnet (`0x3c499c54...`) and forbids transfers to burn/zero addresses (`0x000...000`).
+- **Challenge Timelock Verification**: Rejects expired challenges before sending funds.
+- **Micro-Unit Precision**: Eliminates JavaScript floating-point inaccuracies using 6-decimal micro-unit rounding (`Math.round(x * 1e6) / 1e6`).
+
+### 3. Idempotency & Safe Retries
+Autonomous agents calling remote endpoints over noisy public networks frequently experience transient packet loss or server 5xx hiccups after payment settlement. The buyer engine handles this through:
+- **Deterministic Transaction Binding**: Each request requires an `idempotencyKey` bound to the payment calldata and memo.
+- **Replay Deduplication**: Re-running the client with the same key returns the existing cached settlement receipt immediately, preventing duplicate on-chain charges.
+- **In-Flight Lock Protection**: Concurrent promises with the identical key are intercepted to prevent race conditions during transaction submission.
+- **Transient Safe Retries**: If the merchant returns HTTP 500/502/503 after payment confirmation, the client retries using the exact same payment signature rather than minting a second debit.
+
+### 4. Itemized Payment Audit Journal
+Every single transaction attempt is recorded in an immutable journal with full accounting details:
+- Monotonic sequence number
+- Target endpoint URL and intended business purpose
+- Debited price and currency (or $0.00 if refused)
+- On-chain transaction hash and PharosScan explorer link
+- Running cumulative spend tally
+- Remaining authorized budget
+- Disposition status (`SETTLED`, `REJECTED_PRICE_CAP`, `HALTED_BUDGET_EXHAUSTED`, `DEDUPLICATED_REPLAY_SKIPPED`)
 
 ---
 
-## 🚀 Quick Start & CLI Usage
+## Command Line Interface & Demo
 
-### 1. Run Interactive Dual Demonstration
+The package includes a dual-scenario demonstration executable showing both normal governed execution and protective ceiling enforcement.
+
+### Run Dual Demonstration
 ```bash
-pharos-x402-buyer demo
-```
-or via npm script:
-```bash
-npm run buyer
+node tasks/28-x402-agent-buyer/bin/pharos-x402-buyer.js demo
 ```
 
-### 2. Run Comprehensive Vitest Suite
+The CLI executes:
+1. **Scenario A (Within-Budget Completion)**: Budget $0.25, Cap $0.10. Successfully calls `/oracle/market-volatility` ($0.04) and `/intel/whale-flow` ($0.06), verifies receipts, and displays the itemized spend ledger with $0.10 spent and $0.15 remaining.
+2. **Scenario B (Ceiling & Guardrail Enforcement)**: Budget $0.15, Cap $0.10. Rejects an expensive $0.12 call, falls back to affordable feeds ($0.06 + $0.04 = $0.10), and gracefully halts when a subsequent $0.09 query would breach the $0.15 ceiling.
+
+---
+
+## Test Suite Execution
+
+Run the complete 12-test Vitest suite covering multi-endpoint settlement, price caps, budget exhaustion, safe retries, and edge-case guards:
+
 ```bash
 npx vitest run tasks/28-x402-agent-buyer/test/x402-agent-buyer.test.ts
 ```
-
----
-
-## 🎬 2-Minute Video Recording Walkthrough & Script
-
-| Timestamp | Visual / Terminal Action | Narration / On-Screen Text Overlay | Key Checkpoint |
-|---|---|---|---|
-| **0:00 - 0:25** | Run `pharos-x402-buyer demo`<br>View Demo Scenario A header | *"Welcome to Pharos x402 Agent Buyer — an autonomous micro-payment client with strict financial governance for AI agents."* | Displaying budget ceiling ($0.25) & per-call cap ($0.10). |
-| **0:25 - 0:50** | Step 1 & 2 Execution:<br>`/oracle/market-volatility` ($0.04)<br>`/intel/whale-flow` ($0.06) | *"The agent negotiates HTTP 402 challenges with two distinct Atlantic endpoints. Both pass pre-flight budget checks and settle on-chain."* | Shows transaction hashes and verified intelligence payload. |
-| **0:50 - 1:15** | View Scenario A Progress Bar & Table | *"Notice the itemized audit journal: each call tracks the exact price, purpose, tx hash, and running total spend ($0.10 / $0.25)."* | Job completes successfully within budget. |
-| **1:15 - 1:40** | Scroll down to Scenario B:<br>1. Refusal on $0.12 insolvency call<br>2. Halting on $0.09 depth call | *"In Scenario B, the agent demonstrates hard guardrails: it refuses an expensive call exceeding the $0.10 cap, and halts gracefully when a call would breach the $0.15 total ceiling."* | Zero overdraft; capital protected. |
-| **1:40 - 2:00** | Run `npm test tasks/28-x402-agent-buyer` | *"All 12 unit tests pass green, verifying multi-endpoint consumption, safe retries, and idempotent deduplication on Pharos Atlantic."* | 12/12 tests passing. |
-
----
-
-## 🔒 Security & Safe Execution
-- **Strictly Non-Custodial**: Private keys or signatures are isolated; calldata hashes are bound deterministically to idempotency keys.
-- **Floating-Point Immunity**: All decimal conversions utilize 6-decimal micro-dollar normalization (`Math.round(x * 1e6) / 1e6`) to eliminate IEEE 754 drift.
-- **Zero Phantom Debits**: Rejected, aborted, or retried calls never increment cumulative spend tallies.
