@@ -57,8 +57,8 @@ Thumbs.db
 *.cookies
 *cookies*
 *.session
-arena_session.py
-arena_client.py
 screencasts/
 __pycache__/
-
+scripts/
+AGENTS.md
+tasks_criteria.json
