@@ -1,6 +1,6 @@
 # Task 02: On-Chain Event/Log Monitor (ProsPixel Game)
 
-> **Agent Arena Task**: [Event/Log Monitor](https://pharos-agent-arena.vercel.app/tasks/event-log-monitor)  
+> **Specification**: On-Chain Event/Log Monitor  
 > **Tier**: Easy  
 > **Category**: Chain MCP  
 > **Reward**: 50 pts (+50 with video)  

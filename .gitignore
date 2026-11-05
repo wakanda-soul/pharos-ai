@@ -62,3 +62,5 @@ __pycache__/
 scripts/
 AGENTS.md
 tasks_criteria.json
+docs/
+

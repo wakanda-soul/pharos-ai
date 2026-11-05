@@ -1,6 +1,6 @@
 # Task 01: Read Contract State
 
-> **Agent Arena Task**: [Read Contract State](https://pharos-agent-arena.vercel.app/tasks/read-contract-state)  
+> **Specification**: Read Contract State  
 > **Tier**: Easy  
 > **Category**: Chain MCP  
 > **Reward**: 50 pts (+50 with video)

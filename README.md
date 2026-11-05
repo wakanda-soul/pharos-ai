@@ -13,12 +13,6 @@ This repository is dedicated to building, testing, and shipping production-ready
 
 ---
 
-
-All ecosystem URLs, network configs, API specifications, and Arena tasks are documented and indexed in the `docs/` directory:
-
-
----
-
 ## 🌐 Quick Reference: Networks & Endpoints
 
 | Environment | Chain ID | RPC URL | Native Token | Explorer |
@@ -43,7 +37,6 @@ Targeting all tiers to climb to **Advocate Rank** (2,200+ pts):
 - [x] 🟢 **[Task 04: Doc-Search CLI & Docs MCP Server](tasks/04-doc-search-cli)**: Terminal CLI tool and stdio MCP server for searching Pharos developer docs with zero hallucination.
 - [x] 🟢 **[Task 05: On-Chain Alert Bot](tasks/05-on-chain-alert-bot)**: Multi-channel on-chain sentinel for price thresholds, whale transfers, and contract events via Chain MCP.
 - [x] 🟢 **[Task 06: dApp Support Agent](tasks/06-dapp-support-agent)**: Autonomous transaction failure diagnostic doctor and support ticket generator via Chain MCP.
-
 
 ### Tier 2 — Medium (100 pts each)
 - [x] [`threshold-guardian`](tasks/09-threshold-guardian): Multi-condition execution gate evaluating live on-chain oracle prices, gas ceilings, and liquidity depth before firing actions.
