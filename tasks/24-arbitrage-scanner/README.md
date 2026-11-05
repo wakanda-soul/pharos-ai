@@ -1,115 +1,111 @@
-# Task 24: Arbitrage Scanner
+# Arbitrage Scanner
 
-> **Pharos Agent Arena · Season of AI**  
-> **Category**: `SkillEngine` | **Tier**: `Hard` (200 base pts + 50 video bonus = 250 pts)  
-> **Target Network**: Pharos Mainnet (Chain ID `1672`, RPC: `https://rpc.pharos.xyz`)
+In decentralized finance, temporary price discrepancies frequently emerge between automated market makers (AMMs) and reference oracle feeds. However, naive arbitrage bots that trade on raw price differences consistently lose capital. They fail to account for the full friction waterfall: two-leg protocol swap fees, non-linear constant-product price impact (slippage), and EVM network gas costs.
 
----
-
-## What You Build
-An autonomous multi-venue cross-DEX arbitrage scanner and net profit evaluation engine for **Pharos Mainnet (Chain ID 1672)**. In decentralized finance, price discrepancies naturally emerge between automated market makers (AMMs) and reference oracle feeds. However, naive arbitrageurs frequently lose money because they ignore trading friction.
-
-The **Arbitrage Scanner** concurrently reads spot prices across multiple venues (FaroSwap AMM reserves, Chainlink feeds, and Harbor Protocol lending oracles), deducts a complete **itemized friction cost waterfall** (protocol swap fees, dynamic price impact slippage, EVM network gas), gates execution via a configurable hurdle threshold (e.g. $30.00 USD), appends every scan cycle to a tamper-evident audit journal, and prepares atomic simulation-safe routing calldata without risking real capital.
+The **Arbitrage Scanner** concurrently reads spot prices across multiple venues on Pharos (FaroSwap AMM reserves, Harbor Protocol Lending oracles, and Chainlink reference feeds), deducts a complete **itemized friction cost waterfall**, gates execution against a configurable profit hurdle (default: `$30.00 USD`), logs every scan cycle to a tamper-evident audit journal, and prepares atomic simulation-safe routing calldata without risking real funds.
 
 ---
 
-## Arena Requirements Coverage
+## Architecture & Evaluation Pipeline
 
-| Req | Description | Implementation Details | Status |
-|:---:|:---|:---|:---:|
-| **01** | **Reads prices from at least 2 sources in the same scan** | Concurrently fetches spot quotes and pool reserves across FaroSwap AMM (`PROS/USDC` pool), Harbor Protocol Lending Oracle, and Chainlink benchmark feeds in parallel (`src/price-reader.ts`). | ✅ Complete |
-| **02** | **Calculates net profit after swap fees, slippage estimate, and gas** | Deducts two-leg protocol swap fees ($0.30\%$ buy + $0.05\%$ sell), models dynamic constant-product price impact based on pool liquidity depth, and computes EVM execution gas costs ($285\text{k gas} @ 1.2\text{ Gwei}$) to arrive at true net profit (`src/profit-calculator.ts`). | ✅ Complete |
-| **03** | **Acts (or prepares transaction) only above a configurable profit threshold; otherwise logs why it skipped** | Compares net yield against a configurable hurdle threshold (default: $\$30.00$ USD). Synthesizes atomic router calldata when profitable; otherwise generates an explicit human-readable skip rationale (e.g. friction consuming spread or pool depth too shallow) (`src/arbitrage-engine.ts`). | ✅ Complete |
-| **04** | **Logs every scan with gross spread, costs, net result and decision** | Maintains an append-only `ScanAuditJournal` recording scan IDs, timestamps, asset pairs, gross spreads, itemized fee waterfalls, net yields, and decisions (`src/scan-journal.ts`). | ✅ Complete |
-| **05** | **Works safely on testnet or with simulated execution; no real funds risked** | Generates safe zero-broadcast simulation calldata (`pharosscan.xyz` dry-run simulator) and performs zero-risk execution modeling without committing private keys or capital (`src/arbitrage-engine.ts`). | ✅ Complete |
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Scanner as Arbitrage Bot / Scheduler
+    participant Reader as Multi-Venue Price Reader
+    participant Venues as Pharos Venues (FaroSwap / Harbor / Chainlink)
+    participant Calculator as Net Profit Calculator
+    participant Engine as Arbitrage Decision Engine
+    participant Journal as Scan Audit Journal
 
----
+    Scanner->>Reader: scan(pair: PROS/USDC, capital: $10,000)
+    Reader->>Venues: Concurrently fetch spot quotes & liquidity reserves
+    Venues-->>Reader: FaroSwap Quote ($1.432) & Harbor Quote ($1.502)
+    Reader-->>Calculator: Gross Spread: +4.89% (+$488.83 USD)
 
-## Project Structure
+    Calculator->>Calculator: 1. Deduct Buy & Sell Swap Fees (-$35.24)
+    Calculator->>Calculator: 2. Calculate AMM Slippage via Constant-Product (-$33.30)
+    Calculator->>Calculator: 3. Deduct EVM Network Gas Costs (-$0.0005)
+    Calculator-->>Engine: Net Profit: +$420.28 USD
 
-```
-tasks/24-arbitrage-scanner/
-├── bin/
-│   └── pharos-arbitrage.js       # Global executable CLI entrypoint
-├── src/
-│   ├── arbitrage-engine.ts       # Master arbitrage orchestrator & decision gate
-│   ├── cli.ts                    # Command-line interface (demo, scan, venues)
-│   ├── formatter.ts              # Terminal scorecards & friction waterfall tables
-│   ├── index.ts                  # Public library exports
-│   ├── price-reader.ts           # Multi-venue concurrent price feed reader
-│   ├── profit-calculator.ts      # Net profit calculator & friction deduction waterfall
-│   ├── scan-journal.ts           # Append-only scan audit journal & tabular formatter
-│   └── types.ts                  # Domain models, quote schemas, and payload interfaces
-├── test/
-│   └── arbitrage-scanner.test.ts # Automated test suite (13 unit tests passing)
-├── README.md                     # Comprehensive documentation & video script
-└── SKILL.md                      # Agent skill manifest & architecture diagrams
+    Engine->>Engine: Compare Net Profit vs Hurdle Threshold ($30.00)
+
+    alt Net Profit > Hurdle Threshold
+        Engine->>Engine: Generate atomic router calldata & simulation payload
+        Engine->>Journal: Log decision: EXECUTE_ARBITRAGE
+        Engine-->>Scanner: Execution Approved (Ready for broadcast)
+    else Net Profit <= Hurdle Threshold
+        Engine->>Engine: Formulate plain-language skip rationale
+        Engine->>Journal: Log decision: SKIP_INSUFFICIENT_PROFIT
+        Engine-->>Scanner: Execution Skipped (Friction exceeds spread)
+    end
 ```
 
 ---
 
-## Video Walkthrough Guide & Timestamps (2-Minute Demo)
+## Core Components & Mechanics
 
-| Timestamp | Screen / Action | Voiceover / Visual Narration |
-|:---:|:---|:---|
-| **0:00 - 0:25** | Terminal: `pharos-arbitrage venues` | Introduction to Pharos Arbitrage Scanner. Explain the challenge: cross-venue price spreads look profitable until swap fees, slippage, and gas consume the return. Inspect registered venues: FaroSwap AMM ($1.5M pool depth), Harbor Lending Oracle, and Chainlink Reference Feed. |
-| **0:25 - 0:55** | Terminal: `pharos-arbitrage demo` (Scenario 1) | Execute Scenario 1: Whale selling pressure depresses FaroSwap AMM to $1.432 vs Harbor Oracle $1.502 (+4.89% gross spread). Inspect the Friction Cost Waterfall: Gross spread (+$488.83), Swap fees (-$35.24), Slippage (-$33.30), Gas (-$0.0005) = **+$420.28 net profit**. Exceeds $30 hurdle $\to$ Decision: `EXECUTE_ARBITRAGE`. Show synthesized router calldata and dry-run URL. |
-| **0:55 - 1:25** | Terminal: `pharos-arbitrage demo` (Scenario 2) | Inspect Scenario 2: Tight spread (+0.67% gross spread, $1.492 vs $1.502). Total friction ($68.33) exceeds gross spread ($67.02) yielding -$1.31 net profit. Engine gates execution $\to$ Decision: `SKIP_INSUFFICIENT_PROFIT` with plain-language explanation of why it skipped. |
-| **1:25 - 1:45** | Terminal: Inspect Scan Audit Journal | Show Requirement 04: The append-only Scan Audit Journal summary table logging both scan cycles, gross spreads, itemized friction, net profits, and decisions. |
-| **1:45 - 2:00** | Terminal: `npm test tasks/24-arbitrage-scanner` | Run automated test suite: `13 passed (13)`, confirming 100% test coverage across concurrent price feeds, friction deductions, hurdle gates, scan journals, and simulation safety. |
+### 1. Concurrent Multi-Venue Price Reading
+The scanner samples at least two distinct liquidity sources in the same execution cycle:
+- **FaroSwap AMM**: Queries constant-product reserves ($x \cdot y = k$) to obtain exact marginal spot prices and liquidity depth for the `PROS/USDC` pair.
+- **Harbor Lending Oracle / Chainlink Feed**: Queries reference valuations (`0x1Ed3e8CdC173363593BfAD9bF77aa2A0e7351DB8`) to measure cross-market dislocations.
+- Concurrently queries both venues in parallel via `Promise.all` to minimize temporal latency between quotes.
 
----
+### 2. Comprehensive Friction Deduction Waterfall
+The calculator translates a deceptive gross price spread into true net profit:
+- **Gross Spread**: The raw theoretical difference between buy and sell venues:
+  $$\text{Gross Profit} = \text{Capital} \times \left(\frac{P_{\text{sell}} - P_{\text{buy}}}{P_{\text{buy}}}\right)$$
+- **Protocol Swap Fees**: Deducts pool fees across both legs (e.g., $0.30\%$ on FaroSwap buy leg $+ 0.05\%$ on Harbor sell leg).
+- **Dynamic Price Impact (Slippage)**: Models pool depth impact using the constant-product formula, scaling non-linearly with trade size relative to pool liquidity.
+- **EVM Network Gas Cost**: Computes execution cost for atomic multi-hop routing ($285\text{k gas} \times \text{gasPrice}$).
+- **Net Profit**: $\text{Gross Profit} - \text{Swap Fees} - \text{Slippage} - \text{Gas Cost}$.
 
-## Verification & Testing
+### 3. Configurable Hurdle Gate & Skip Rationale
+The engine acts only when the net yield exceeds a configurable safety hurdle (default: `$30.00 USD`):
+- **Profitable Execution**: If net profit exceeds the hurdle, the engine synthesizes an atomic Foundry `cast send` reproduction command and dry-run simulation payload.
+- **Explicit Skip Explanations**: If the opportunity is unprofitable or falls below the threshold, the engine logs a clear explanation:
+  > *"Skipped: Net profit of -$1.31 USD is below hurdle threshold of $30.00 USD. Total friction costs ($68.33 USD) exceeded the gross spread ($67.02 USD)."*
 
-Run the automated test suite:
-```bash
-npm run task:24
-# or
-npm test tasks/24-arbitrage-scanner
-```
+### 4. Append-Only Scan Audit Journal
+Every scan cycle is appended to the `ScanAuditJournal`:
+- Logs timestamp, asset pair, buy venue, sell venue, gross spread percentage, itemized fee deductions, net profit, and final decision.
+- Enables historical analysis of market efficiency and post-mortem verification of execution choices.
 
-Output:
-```
- ✓ tasks/24-arbitrage-scanner/test/arbitrage-scanner.test.ts (13 tests) 35ms
-   ✓ Task 24: Arbitrage Scanner Specification (SkillEngine) (13)
-     ✓ Requirement 01: Reads prices from at least 2 sources in the same scan (2)
-       ✓ concurrently fetches spot prices from at least 2 distinct venues
-       ✓ samples both constant-product AMM reserves and oracle reference feeds
-     ✓ Requirement 02: Calculates net profit after swap fees, slippage estimate, and gas (2)
-       ✓ deducts swap fees, dynamic slippage, and EVM network gas to compute net profit
-       ✓ demonstrates that higher trade size incurs greater slippage penalty
-     ✓ Requirement 03: Acts or prepares transaction only above profit threshold; otherwise logs why skipped (4)
-       ✓ approves execution and prepares transaction when net profit exceeds hurdle threshold
-       ✓ skips execution and provides detailed plain-language reason when net profit is below hurdle
-       ✓ skips execution when venues are in equilibrium with zero spread
-       ✓ dynamically adapts decision when profit threshold is reconfigured
-     ✓ Requirement 04: Logs every scan with gross spread, costs, net result and decision (1)
-       ✓ appends every scan cycle to the scan audit journal
-     ✓ Requirement 05: Works safely on testnet or with simulated execution; no real funds risked (4)
-       ✓ operates in zero-broadcast simulation mode by default
-       ✓ rejects non-positive capital allocation to prevent invalid state operations
-       ✓ safely handles zero liquidity depth without division by zero errors
-       ✓ correctly accounts for extreme gas price spikes in network gas cost
-
- Test Files  1 passed (1)
-      Tests  13 passed (13)
-```
+### 5. Zero-Risk Simulation Safety
+By default, the scanner operates in zero-broadcast simulation mode:
+- It produces execution calldata and dry-run URLs without committing private keys or capital.
+- Safely handles edge cases like zero liquidity depth, inverted prices, and extreme gas fee spikes without throwing unhandled exceptions.
 
 ---
 
-## CLI Commands
+## CLI Usage
+
+The package includes the `pharos-arbitrage` binary for interactive scanning:
 
 ```bash
-# Run the live demonstration of profitable and skipped scans
+# 1. Run demonstration covering profitable arbitrage vs unprofitable spread
 pharos-arbitrage demo
 
-# Run a custom market scan
-pharos-arbitrage scan --capital 10000 --threshold 30
-
-# Scan with high gas price simulation (e.g. 15 Gwei surge)
-pharos-arbitrage scan --capital 10000 --threshold 50 --gas-price 15
-
-# View registered venues and pricing sources
+# 2. View registered liquidity venues and reference feeds on Pharos Mainnet
 pharos-arbitrage venues
+
+# 3. Scan a custom pair and capital allocation
+pharos-arbitrage scan --pair PROS/USDC --capital 10000 --hurdle 25
 ```
+
+---
+
+## Verification & Test Suite
+
+The arbitrage scanner is tested across 13 unit tests in Vitest:
+
+```bash
+./node_modules/.bin/vitest run tasks/24-arbitrage-scanner
+```
+
+**Test Coverage Highlights**:
+- **Requirement 01**: Concurrently reading spot quotes across multiple distinct venues (AMM pool reserves and oracle reference feeds).
+- **Requirement 02**: Accurate mathematical deduction of swap fees, non-linear constant-product slippage, and EVM gas costs.
+- **Requirement 03**: Hurdle gate enforcement ($\ge \$30.00$ net profit), generating atomic calldata when profitable, and logging plain-language skip rationales when unprofitable.
+- **Requirement 04**: Append-only scan audit journal logging gross spreads, itemized costs, net yields, and decisions.
+- **Requirement 05**: Zero-risk simulation mode, zero-liquidity resilience, and extreme gas spike handling.
