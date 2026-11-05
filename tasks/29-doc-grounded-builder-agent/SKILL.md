@@ -9,8 +9,8 @@ This skill equips autonomous AI agents with the ability to plan actions from Pha
 
 ## Capabilities
 1. **Docs MCP Citation Planning**: Searches official docs, extracts authoritative URLs and section headings, and synthesizes structured operational blueprints.
-2. **Zero-Guessing Sentinel**: Protects against hallucination by actively detecting unsupported external technologies and reporting documentation gaps.
-3. **Non-Custodial Execution**: Executes state queries via Chain MCP (`eth_call`) without moving funds.
+2. **Anti-Hallucination Gap Detection**: Protects against hallucination by actively detecting unsupported external technologies and reporting documentation gaps.
+3. **Non-Custodial Read Execution**: Executes state queries via Chain MCP (`eth_call`) without touching funds.
 4. **Fund-Moving Calldata Preparation**: Formulates unsigned ERC-20 `approve` and ERC-4626 `deposit` payloads with Foundry `cast send` commands, maintaining 100% user key custody.
 5. **On-Chain State Verification**: Verifies return values, selector exactness, and block heights against the initial blueprint.
 
