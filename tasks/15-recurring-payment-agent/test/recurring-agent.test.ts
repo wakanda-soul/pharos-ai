@@ -41,6 +41,17 @@ describe('Task 15: Recurring Payment Agent Engine', () => {
       expect(schedule.config.dayOfMonth).toBe(1);
     });
 
+    it('should support interval-based micro-subscription recurrence with native PROS', () => {
+      const schedule = engine.registerSchedule(SCENARIO_INTERVAL_SUBSCRIPTION_CONFIG);
+
+      expect(schedule.config.scheduleId).toBe('sched-fast-sub-003');
+      expect(schedule.config.frequency).toBe('INTERVAL_SECONDS');
+      expect(schedule.config.intervalSeconds).toBe(10);
+      expect(schedule.config.tokenSymbol).toBe('PROS');
+      expect(schedule.config.amount).toBe(0.01);
+      expect(schedule.nextScheduledDate).toBeDefined();
+    });
+
     it('should accurately calculate next calendar execution dates for weekly and monthly cycles', () => {
       const sm = engine.getScheduleManager();
 
