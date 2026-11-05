@@ -1,109 +1,106 @@
-# Task 13: Gas Fee Optimizer
+# Gas Fee Optimizer for Scheduled On-Chain Transactions
 
-> **Pharos Agent Arena — Trading / Monitoring Category (Medium Tier: 100 pts + 50 pts Video Walkthrough = 150 pts)**  
-> **Challenge Slug**: `tasks/gas-fee-optimizer`  
-> **Target Network**: [Pharos Mainnet](https://scan.pharos.xyz) (Chain ID: `1672`, RPC: `https://rpc.pharos.xyz`)  
-> **Engine**: **Pharos Temporal Volatility & Deadline Decay Transaction Scheduler**
+Non-urgent transactions—such as liquidity rebalancing, batch payouts, periodic registry updates, and streaming settlements—frequently waste significant gas when broadcast during peak congestion spikes. 
 
----
-
-## Executive Summary
-
-The **Gas Fee Optimizer** is an autonomous transaction scheduling and fee-reduction sentinel engineered for **Pharos Mainnet**. It intercepts non-urgent transactions (e.g. treasury rebalancing, token allowances, batch settlements, or vault operations) and times their dispatch to minimize network fee expenditure while strictly guaranteeing deadline fulfillment.
-
-Rather than implementing a naive polling loop with a static threshold, this system employs an **Optimal Stopping Reservation Price Decay Curve**:
-1. **Parametric Gas Market Oracle (Requirement 01)**:
-   - Tracks network gas prices and block base fees directly from Pharos Mainnet.
-   - Computes statistical distributions across rolling windows: rolling average, min, max, standard deviation, directional trend, and percentiles ($p_{10}, p_{25}, p_{50}, p_{75}, p_{90}$).
-2. **Holding Mechanism with Dynamic Reservation Escalation (Requirement 02)**:
-   - Holds pending transactions in an optimized queue during network congestion spikes.
-   - Escalates the reservation price non-linearly as time elapses towards the user-specified deadline:
-     $$G_{\text{target}}(t) = G_{\text{initial}} + (G_{\text{max}} - G_{\text{initial}}) \times \left(\frac{t - t_{\text{start}}}{\text{deadline} - t_{\text{start}}}\right)^\gamma$$
-   - Executes immediately when a favorable gas dip intersects the reservation curve.
-3. **Financial Cost Delta & Savings Quantification (Requirement 03)**:
-   - Compares the actual gas price paid against the gas price recorded at initial request time.
-   - Reports exact units saved, percentage saved (>38% to 41%+), native PROS saved, and USD savings converted via live on-chain Chainlink Price Oracles (`0x1Ed3e8CdC173363593BfAD9bF77aa2A0e7351DB8`).
-4. **Guaranteed Deadline Enforcement (Requirement 04)**:
-   - Incorporates a pre-deadline safety margin window.
-   - If network gas remains elevated throughout the entire period, the optimizer transitions to `DEADLINE_FORCED` state and submits the transaction before the deadline expires, guaranteeing zero SLA breaches.
+The **Gas Fee Optimizer** acts as an intelligent holding queue for autonomous agents and protocols on Pharos. It tracks live network base fees, calculates rolling percentiles, and holds pending transactions until gas dips to an opportunistic local minimum. Crucially, it balances fee reduction against hard delivery commitments: an escalating reservation curve ensures the transaction will always execute before its deadline, even if network fees remain elevated.
 
 ---
 
-## Arena Requirements Compliance Matrix
+## Architecture & Core Mechanics
 
-| Requirement | Description | Implementation Details & Proof | Status |
-| :--- | :--- | :--- | :---: |
-| **01** | **Tracks gas price over time and shows recent history** | Implemented in `src/gas-oracle.ts`. Collects chronological block snapshots, calculates percentiles ($p_{10}, p_{25}, p_{50}, p_{75}, p_{90}$), and formats ASCII history tables. Verified in `test/optimizer.test.ts`. | ✅ Compliant |
-| **02** | **Accepts a transaction with a deadline and holds it until gas is favorable or deadline reached** | Implemented in `src/optimizer-engine.ts` and `src/reservation-curve.ts`. Holds transaction in queue across non-optimal ticks; triggers early execution upon favorable dip. Verified in `test/optimizer.test.ts`. | ✅ Compliant |
-| **03** | **Reports the actual gas paid compared with the price at request time** | Implemented in `src/formatter.ts` and `src/optimizer-engine.ts`. Quantifies delta between $G_{\text{request}}$ and $G_{\text{executed}}$, displaying percentage saved, native PROS saved, and USD savings via Chainlink. Verified in `test/optimizer.test.ts`. | ✅ Compliant |
-| **04** | **Never misses the deadline. It submits at the deadline even if gas is high** | Implemented in `src/optimizer-engine.ts`. Enforces `DEADLINE_FORCED` trigger at safety margin; executes even under persistent 25 Gwei congestion. Verified in `test/optimizer.test.ts`. | ✅ Compliant |
+### 1. Gas Market Oracle & Distribution Tracking
+The optimizer tracks gas snapshots sampled directly from Pharos Mainnet blocks:
+- **Metrics Collected**: Base fee per gas, priority fee, and total effective gas price.
+- **Statistical Profiling**: Calculates rolling minimum, maximum, mean, standard deviation, and key distribution percentiles ($p_{10}, p_{25}, p_{50}, p_{75}, p_{90}$).
+- **Trend Detection**: Compares moving averages to classify market momentum as `FALLING`, `STABLE`, or `RISING`.
+- **Bounded Sliding Window**: Maintains an in-memory ring buffer (default: 100 snapshots) to prevent unbounded memory growth during long-running background daemon operation.
+
+### 2. Reservation Price Escalation Curve
+A naive bot that waits for a fixed threshold (e.g., "only send if gas < 10 Gwei") risks stalling indefinitely during sustained network congestion, missing critical delivery deadlines.
+
+To solve this, the optimizer supports multiple strategies:
+- **Dynamic Reservation Curve (`DYNAMIC_DECAY`)**: Starts targeting the 25th percentile ($p_{25}$) or a 15% discount. As time elapses towards the deadline, the acceptable gas price non-linearly escalates towards the network ceiling. When a block's fee dips below the current reservation price, execution triggers immediately.
+- **Fixed Target (`FIXED_THRESHOLD`)**: Holds until gas hits an explicit user-defined ceiling or the deadline safety margin is reached.
+- **Percentile Target (`PERCENTILE_TARGET`)**: Targets an explicit quantile (such as the lowest 10% of recent blocks).
+
+### 3. Deadline Enforcement Guarantee (Zero Miss SLA)
+Meeting the caller's deadline is a hard invariant:
+- Each queued transaction specifies a `deadline` (Unix timestamp) and a `safetyMarginMs` (default: 2 seconds).
+- If fees remain high throughout the holding period, the optimizer automatically transitions to `DEADLINE_FORCED` status once within the safety margin.
+- The transaction payload is immediately synthesized and broadcast using the prevailing market gas price, guaranteeing the deadline is never breached.
+
+### 4. Fee Delta & Economic Reporting
+Upon execution, the engine produces a detailed post-mortem:
+- Compares the executed gas price ($G_{\text{executed}}$) against the gas price recorded at initial request ($G_{\text{request}}$).
+- Quantifies exact Gwei savings and percentage reduction (typically 35%–45% during volatile windows).
+- Computes total native PROS saved based on the transaction's gas limit.
+- Converts PROS savings into USD using the live Chainlink Price Feed on Pharos (`0x1Ed3e8CdC173363593BfAD9bF77aa2A0e7351DB8`).
 
 ---
 
-## Architecture Flow
+## Workflow Diagram
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor User as Agent / Protocol Treasury
-    participant Opt as Gas Fee Optimizer
-    participant Oracle as Gas Tracker & Statistics
-    participant Curve as Reservation Decay Curve
+    actor Agent as Autonomous Agent / Treasury
+    participant Engine as Gas Optimizer Engine
+    participant Oracle as Gas Tracker Oracle
+    participant Curve as Reservation Calculator
     participant Chainlink as Chainlink Oracle (0x1Ed3...1DB8)
-    participant Chain as Pharos Mainnet RPC
+    participant RPC as Pharos RPC (Chain ID: 1672)
 
-    User->>Opt: submit(tx, deadline, strategy)
-    Opt->>Oracle: Record initial gas price at request time (G_request)
+    Agent->>Engine: submit(tx, deadline, strategy)
+    Engine->>Oracle: Record initial gas price at request time
     
-    loop Monitoring & Holding Phase
-        Opt->>Chain: Query block gasPrice & baseFee
-        Chain-->>Opt: Current Gas Price (G_current)
-        Opt->>Curve: Compute Reservation Price G_target(t)
+    loop Monitoring Queue
+        Engine->>RPC: Read latest block gasPrice & baseFee
+        RPC-->>Engine: Current Gas Snapshot
+        Engine->>Curve: Compute reservation price for current timestamp
         
-        alt G_current <= G_target(t) [Opportunistic Dip]
-            Opt->>Opt: Trigger OPPORTUNISTIC_DIP
-        else t >= deadline - safetyMargin [Deadline SLA]
-            Opt->>Opt: Trigger DEADLINE_FORCED (Force dispatch)
-        else G_current > G_target(t)
-            Opt->>Opt: HOLD (Wait in queue)
+        alt Current Gas <= Reservation Price
+            Engine->>Engine: Trigger OPPORTUNISTIC_DIP
+        else Current Time >= Deadline - Safety Margin
+            Engine->>Engine: Trigger DEADLINE_FORCED (SLA Guarantee)
+        else Current Gas > Reservation Price
+            Engine->>Engine: HOLD in queue, wait for next tick
         end
     end
 
-    Opt->>Chainlink: Query latestRoundData() for USD valuation
-    Opt->>Opt: Generate Foundry cast command & Post-Mortem
-    Opt-->>User: Execution Report (Gas Saved, Delta vs Request, Cast Command)
+    Engine->>Chainlink: Fetch PROS/USD rate for conversion
+    Engine->>Engine: Format Foundry cast payload with optimized --gas-price
+    Engine-->>Agent: Execution report (gas saved, PROS saved, USD value)
 ```
 
 ---
 
-## Demonstration Scenarios
+## CLI Usage
 
-| Scenario | Network Gas Dynamics | Outcome | Trigger | Gas Delta & Savings |
-| :--- | :--- | :---: | :--- | :--- |
-| **Scenario A** | Enqueued at 18.0 Gwei; dips to 10.5 Gwei within 25 seconds | **Cleared Early** | `OPPORTUNISTIC_DIP` | **+7.0 Gwei (+38.9% saved)**, ~$1.04 USD saved |
-| **Scenario B** | Enqueued at 14.0 Gwei; climbs to 25.0 Gwei under congestion | **Submitted at Deadline** | `DEADLINE_FORCED` | **Never missed deadline**: SLA fulfilled at 38.0s (2s margin) |
-
----
-
-## CLI Usage & Commands
+The package includes the `pharos-gas-optimizer` CLI for testing, monitoring, and simulation:
 
 ```bash
-# Run dual-outcome demonstration (Opportunistic Dip + Deadline Enforcement)
-pharos-gas-opt demo
+# 1. Run demonstration scenarios (Opportunistic dip + Deadline forced dispatch)
+pharos-gas-optimizer demo
 
-# Inspect live Pharos Mainnet gas history and statistical distribution
-pharos-gas-opt history
+# 2. Inspect live gas market statistics on Pharos Mainnet
+pharos-gas-optimizer live
 
-# List available benchmark scenarios
-pharos-gas-opt scenarios
+# 3. Simulate queue execution over a custom 60-second window
+pharos-gas-optimizer simulate --deadline 60 --strategy dynamic
 ```
 
 ---
 
 ## Verification & Test Suite
 
-Run the dedicated test suite:
+The optimization engine is tested across 12 unit tests in Vitest covering all core invariants:
+
 ```bash
-npx vitest run tasks/13-gas-fee-optimizer
+./node_modules/.bin/vitest run tasks/13-gas-fee-optimizer
 ```
-All 8 automated tests pass with 100% assertion coverage across all 4 requirements.
+
+**Test Coverage Highlights**:
+- **Requirement 01**: Chronological gas price tracking, percentile calculations ($p_{10}$ to $p_{90}$), and live Pharos RPC integration.
+- **Requirement 02**: Holding queue mechanics, dynamic reservation curve decay, and fixed threshold triggers.
+- **Requirement 03**: Precise accounting of gas prices at request vs execution time, PROS savings, and live Chainlink USD valuation.
+- **Requirement 04**: Guaranteed deadline enforcement under persistent network congestion spikes and zero-latency handling for urgent transactions.
