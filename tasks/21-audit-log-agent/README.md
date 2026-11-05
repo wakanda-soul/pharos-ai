@@ -1,97 +1,103 @@
-# Task 21: Audit-Log Agent
+# Audit-Log Agent
 
-> **Pharos Agent Arena · Season of AI**  
-> **Category**: `Support / Reporting` | **Tier**: `Medium` (100 base pts + 50 video bonus = 150 pts)  
-> **Target Network**: Pharos Mainnet (Chain ID `1672`, RPC: `https://rpc.pharos.xyz`)
+For Web3 treasuries, fund managers, and DAO operations, generating plain-language accounting reports from raw on-chain activity is a repetitive and error-prone process. Block explorer logs group all transactions together without distinguishing between cash-inflows, vendor payments, DEX swaps, or security permissions like ERC-20 token approvals.
 
----
-
-## What You Build
-An autonomous on-chain transaction reconciliation and financial compliance audit agent that accepts any target wallet address and date range, filters and groups historical transactions into **5 canonical categories** (`TRANSFER_IN`, `TRANSFER_OUT`, `DEX_SWAP`, `TOKEN_APPROVAL`, and `CONTRACT_INTERACTION`), computes category accounting summaries with net USD turnovers, isolates notable compliance events with direct **PharosScan** explorer links, and exports professional compliance reports in **Markdown** and **RFC-4180 CSV** formats.
+The **Audit-Log Agent** reconciles on-chain wallet history over any specified date range. It categorizes raw transactions into **5 distinct accounting buckets** (Transfers In, Transfers Out, DEX Swaps, Token Approvals, and Contract Interactions), calculates category turnover totals, flags notable high-value or unusual transactions with direct PharosScan links, and exports clean reports in both **Markdown** and **RFC-4180 CSV** formats.
 
 ---
 
-## Arena Requirements Coverage
+## Architecture & Reconciliation Pipeline
 
-| Req | Description | Implementation Details | Status |
-|:---:|:---|:---|:---:|
-| **01** | **Accepts a wallet address and date range** | Implements robust temporal parser supporting calendar (`YYYY-MM-DD`) and ISO-8601 timestamps, validates chronology, and filters transaction streams strictly within interval bounds (`src/date-filter.ts`). | ✅ Complete |
-| **02** | **Groups activity into categories: transfers in and out, swaps, approvals, contract interactions** | 5-way activity categorizer analyzes transaction signatures, method selectors, event topic hashes, and recipient protocol identities to classify each ledger entry with high precision (`src/activity-categorizer.ts`). | ✅ Complete |
-| **03** | **Includes totals per category and notable transactions with links** | Computes turnover volume, transaction counts, percentage breakdown, and gas expenses per category; spotlights transactions exceeding $\$10,000$ USD, unlimited token approvals, and reverted calls with direct `https://pharosscan.xyz/tx/0x...` links (`src/audit-aggregator.ts`). | ✅ Complete |
-| **04** | **Exports the report as Markdown, PDF or CSV** | Dual format exporter generates structured GitHub-flavored Markdown reports (`src/exporters/markdown-exporter.ts`) and RFC-4180 compliant CSV ledger spreadsheets (`src/exporters/csv-exporter.ts`) saved to customizable directories. | ✅ Complete |
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Auditor as DAO Treasury / Accountant
+    participant Agent as Audit-Log Agent
+    participant Filter as Date Range Filter
+    participant Categorizer as Activity Categorizer
+    participant Aggregator as Accounting Aggregator
+    participant Exporter as Report Exporters (MD & CSV)
 
----
-
-## Project Structure
-
-```
-tasks/21-audit-log-agent/
-├── bin/
-│   └── pharos-audit.js           # Global executable CLI entrypoint
-├── src/
-│   ├── activity-categorizer.ts   # 5-category transaction classifier & metadata extractor
-│   ├── audit-aggregator.ts       # Accounting summary engine & notable tx spotlight
-│   ├── cli.ts                    # Command-line interface (demo, report, directory)
-│   ├── date-filter.ts            # Date range parser & UTC interval filter
-│   ├── directory.ts              # Recognized Pharos protocols & entity directory
-│   ├── exporters/
-│   │   ├── csv-exporter.ts       # RFC-4180 compliant CSV ledger generator
-│   │   └── markdown-exporter.ts  # GitHub-flavored Markdown compliance report generator
-│   ├── formatter.ts              # Terminal formatting & ASCII category breakdown charts
-│   ├── index.ts                  # Public library exports
-│   ├── scenarios.ts              # Realistic on-chain transaction history benchmarks
-│   └── types.ts                  # Domain schemas and interfaces
-├── test/
-│   └── audit-agent.test.ts       # Automated test suite (12 unit tests passing)
-├── README.md                     # Comprehensive documentation & video script
-└── SKILL.md                      # Agent skill manifest & architecture diagrams
+    Auditor->>Agent: audit(walletAddress, startDate, endDate)
+    Agent->>Filter: Parse & validate chronological interval
+    Filter->>Agent: Filtered transaction stream within window
+    
+    Agent->>Categorizer: Classify transactions by EVM semantics
+    Categorizer-->>Aggregator: Categorized events (In, Out, Swap, Approval, Call)
+    
+    Aggregator->>Aggregator: Compute volume totals & gas expenditure per category
+    Aggregator->>Aggregator: Spotlight notable events (> $10k, unlimited approvals, reverts)
+    
+    Aggregator-->>Exporter: Structured ledger & summary audit model
+    Exporter-->>Auditor: Output formatted Markdown report & RFC-4180 CSV
 ```
 
 ---
 
-## Video Walkthrough Guide & Timestamps (2-Minute Demo)
+## Core Components & Mechanics
 
-| Timestamp | Screen / Action | Voiceover / Visual Narration |
-|:---:|:---|:---|
-| **0:00 - 0:25** | Terminal: `pharos-audit directory` | Introduction to Pharos Audit-Log Agent. Highlight the built-in protocol directory recognizing FaroSwap, Harbor Lending, Morpho Blue, and verified custody hot wallets on Pharos Mainnet. |
-| **0:25 - 0:55** | Terminal: `pharos-audit demo` | Run autonomous compliance audit demo over February 2026 for a target corporate treasury wallet. Explain the 5 activity categories: Transfers In, Transfers Out, Swaps, Approvals, and Contract Interactions. |
-| **0:55 - 1:25** | Terminal: Inspect Category Totals & Notable Events | Review category breakdown table showing USD turnover and transaction percentages. Spotlight the 4 flagged notable events: $\$25,000$ USDC inbound transfer from Binance, unlimited USDC allowance granted to FaroSwap, $\$15,000$ swap, and an EVM reverted call, each linked to PharosScan. |
-| **1:25 - 1:45** | Terminal: `head -n 25 audit-output/audit-*.md` & `.csv` | Demonstrate export artifacts satisfying Requirement 04: structured Markdown report with executive summary and RFC-4180 CSV spreadsheet ready for financial accounting software. |
-| **1:45 - 2:00** | Terminal: `npm test tasks/21-audit-log-agent` | Run automated test suite: `12 passed (12)`, confirming 100% test coverage and compliance with all arena requirements. |
+### 1. Address & Date Range Filtering
+The agent accepts a target wallet address and temporal bounds:
+- Supports calendar dates (`YYYY-MM-DD`) and full ISO-8601 timestamps (`YYYY-MM-DDTHH:mm:ssZ`).
+- Enforces strict chronological sanity checks (rejecting inverted start/end ranges).
+- Filters raw block and transaction timestamps strictly within the defined UTC window, ignoring transactions outside the scope.
+
+### 2. 5-Way Activity Categorization
+Rather than treating all EVM contract calls identically, the categorizer inspects method selectors, event logs, and counterparty entities:
+- **`TRANSFER_IN`**: Inbound native PROS or ERC-20 token receipts from external addresses or exchanges.
+- **`TRANSFER_OUT`**: Outbound disbursements, payroll tranches, or vendor settlements.
+- **`DEX_SWAP`**: Automated market maker trades (e.g. on FaroSwap) with extracted input/output asset pairs and exchange rates.
+- **`TOKEN_APPROVAL`**: ERC-20 allowance modifications (`approve` / `permit`). Categorized as zero-cashflow governance permissions.
+- **`CONTRACT_INTERACTION`**: Protocol interactions such as lending deposits (Harbor / Morpho), staking, or multisig operations.
+
+### 3. Category Accounting & Notable Transaction Spotlights
+The aggregator generates a concise financial overview:
+- **Category Totals**: Net USD turnover, transaction count, percentage of activity, and total gas spent per category.
+- **Notable Transaction Flagging**: Isolates transactions requiring auditor attention:
+  - High-value transfers exceeding `$10,000.00 USD`.
+  - Dangerous unlimited token allowances (`type(uint256).max`) granted to third-party spenders.
+  - Reverted EVM executions (which consumed gas without state changes).
+- **Explorer Permalinks**: Each notable transaction is linked directly to the canonical Pharos block explorer (`https://pharosscan.xyz/tx/0x...`).
+
+### 4. Dual Format Export (Markdown & CSV)
+The agent produces audit-ready artifacts:
+- **Markdown Report (`.md`)**: A human-readable compliance document featuring an executive summary, category breakdown tables, and notable event narratives.
+- **RFC-4180 CSV Spreadsheet (`.csv`)**: A structured transaction ledger containing timestamps, transaction hashes, categories, asset amounts, USD valuations, counterparty labels, and gas fees, suitable for direct import into accounting software (e.g., QuickBooks or Cryptio).
 
 ---
 
-## Verification & Testing
+## CLI Usage
 
-Run the automated test suite:
+The package includes the `pharos-audit` binary for interactive audits:
+
 ```bash
-npm run audit -- demo
-# and run unit tests
-npx vitest run tasks/21-audit-log-agent/test/audit-agent.test.ts
+# 1. Run demonstration audit over corporate treasury sample data
+pharos-audit demo
+
+# 2. Generate an audit report for a specific wallet and date range
+pharos-audit report 0x6119871b4eb66db137dcfad59655853ea6fe58ce \
+  --from 2026-02-01 \
+  --to 2026-02-28 \
+  --format all \
+  --out ./audit-reports
+
+# 3. View known recognized Pharos protocols and counterparties
+pharos-audit directory
 ```
 
-Output:
-```
- ✓ tasks/21-audit-log-agent/test/audit-agent.test.ts (12 tests)
-   ✓ Task 21: Audit-Log Agent Specification (12)
-     ✓ Requirement 01: Accepts a wallet address and a date range (3)
-       ✓ parses valid ISO-8601 and YYYY-MM-DD date ranges accurately
-       ✓ rejects inverted or malformed date ranges with descriptive errors
-       ✓ filters transactions strictly within the target date range
-     ✓ Requirement 02: Groups activity into 5 distinct categories (3)
-       ✓ categorizes transfers in, transfers out, swaps, approvals, and contract interactions
-       ✓ correctly classifies multi-token swaps with input/output pair labeling
-       ✓ classifies token approvals as non-cashflow permissions
-     ✓ Requirement 03: Category totals and notable transactions with links (2)
-       ✓ computes accurate category accounting summaries with transaction counts and USD volume
-       ✓ spotlights notable transactions with reasons and canonical Pharosscan links
-     ✓ Requirement 04: Exports the report as Markdown and CSV (2)
-       ✓ exports audit report in structured Markdown format
-       ✓ exports audit report in RFC-4180 compliant CSV format
-     ✓ Edge Cases: Reverted transactions and empty date intervals (2)
-       ✓ tracks gas fees for reverted transactions with zero net turnover
-       ✓ handles an empty date interval gracefully
+---
 
- Test Files  1 passed (1)
-      Tests  12 passed (12)
+## Verification & Test Suite
+
+The audit agent is verified across 12 unit tests in Vitest:
+
+```bash
+./node_modules/.bin/vitest run tasks/21-audit-log-agent
 ```
+
+**Test Coverage Highlights**:
+- **Requirement 01**: Parsing valid ISO-8601 and calendar date ranges, rejecting inverted bounds, and date interval filtering.
+- **Requirement 02**: Accurate 5-way categorization across transfers in, transfers out, token swaps, approvals, and contract interactions.
+- **Requirement 03**: Category volume totals, transaction counts, and spotlighting notable events with PharosScan explorer links.
+- **Requirement 04**: Structured Markdown document generation and RFC-4180 compliant CSV ledger export.
+- **Edge Cases**: Reverted transactions with non-zero gas fees and empty date intervals.
