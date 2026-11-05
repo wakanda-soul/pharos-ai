@@ -1,102 +1,103 @@
-# Task 22: Weekly Digest Agent
+# Weekly Digest Agent
 
-> **Pharos Agent Arena · Season of AI**  
-> **Category**: `Support / Reporting` | **Tier**: `Medium` (100 base pts + 50 video bonus = 150 pts)  
-> **Target Network**: Pharos Mainnet (Chain ID `1672`, RPC: `https://rpc.pharos.xyz`)
+DAO treasuries, DeFi protocol teams, and fund managers need regular visibility into their on-chain operations. Manually querying block explorers every Monday morning to calculate turnover, compare volume trends, and identify anomalous transactions is time-consuming and prone to human error.
 
----
-
-## What You Build
-An autonomous periodic activity summary and executive reporting agent for **Pharos Mainnet (Chain ID 1672)**. It runs on a configurable recurrence schedule (weekly by default every Monday at 09:00 UTC), evaluates activity across contiguous accounting windows for wallets or DeFi protocols, calculates period-over-period metric deltas ($\Delta\%$), spotlights the **Top 3 Notable Events** of the week with direct **PharosScan** explorer links, and delivers polished reports across multiple real channels (**Discord Webhook**, **Telegram Bot**, **Email**) and as a **Standalone Published HTML Page**.
+The **Weekly Digest Agent** is an autonomous executive reporting agent for Pharos Mainnet. It runs on a scheduled cadence (default: every Monday at 09:00 UTC), compares key metrics across contiguous accounting windows ($T_{\text{current}}$ vs $T_{\text{previous}}$), spotlights the **Top 3 Notable Events** of the week with direct PharosScan links, and delivers polished reports across multiple real channels (**Discord**, **Telegram**, **Email**) and as a standalone published **HTML web page**.
 
 ---
 
-## Arena Requirements Coverage
+## Architecture & Reporting Pipeline
 
-| Req | Description | Implementation Details | Status |
-|:---:|:---|:---|:---:|
-| **01** | **Runs on a schedule (weekly by default, configurable)** | Recurrence schedule manager defaults to weekly (`0 9 * * 1`), supports daily, biweekly, and custom cron expressions, computes next execution timestamps, and derives contiguous accounting windows (`src/scheduler.ts`). | ✅ Complete |
-| **02** | **Covers key metrics with a comparison to the previous period** | Period comparator calculates turnover volume, tx count, inbound/outbound flows, net cashflow, and gas; computes percentage change rates ($\Delta\%$), classifies trend momentum (`SURGE`, `CLIMB`, `STABLE`, `DECLINE`), and handles zero baselines cleanly (`src/metrics-comparator.ts`). | ✅ Complete |
-| **03** | **Highlights the top 3 notable events of the period** | Significance scoring engine ranks events by capital volume, EVM reverts, governance actions, and liquidity injections; curates strictly the Top 3 events with ranks 1..3 and direct `https://pharosscan.xyz/tx/0x...` explorer links (`src/event-curator.ts`). | ✅ Complete |
-| **04** | **Delivers to a real channel (email, Telegram, Discord) or as a published page** | Multi-channel dispatcher delivers to Discord (color-coded embed), Telegram (HTML bot message), Email (styled tables), and publishes a standalone responsive dark-mode HTML web page (`src/delivery/`, `src/dispatcher.ts`). | ✅ Complete |
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Scheduler as Cron / Automation Daemon
+    participant Agent as Weekly Digest Agent
+    participant Comparator as Period Metrics Comparator
+    participant Curator as Notable Event Curator
+    participant Publisher as HTML Page Publisher
+    participant Dispatcher as Multi-Channel Dispatcher (Discord/Telegram/Email)
 
----
-
-## Project Structure
-
-```
-tasks/22-weekly-digest-agent/
-├── bin/
-│   └── pharos-digest.js          # Global executable CLI entrypoint
-├── src/
-│   ├── cli.ts                    # Command-line interface (demo, schedule, generate)
-│   ├── delivery/
-│   │   ├── discord-delivery.ts   # Discord Rich Embed webhook serializer & dispatcher
-│   │   ├── email-formatter.ts    # Multipart HTML email body generator
-│   │   ├── html-publisher.ts     # Standalone dark-mode HTML page publisher
-│   │   └── telegram-delivery.ts  # Telegram HTML Bot API message serializer
-│   ├── digest-generator.ts       # Master digest orchestrator & executive synthesizer
-│   ├── dispatcher.ts             # Unified multi-channel delivery coordinator
-│   ├── event-curator.ts          # Significance scoring & Top 3 notable event spotlight
-│   ├── formatter.ts              # Terminal ASCII scorecard & trend badge formatter
-│   ├── index.ts                  # Public library exports
-│   ├── metrics-comparator.ts     # Period-over-period delta & trend analytics engine
-│   ├── scenarios.ts              # Benchmark treasury wallet & FaroSwap protocol histories
-│   ├── scheduler.ts              # Recurrence schedule manager & interval calculator
-│   └── types.ts                  # Domain schemas, interfaces, and metric models
-├── test/
-│   └── weekly-digest.test.ts     # Automated test suite (14 unit tests passing)
-├── README.md                     # Comprehensive documentation & video script
-└── SKILL.md                      # Agent skill manifest & architecture diagrams
+    Scheduler->>Agent: triggerScheduledRun(walletOrProtocol)
+    Agent->>Agent: Derive contiguous periods (e.g., Week N vs Week N-1)
+    
+    Agent->>Comparator: Compute metrics & period-over-period deltas (Δ%)
+    Comparator-->>Agent: Turnover, tx count, inflows, outflows, net cashflow, gas
+    
+    Agent->>Curator: Score & select Top 3 Notable Events
+    Curator-->>Agent: Top 3 events ranked with PharosScan links
+    
+    Agent->>Publisher: Generate standalone responsive HTML page
+    Publisher-->>Agent: Saved to disk (e.g., ./digests/digest-week-08.html)
+    
+    Agent->>Dispatcher: Broadcast to configured channels (Discord/Telegram/Email)
+    Dispatcher-->>Scheduler: Delivery confirmation & report link
 ```
 
 ---
 
-## Video Walkthrough Guide & Timestamps (2-Minute Demo)
+## Core Components & Mechanics
 
-| Timestamp | Screen / Action | Voiceover / Visual Narration |
-|:---:|:---|:---|
-| **0:00 - 0:25** | Terminal: `pharos-digest schedule` | Introduction to Pharos Weekly Digest Agent. Demonstrate Requirement 01: inspecting the schedule configuration defaulting to weekly execution every Monday at 09:00 UTC (cron `0 9 * * 1`), and reconfiguring to daily or custom hours. |
-| **0:25 - 0:55** | Terminal: `pharos-digest demo` | Run autonomous weekly digest simulation. Explain Requirement 02: period-over-period metric comparison between Week 08 and Week 07 baseline ($+\$262.5\text{k}$ turnover surge of $+138.2\%$, transaction throughput $+66.7\%$, net cashflow position $+\$47,500$ USD). |
-| **0:55 - 1:25** | Terminal: Inspect Top 3 Notable Events | Explain Requirement 03: top 3 ranked events spotlighted with significance heuristics: #1 EVM Revert on Morpho Blue, #2 $\$250\text{k}$ USDC injection from Binance, #3 $\$100\text{k}$ collateral deposit into Harbor Lending Pool, each with clickable PharosScan explorer links. |
-| **1:25 - 1:45** | Browser / Terminal: `cat published-digests/digest-*.html` | Demonstrate Requirement 04: inspect the published standalone executive HTML page featuring modern dark-mode UI, responsive KPI trend cards, clickable explorer links, plus multi-channel dispatch to Discord, Telegram, and Email. |
-| **1:45 - 2:00** | Terminal: `npm test tasks/22-weekly-digest-agent` | Run automated test suite: `14 passed (14)`, confirming 100% test coverage across scheduling, metrics comparison, top-3 curation, and multi-channel delivery. |
+### 1. Recurrence Scheduling & Contiguous Windows
+The scheduling engine manages periodic execution:
+- **Default Cadence**: Configured by default for weekly execution (`WEEKLY`, Mondays at 09:00 UTC, cron `0 9 * * 1`).
+- **Configurable Cadence**: Supports `DAILY`, `BIWEEKLY`, or arbitrary cron schedules with customizable execution hours.
+- **Contiguous Windowing**: Automatically derives two adjacent, non-overlapping time intervals (e.g., Week 08 vs Week 07), ensuring accurate period-over-period comparisons without temporal gaps or overlaps.
+
+### 2. Period-over-Period Metric Comparisons
+The comparator evaluates performance across essential financial dimensions:
+- **Turnover Volume**: Total USD capital moved across all operations.
+- **Transaction Count & Throughput**: Activity velocity and usage frequency.
+- **Inbound vs Outbound Flows**: Net cashflow direction (surplus vs deficit).
+- **Gas Expenditure**: Cumulative network fee costs in PROS and USD.
+- **Delta Calculations ($\Delta\%$)**: Calculates exact percentage change rates and assigns trend badges (`SURGE`, `CLIMB`, `STABLE`, `DECLINE`), handling zero baselines without division-by-zero errors.
+
+### 3. Top 3 Notable Event Spotlight
+Rather than listing every minor transaction, the curator scores and highlights strictly the three most consequential events of the period:
+- **Significance Scoring**: Ranks events based on dollar volume, EVM execution status (reverted calls vs successful transfers), governance actions, and liquidity rebalancing.
+- **Direct Explorer Links**: Every highlighted event includes its rank (#1, #2, #3), plain-language summary, and a direct link to the transaction on PharosScan (`https://pharosscan.xyz/tx/0x...`).
+- **Placeholder Handling**: If a period contains fewer than three transactions, the curator synthesizes clean informational placeholders.
+
+### 4. Multi-Channel Delivery & Published Web Page
+The agent supports four distinct delivery targets:
+- **Published HTML Page**: Generates a self-contained, responsive dark-mode HTML executive report with CSS tables and trend badges, ready to be hosted or served locally.
+- **Discord Webhook**: Delivers rich Discord Embeds with color-coded severity (green for net positive flow, blue for neutral, red for deficit) and character length guards.
+- **Telegram Bot**: Formats clean HTML messages compatible with Telegram Bot API.
+- **Email Digest**: Generates styled HTML email bodies suitable for corporate email clients.
 
 ---
 
-## Verification & Testing
+## CLI Usage
 
-Run the automated test suite:
+The package includes the `pharos-digest` CLI for interactive execution and scheduling:
+
 ```bash
-npm run task:22
-# or
-npx vitest run tasks/22-weekly-digest-agent/test/weekly-digest.test.ts
+# 1. Run full demonstration (Week 08 vs Week 07 comparison + Top 3 events + multi-channel export)
+pharos-digest demo
+
+# 2. Inspect or modify recurrence schedule configuration
+pharos-digest schedule
+pharos-digest schedule --cadence daily --hour 8
+
+# 3. Generate a digest for a specific target wallet or protocol
+pharos-digest generate 0x6119871b4eb66db137dcfad59655853ea6fe58ce \
+  --publish-html \
+  --out ./reports
 ```
 
-Output:
-```
- ✓ tasks/22-weekly-digest-agent/test/weekly-digest.test.ts (14 tests)
-   ✓ Task 22: Weekly Digest Agent Specification (14)
-     ✓ Requirement 01: Runs on a schedule (weekly by default, configurable) (4)
-       ✓ initializes with weekly schedule by default (every Monday at 09:00 UTC)
-       ✓ allows reconfiguring schedule cadence to daily or biweekly with custom execution hour
-       ✓ calculates the next calendar occurrence date accurately
-       ✓ derives contiguous weekly accounting periods for current vs baseline comparison
-     ✓ Requirement 02: Covers key metrics with a comparison to the previous period (2)
-       ✓ computes aggregated financial totals and period-over-period delta rates
-       ✓ gracefully handles zero baseline volume without NaN or Infinity errors
-     ✓ Requirement 03: Highlights the top 3 notable events of the period (2)
-       ✓ selects strictly the top 3 notable events ordered by significance score
-       ✓ synthesizes informative placeholder highlights when period has fewer than 3 events
-     ✓ Requirement 04: Delivers to a real channel or as a published page (5)
-       ✓ publishes a standalone dark-mode HTML executive page to disk
-       ✓ formats a rich Discord Embed payload with color coding and field length guards
-       ✓ formats a clean Telegram message with HTML markup and explorer links
-       ✓ formats an executive email HTML body with comparison table
-       ✓ broadcasts digest across multiple channels via DigestDeliveryDispatcher
-     ✓ Target Adaptability: Protocol Mode (FaroSwap AMM) (1)
-       ✓ generates a specialized protocol digest for an automated market maker
+---
 
- Test Files  1 passed (1)
-      Tests  14 passed (14)
+## Verification & Test Suite
+
+The weekly digest agent is tested across 14 unit tests in Vitest:
+
+```bash
+./node_modules/.bin/vitest run tasks/22-weekly-digest-agent
 ```
+
+**Test Coverage Highlights**:
+- **Requirement 01**: Default weekly schedule initialization (`0 9 * * 1`), schedule reconfiguration to daily/biweekly, next occurrence date math, and contiguous period window derivations.
+- **Requirement 02**: Period-over-period metric aggregations, percentage change rates ($\Delta\%$), and zero-baseline handling.
+- **Requirement 03**: Selection and ranking of strictly the Top 3 notable events with PharosScan links and empty-state handling.
+- **Requirement 04**: Publishing standalone dark-mode HTML pages to disk, formatting rich Discord Embeds, Telegram HTML messages, and email bodies.
+- **Protocol Mode**: Adaptability to DeFi protocol operations (e.g. FaroSwap AMM pool volume).
