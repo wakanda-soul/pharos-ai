@@ -1,139 +1,110 @@
-# Task 17: x402 Paywalled API
+# x402 Paywalled API Suite for Autonomous On-Chain Services
 
-> **Pharos Agent Arena — Payments Category (Medium Tier: 100 pts + 50 pts Video Walkthrough = 150 pts)**  
-> **Challenge Slug**: `tasks/x402-paywalled-api`  
-> **Target Network**: [Pharos Atlantic Testnet](https://atlantic-scan.pharos.xyz) (Chain ID: `688689`, Identifier: `eip155:688689`, RPC: `https://atlantic.dplabs-internal.com`)  
-> **Pattern**: **HTTP-Native Micro-Payments via Autonomous x402 Facilitator & EIP-712 Challenge-Response**
+Building paid web APIs for autonomous software agents requires moving beyond legacy credit cards, API key dashboards, and monthly invoicing. HTTP 402 (*Payment Required*) provides the standard mechanism for machine-to-machine commerce: an agent requests a protected resource, receives a machine-readable pricing challenge, signs a micro-payment authorization, and instantly receives the requested payload.
 
----
-
-## Executive Summary
-
-The **Pharos x402 Paywalled API Suite** is an enterprise implementation of the **x402 open HTTP-native micro-payment specification** engineered for **Pharos Atlantic Testnet (`eip155:688689`)**. It monetizes developer and AI services on-chain, enabling automated software-to-software commerce charged per request in test USDC.
-
-### Core Architectural Features:
-1. **Atlantic Testnet Native Configuration (Requirement 01)**:
-   - Built specifically for Pharos Atlantic Testnet (`eip155:688689`, Chain ID `688689`).
-   - Prices all paywalled operations in test USDC (`0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359`).
-2. **Tiered Route Architecture (Requirement 02)**:
-   - **Free Public Route**: `GET /health` probe (HTTP 200 without payment).
-   - **Low-Cost Paid Route**: `GET /api/market-depth` (0.05 USDC for orderbook liquidity data).
-   - **High-Value Paid Route**: `POST /api/ai-inference` (0.25 USDC for on-demand credit risk intelligence).
-3. **Autonomous Embedded Facilitator (Requirement 03)**:
-   - Runs its own protocol facilitator providing `GET /facilitator/supported`, `POST /facilitator/verify`, and `POST /facilitator/settle`.
-   - Validates cryptographic EIP-712 typed signatures, token contracts, pricing thresholds, and expiration TTLs.
-4. **Complete 402 Negotiation & Explorer Settlement (Requirement 04)**:
-   - Returns HTTP `402 Payment Required` with Base64 `PAYMENT-REQUIRED` headers.
-   - Client automatically signs typed EIP-712 payment authorizations and resubmits via `X-Payment` headers.
-   - On settlement, server returns HTTP `200 OK` with `PAYMENT-RESPONSE` headers containing on-chain transaction hashes linked directly to the explorer (`https://atlantic-scan.pharos.xyz/tx/0x...`).
-5. **Strict Underpayment & Replay Sentinel (Requirement 05)**:
-   - Rejects underpaid authorizations (e.g. sending 0.01 USDC for a 0.05 USDC route) with HTTP `402 Payment Required` and explicit error diagnostics.
-   - Atomic nonce burning prevents double-spending and replay attacks.
-6. **Zero-Secret Hardcoding Invariant (Requirement 06)**:
-   - Private keys are loaded strictly from environment variables (`process.env.EVM_PRIVATE_KEY`) or `.private_key` files.
-   - Ephemeral random accounts are used in automated test environments, ensuring zero secret leakage in code or git history.
+This package implements an end-to-end **x402 paywall suite** configured for the **Pharos Atlantic Testnet (`eip155:688689`)**, denominated in test USDC. It includes a protected API server with multiple pricing tiers, an embedded protocol facilitator (`/verify`, `/settle`, `/supported`), and a client agent that navigates the full 402 negotiation loop.
 
 ---
 
-## Arena Requirements Compliance Matrix
+## System Architecture
 
-| Requirement | Description | Implementation Details & Proof | Status |
-| :--- | :--- | :--- | :---: |
-| **01** | **Runs on Atlantic Testnet (eip155:688689), priced in test USDC** | Implemented in `src/types.ts` (`ATLANTIC_TESTNET.networkIdentifier = 'eip155:688689'`, USDC `0x3c49...`). Verified in `test/x402-paywall.test.ts`. | ✅ Compliant |
-| **02** | **Has at least 2 paid routes at different prices and 1 free route, such as /health** | Implemented in `src/paywall-server.ts`: `GET /health` (Free), `GET /api/market-depth` (0.05 USDC), `POST /api/ai-inference` (0.25 USDC). Verified in `test/x402-paywall.test.ts`. | ✅ Compliant |
-| **03** | **Runs its own facilitator with /verify, /settle and /supported** | Implemented in `src/facilitator.ts` (`X402FacilitatorEngine`) with full EIP-712 verification and atomic nonce settlement. Verified in `test/x402-paywall.test.ts`. | ✅ Compliant |
-| **04** | **Shows full flow in demo: 402 -> signed payment -> 200 with PAYMENT-RESPONSE header & explorer tx link** | Implemented in `src/cli.ts` (`pharos-x402 demo`) and `src/x402-client.ts`. Displays 402 challenge, EIP-712 signature, and 200 response with explorer link. Verified in `test/x402-paywall.test.ts`. | ✅ Compliant |
-| **05** | **Rejects a bad or underpaid payment with another 402** | Implemented in `src/facilitator.ts` and `src/paywall-server.ts`. Rejects underpayments, bad signatures, and replayed nonces with HTTP 402. Verified in `test/x402-paywall.test.ts`. | ✅ Compliant |
-| **06** | **Keeps private keys in env vars or a file, never in code or prompts** | Implemented in `src/key-loader.ts` (`SecureKeyProvider`). Resolves from `EVM_PRIVATE_KEY` / `.private_key` with ephemeral generation fallback. Verified in `test/x402-paywall.test.ts`. | ✅ Compliant |
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Agent Client (X402PaymentClient)
+    participant API as Paywalled API Server
+    participant Fac as Embedded Facilitator
+    participant Explorer as Atlantic Scan (eip155:688689)
 
----
-
-## Architectural Architecture
-
-```
-tasks/17-x402-paywalled-api/
-├── bin/
-│   └── pharos-x402.js              # Executable wrapper binary
-├── src/
-│   ├── types.ts                    # x402 protocol types & Atlantic Testnet constants
-│   ├── key-loader.ts               # Secure private key provider (env/file isolation)
-│   ├── facilitator.ts              # Embedded facilitator (/verify, /settle, /supported)
-│   ├── paywall-server.ts           # Route dispatcher & 402 negotiation middleware
-│   ├── x402-client.ts              # Autonomous buyer client (EIP-712 auto-signing)
-│   ├── formatter.ts                # Terminal UI output formatter
-│   ├── cli.ts                      # Commander CLI commands (`demo`, `supported`)
-│   └── index.ts                    # Barrel exports
-├── test/
-│   └── x402-paywall.test.ts        # 13 Vitest tests verifying all 6 requirements
-├── README.md                       # Comprehensive documentation & video script
-└── SKILL.md                        # Antigravity agent skill specification
+    Client->>API: 1. GET /api/market-depth (No payment header)
+    API-->>Client: 2. HTTP 402 Payment Required (PAYMENT-REQUIRED header: 0.05 USDC)
+    
+    Client->>Client: 3. Parse challenge & sign EIP-712 payment authorization
+    Client->>API: 4. GET /api/market-depth (Header: X-Payment: <base64-payload>)
+    
+    API->>Fac: 5. POST /facilitator/verify (Validate signature, token, amount, TTL)
+    Fac-->>API: 6. Verification: VALID
+    
+    API->>Fac: 7. POST /facilitator/settle (Atomically burn nonce & record tx)
+    Fac->>Explorer: 8. Broadcast settlement transaction
+    Explorer-->>Fac: 9. Confirmed txHash (0x...)
+    Fac-->>API: 10. Settlement receipt
+    
+    API-->>Client: 11. HTTP 200 OK + Data + PAYMENT-RESPONSE Header (txHash & explorer link)
 ```
 
 ---
 
-## CLI Commands & Usage
+## Core Components & Mechanics
 
-Global command: `pharos-x402` or via `npm run x402`:
+### 1. Atlantic Testnet Configuration
+The server and facilitator operate on the Pharos Atlantic Testnet:
+- **Network Identifier**: `eip155:688689` (Chain ID: `688689`)
+- **Settlement Asset**: Testnet USDC (`0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359`)
+- **Block Explorer**: [Pharos Atlantic Scan](https://atlantic-scan.pharos.xyz)
 
-### 1. Interactive Demonstration
-Executes all 5 production scenarios:
+### 2. Route Pricing Hierarchy
+The API exposes three distinct endpoints reflecting realistic SaaS tiers:
+- **Free Health Probe** (`GET /health`): Zero cost, returns HTTP 200 without payment headers. Used by container healthchecks and monitors.
+- **Low-Cost Data Stream** (`GET /api/market-depth`): Priced at **0.05 USDC**. Returns orderbook and liquidity depth metrics.
+- **Compute-Intensive Endpoint** (`POST /api/ai-inference`): Priced at **0.25 USDC**. Returns real-time credit risk analysis and autonomous agent risk scores.
+
+### 3. Embedded Protocol Facilitator
+Rather than relying on closed third-party intermediaries, the suite includes an embedded facilitator implementing the x402 specification:
+- `GET /facilitator/supported`: Lists supported networks (`eip155:688689`), approved payment contracts (USDC), and scheme types (`exact-eip712`).
+- `POST /facilitator/verify`: Validates client EIP-712 signatures, confirms recipient address, checks token contract match, and verifies that the payment timestamp has not expired.
+- `POST /facilitator/settle`: Atomically burns the transaction nonce to prevent replay attacks, registers the transaction, and returns a verified settlement receipt.
+
+### 4. 402 Negotiation & Explorer Settlement Proof
+When accessing a protected endpoint:
+1. The server returns **HTTP 402 Payment Required** containing a base64-encoded `PAYMENT-REQUIRED` header with exact parameters (amount, asset contract, facilitator URL, and nonces).
+2. The client formats and signs an EIP-712 typed payment authorization with its wallet key.
+3. The client retries the request with the base64-encoded payload in the `X-Payment` header.
+4. Upon successful verification and settlement, the server returns **HTTP 200 OK** containing the protected resource, accompanied by a `PAYMENT-RESPONSE` header with the on-chain transaction hash linked to Atlantic Scan:
+   ```
+   https://atlantic-scan.pharos.xyz/tx/0x...
+   ```
+
+### 5. Rejection of Underpaid or Corrupted Authorizations
+If an agent submits an authorization with insufficient amount (e.g., 0.01 USDC for a 0.05 USDC route), an invalid EIP-712 signature, an expired deadline, or a previously spent nonce, the server rejects the request with **HTTP 402 Payment Required** and detailed error diagnostics.
+
+### 6. Zero Hardcoded Secrets
+Private keys are never hardcoded in repository files or prompts. The `SecureKeyProvider` retrieves signing keys strictly from:
+- Environment variable `EVM_PRIVATE_KEY`
+- Local `.private_key` file (which is gitignored)
+- Ephemeral test accounts generated in-memory during automated test runs.
+
+---
+
+## CLI Usage
+
+The package provides the `pharos-x402` CLI to demonstrate the complete paywall flow:
+
 ```bash
+# 1. Run full demonstration (Health -> Market Depth 402/200 -> AI Inference 402/200 -> Underpayment 402)
 pharos-x402 demo
-# or
-npm run x402 -- demo
-```
 
-### 2. Query Facilitator Capabilities
-```bash
-pharos-x402 supported
-```
+# 2. Start the paywalled API server locally
+pharos-x402 serve --port 4020
 
----
-
-## Automated Vitest Suite
-
-Run the full test suite:
-```bash
-npx vitest run tasks/17-x402-paywalled-api
-```
-
-Results (13/13 passing):
-```
- ✓ tasks/17-x402-paywalled-api/test/x402-paywall.test.ts (13 tests) 53ms
-   ✓ Task 17: x402 Paywalled API on Pharos Atlantic Testnet (13)
-     ✓ Requirement 01: Atlantic Testnet (eip155:688689) & Test USDC Configuration (1)
-       ✓ should be configured for Atlantic Testnet chainId 688689 and test USDC
-     ✓ Requirement 02: Route Hierarchy (1 Free Route, at least 2 Paid Routes at different prices) (3)
-       ✓ should allow free access to GET /health with HTTP 200 without payment header
-       ✓ should return HTTP 402 on GET /api/market-depth priced at 0.05 USDC
-       ✓ should return HTTP 402 on POST /api/ai-inference priced at 0.25 USDC
-     ✓ Requirement 03: Embedded Facilitator (/verify, /settle, /supported) (2)
-       ✓ should serve GET /facilitator/supported listing Atlantic Testnet and USDC
-       ✓ should handle POST /facilitator/verify and POST /facilitator/settle endpoints
-     ✓ Requirement 04: Full 402 Negotiation & Explorer-Linked Settlement Flow (2)
-       ✓ should complete full flow: 402 challenge -> signed payment -> 200 with PAYMENT-RESPONSE and explorer tx link for 0.05 USDC route
-       ✓ should complete full flow for the 0.25 USDC AI inference endpoint
-     ✓ Requirement 05: Rejection of Bad, Underpaid, or Replayed Payments (Another 402) (3)
-       ✓ should reject underpaid payment with HTTP 402 and reason
-       ✓ should reject corrupted signature with HTTP 402
-       ✓ should reject replay attacks with duplicate nonces
-     ✓ Requirement 06: Private Key Security & Env/File Isolation (2)
-       ✓ should resolve signer key from environment variable when EVM_PRIVATE_KEY is set
-       ✓ should generate an ephemeral key rather than ever hardcoding keys in code when env is absent
-
- Test Files  1 passed (1)
-      Tests  13 passed (13)
+# 3. Test client requests against a running server
+pharos-x402 query http://localhost:4020/api/market-depth
 ```
 
 ---
 
-## Video Walkthrough Guide (50 pts Bonus)
+## Verification & Test Suite
 
-| Timestamp | Visual Action | Accompanying Explanation / Subtitle |
-| :--- | :--- | :--- |
-| `00:00 - 00:15` | Terminal: `pharos-x402 --help` | "Pharos x402 Paywalled API: HTTP-native micro-payments on Pharos Atlantic Testnet (eip155:688689)." |
-| `00:15 - 00:40` | `pharos-x402 demo` (Scenario 1 & 2) | "Requirement 01 & 02: Free /health route returns 200 OK; paid /api/market-depth challenges with 402 demanding 0.05 test USDC." |
-| `00:40 - 01:10` | Scenario 3 (0.25 USDC AI endpoint) & Facilitator | "Requirement 03 & 04: Buyer client signs EIP-712 authorization; embedded facilitator verifies & settles, returning 200 with PAYMENT-RESPONSE and explorer link." |
-| `01:10 - 01:40` | Scenario 4 & 5 (Rejections) | "Requirement 05: Underpayments (0.01 USDC) and replay attacks are rejected with HTTP 402." |
-| `01:40 - 02:00` | Code / Key inspection | "Requirement 06: Private keys are isolated in env vars or files, never hardcoded." |
-| `02:00 - 02:15` | Terminal: `npm test` | "All 13 unit tests passing with full coverage of all arena requirements." |
+The x402 implementation is validated across 13 unit tests in Vitest:
+
+```bash
+./node_modules/.bin/vitest run tasks/17-x402-paywalled-api
+```
+
+**Test Coverage Highlights**:
+- **Requirement 01**: Atlantic Testnet identifier (`eip155:688689`) and test USDC asset address configuration.
+- **Requirement 02**: Free `/health` route, 0.05 USDC market depth endpoint, and 0.25 USDC AI inference endpoint.
+- **Requirement 03**: Facilitator `/supported`, `/verify`, and `/settle` routes.
+- **Requirement 04**: End-to-end 402 negotiation loop, EIP-712 payment authorization, and `PAYMENT-RESPONSE` header with Atlantic explorer tx link.
+- **Requirement 05**: Rejection of underpayment, corrupted signatures, and duplicate replay nonces with HTTP 402.
+- **Requirement 06**: Secure private key isolation through environment variables and ephemeral keys.
