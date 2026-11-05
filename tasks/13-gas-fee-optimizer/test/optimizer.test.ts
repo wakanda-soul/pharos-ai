@@ -75,6 +75,29 @@ describe('Task 13: Gas Fee Optimizer Engine', () => {
       expect(liveSnapshot.blockNumber).toBeGreaterThan(20000000n);
       expect(oracle.getHistory().length).toBeGreaterThan(0);
     });
+
+    it('should handle empty market stats gracefully without NaN or uncaught exceptions', () => {
+      oracle.clear();
+      const stats = oracle.getMarketStats();
+      expect(stats.sampleCount).toBe(0);
+      expect(stats.currentGwei).toBe(0);
+      expect(stats.avgGwei).toBe(0);
+      expect(stats.volatilityPercentage).toBe(0);
+      expect(stats.trend).toBe('STABLE');
+    });
+
+    it('should enforce history length cap (sliding window) to prevent memory unbounded growth', () => {
+      const boundedOracle = new GasTrackerOracle(5);
+      for (let i = 1; i <= 10; i++) {
+        boundedOracle.addSnapshot({
+          blockNumber: BigInt(i),
+          timestamp: new Date().toISOString(),
+          gasPriceGwei: 10 + i,
+        });
+      }
+      expect(boundedOracle.getHistory()).toHaveLength(5);
+      expect(boundedOracle.getLatest()?.gasPriceGwei).toBe(20);
+    });
   });
 
   // =========================================================================
@@ -161,6 +184,37 @@ describe('Task 13: Gas Fee Optimizer Engine', () => {
       expect(pLate).toBeGreaterThan(pMid);
       expect(pDeadline).toBe(Number.POSITIVE_INFINITY);
     });
+
+    it('should respect FIXED_THRESHOLD strategy and execute when gas dips below static target', async () => {
+      const now = Date.now();
+      const fixedTx: QueuedTransaction = {
+        txId: 'tx-fixed-threshold',
+        from: '0x6119871b4eb66db137dcfad59655853ea6fe58ce',
+        to: '0xcA11bde05977b3631167028862bE2a173976CA11',
+        data: '0x',
+        value: 0n,
+        gasLimit: 50000n,
+        createdAt: now,
+        deadline: now + 60000,
+        requestGasPriceGwei: 15.0,
+        strategy: {
+          type: 'FIXED_THRESHOLD',
+          fixedThresholdGwei: 9.0,
+          safetyMarginMs: 2000,
+        },
+      };
+
+      const ticks = [
+        { timestampMs: now + 5000, gasPriceGwei: 14.0 }, // Hold (> 9.0)
+        { timestampMs: now + 15000, gasPriceGwei: 12.0 }, // Hold (> 9.0)
+        { timestampMs: now + 25000, gasPriceGwei: 8.5 }, // Dip below fixed target (<= 9.0) -> Trigger!
+      ];
+
+      const res = await engine.processTransaction(fixedTx, ticks);
+      expect(res.trigger).toBe('OPPORTUNISTIC_DIP');
+      expect(res.executedGasPriceGwei).toBe(8.5);
+      expect(res.gasSavedGwei).toBe(6.5);
+    });
   });
 
   // =========================================================================
@@ -189,6 +243,36 @@ describe('Task 13: Gas Fee Optimizer Engine', () => {
       expect(res.usdSaved).toBeDefined();
       expect(res.usdSaved!).toBeGreaterThan(0);
       expect(res.oraclePriceUsd).toBeGreaterThan(1000); // Live Chainlink price (~$2,280+)
+    });
+
+    it('should scale PROS and USD cost savings accurately for heavy gas operations', async () => {
+      const now = Date.now();
+      const heavyTx: QueuedTransaction = {
+        txId: 'tx-heavy-batch',
+        from: '0x6119871b4eb66db137dcfad59655853ea6fe58ce',
+        to: '0xcA11bde05977b3631167028862bE2a173976CA11',
+        data: '0x',
+        value: 0n,
+        gasLimit: 500000n, // 500k gas units
+        createdAt: now,
+        deadline: now + 30000,
+        requestGasPriceGwei: 20.0,
+        strategy: {
+          type: 'DYNAMIC_DECAY',
+          safetyMarginMs: 2000,
+        },
+      };
+
+      const ticks = [
+        { timestampMs: now + 10000, gasPriceGwei: 10.0 }, // 10 Gwei drop = 50% discount
+      ];
+
+      const res = await engine.processTransaction(heavyTx, ticks);
+      expect(res.gasSavedGwei).toBe(10.0);
+      expect(res.gasSavedPercentage).toBe(50.0);
+      // 500,000 gas * 10 Gwei = 0.005 PROS saved
+      expect(parseFloat(res.prosSaved)).toBeCloseTo(0.005, 4);
+      expect(res.usdSaved!).toBeGreaterThan(10.0); // 0.005 * ~$2300 = ~$11.50 USD
     });
   });
 
