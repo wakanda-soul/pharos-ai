@@ -1,118 +1,114 @@
-# Task 26: Portfolio Assistant
+# Portfolio Assistant
 
-> **Pharos Agent Arena · Season of AI**  
-> **Category**: `DeFi / Portfolio` | **Tier**: `Hard` (200 base pts + 50 video bonus = 250 pts)  
-> **Target Network**: Pharos Mainnet (Chain ID `1672`, RPC: `https://rpc.pharos.xyz`)
+DeFi participants on Pharos often have capital scattered across multiple protocols: staking pools, DEX liquidity pairs, lending markets, and yield vaults. Keeping track of aggregate net worth, ongoing borrow obligations, and blended yields usually requires visiting multiple disjointed dApp dashboards.
 
----
+Conversely, asking generic LLMs about wallet balances is notoriously dangerous: AI models frequently hallucinate balances, confuse testnets with mainnet, or invent phantom yields.
 
-## What You Build
-An autonomous conversational portfolio assistant and cross-protocol balance inspector for **Pharos Mainnet (Chain ID 1672)**. Generalizing Harbor's natural-language query pattern, it answers user questions regarding wallet positions, balances, and yields across protocols like Harbor RWA Hub, Morpho Blue, and FaroSwap.
-
-The assistant guarantees **truthfulness** and **auditability**: every single number is cited with its smart contract address and confirmed block number, unsupported protocols are explicitly rejected rather than hallucinated (Zero-Guessing Sentinel), and all operations remain strictly read-only (`eth_call`).
+The **Portfolio Assistant** is a read-only conversational assistant and balance inspection engine for Pharos Mainnet. It reads positions across multiple protocols (Harbor RWA Hub, Morpho Blue, FaroSwap) and liquid wallet balances, answers **5 distinct natural-language question types**, provides **provenance citations** (contract address and block number) for every figure, strictly refuses to guess when asked about unsupported protocols, and operates entirely in read-only mode (`eth_call`).
 
 ---
 
-## Arena Requirements Coverage
+## Architecture & Query Pipeline
 
-| Req | Description | Implementation Details | Status |
-|:---:|:---|:---|:---:|
-| **01** | **Reads positions from at least 2 protocols or vaults, plus wallet token balances** | Ingests active positions across 3 distinct protocols (Harbor APC3M & VRPC Vaults, Morpho Blue RockawayX Market, FaroSwap AMM LP Pool) and liquid wallet balances (Native PROS, USDC, USDT) (`src/portfolio-reader.ts`). | ✅ Complete |
-| **02** | **Answers at least 5 different natural-language question types correctly** | Accurately classifies and answers: 1. Yield & Earnings, 2. Asset Location, 3. Biggest Position, 4. Net Worth Overview, and 5. Debt & Liabilities (`src/intent-router.ts`, `src/assistant-engine.ts`). | ✅ Complete |
-| **03** | **Shows numbers with sources: which contract and block each figure came from** | Attaches cryptographic provenance to every figure: physical contract address (`0x...`), confirmed block number (`#1842910`), protocol name, and PharosScan link (`src/portfolio-reader.ts`, `src/formatter.ts`). | ✅ Complete |
-| **04** | **Says clearly when it doesn't know or can't read a protocol, rather than guessing** | Enforces zero-guessing sentinel: queries mentioning unsupported foreign protocols (Aave, Compound, Uniswap, Curve, etc.) are explicitly rejected with clear guidance on supported venues (`src/intent-router.ts`, `src/assistant-engine.ts`). | ✅ Complete |
-| **05** | **Read-only: never initiates transactions** | Strictly executes read-only queries (`eth_call`); zero private keys, zero signer instantiation, and zero transaction broadcast code paths (`src/portfolio-reader.ts`, `src/assistant-engine.ts`). | ✅ Complete |
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as User / Prompt
+    participant Assistant as Portfolio Assistant
+    participant Router as Intent Router & Zero-Guessing Sentinel
+    participant Reader as Multi-Protocol Position Reader
+    participant Protocols as On-Chain Protocols (Harbor / Morpho / FaroSwap)
+    participant Formatter as Provenance Formatter
 
----
-
-## Project Structure
-
-```
-tasks/26-portfolio-assistant/
-├── bin/
-│   └── pharos-portfolio.js       # Global executable CLI entrypoint
-├── src/
-│   ├── assistant-engine.ts       # Master query answering & answer synthesis engine
-│   ├── cli.ts                    # Command-line interface (demo, ask, snapshot, protocols)
-│   ├── formatter.ts              # Terminal scorecards, provenance tables & snapshot views
-│   ├── index.ts                  # Public library exports
-│   ├── intent-router.ts          # Natural language intent classifier & zero-guessing sentinel
-│   ├── portfolio-reader.ts       # Multi-protocol position reader & provenance generator
-│   └── types.ts                  # Domain models, query schemas, and provenance interfaces
-├── test/
-│   └── portfolio-assistant.test.ts # Automated test suite (14 unit tests passing)
-├── README.md                     # Comprehensive documentation & video script
-└── SKILL.md                      # Agent skill manifest & architecture diagrams
+    User->>Assistant: "what am I earning?"
+    Assistant->>Router: Classify intent & check protocol support
+    
+    alt Unsupported Foreign Protocol (e.g., Aave, Compound)
+        Router-->>User: Refuse to guess: Explicitly explain protocol is not on Pharos
+    else Supported Query
+        Router->>Reader: Fetch on-chain positions for target wallet
+        Reader->>Protocols: Query balances & vaults via eth_call
+        Protocols-->>Reader: Raw balances, debt, and yields with block heights
+        Reader-->>Assistant: Verified Portfolio Snapshot + Contract Provenance
+        
+        Assistant->>Assistant: Synthesize structured answer for intent type
+        Assistant->>Formatter: Attach contract addresses & block numbers
+        Formatter-->>User: Plain-language answer with verified on-chain sources
+    end
 ```
 
 ---
 
-## Video Walkthrough Guide & Timestamps (2-Minute Demo)
+## Core Capabilities & Mechanics
 
-| Timestamp | Screen / Action | Voiceover / Visual Narration |
-|:---:|:---|:---|
-| **0:00 - 0:25** | Terminal: `pharos-portfolio protocols` | Introduction to Pharos Portfolio Assistant. Generalizes Harbor's query pattern across multiple protocols on Pharos (Harbor RWA, Morpho Blue, FaroSwap DEX, and wallet balances). Explain read-only safety (Req 05) and zero-guessing policy (Req 04). |
-| **0:25 - 0:50** | Terminal: `pharos-portfolio demo` (Q1 & Q2) | Demonstrate Question 1: *"what am I earning?"* $\to$ Shows $5,801.30/yr projected earnings, 14.61% weighted APY, and citations for each vault. Demonstrate Question 2: *"where is my USDC?"* $\to$ Itemizes $43,900 USDC across wallet and 3 DeFi protocols with verified contract addresses and confirmed block #1842910. |
-| **0:50 - 1:15** | Terminal: `pharos-portfolio demo` (Q3 & Q4) | Demonstrate Question 3: *"what's my biggest position?"* $\to$ Harbor APC3M Vault ($15,000 USD, 34.5% of net worth). Demonstrate Question 4: *"what is my total net worth?"* $\to$ Complete portfolio summary ($43,450 USD net worth split across wallet tokens, DeFi collateral, and debt). |
-| **1:15 - 1:40** | Terminal: `pharos-portfolio demo` (Q5 & Q6) | Demonstrate Question 5: *"do I have any loans or debt?"* $\to$ Identifies $2,500 USDC borrowed in Morpho Blue with 3.48 Health Factor. Demonstrate Question 6 (Zero-Guessing Sentinel): *"how much yield am I making on Aave and Compound?"* $\to$ Explicitly refuses to hallucinate, stating Aave is unsupported on Pharos Mainnet. |
-| **1:40 - 2:00** | Terminal: `npm test tasks/26-portfolio-assistant` | Run automated test suite: `14 passed (14)`, confirming 100% test coverage across multi-venue ingestion, 5 question types, contract provenance citations, zero-guessing sentinel, and read-only safety. |
+### 1. Multi-Protocol Position Reading
+The reader aggregates positions across three major DeFi venues on Pharos, alongside liquid wallet holdings:
+- **Liquid Wallet Tokens**: Native `PROS`, `USDC`, and `USDT` held directly in the wallet.
+- **Harbor RWA Hub**: Real-World Asset yield vaults (e.g. APC3M 3-month receivables vault and VRPC vehicle receivables vault).
+- **Morpho Blue Lending**: Collateralized supply and active borrowing balances with Health Factor tracking.
+- **FaroSwap AMM**: Liquidity provider (LP) share valuations and fee accruals.
 
----
+### 2. 5 Distinct Natural-Language Query Types
+The natural language engine recognizes five key query patterns:
+1. **Yield & Earnings** (*"what am I earning?", "what's my yield?"*):
+   - Computes weighted portfolio APY, total active earning capital, and projected annual yield in USD.
+2. **Asset Location** (*"where is my USDC?", "which pools hold my PROS?"*):
+   - Itemizes every venue holding the specified token (wallet, vaults, and liquidity pools) with exact token counts and percentages.
+3. **Biggest Position** (*"what's my biggest position?", "top asset"*):
+   - Analyzes portfolio concentration, identifying the largest position by USD value and calculating its share of total net worth.
+4. **Net Worth Overview** (*"what is my total net worth?", "portfolio overview"*):
+   - Compiles a full balance sheet: liquid tokens, deposited DeFi collateral, total borrowed debt, and net equity.
+5. **Debt & Liabilities** (*"do I have any loans?", "what is my borrow position?"*):
+   - Lists all outstanding loans, current borrow APY, loan-to-value (LTV), and liquidation Health Factor.
 
-## Verification & Testing
+### 3. Cryptographic Provenance (Every Figure Has a Source)
+To guarantee transparency, every balance, APY, and valuation reported by the assistant is accompanied by a provenance citation:
+- **Contract Address**: Exact physical contract address on Pharos Mainnet.
+- **Block Height**: The confirmed block number at which the state was sampled (e.g., `#1842910`).
+- **Explorer Permalinks**: Links to PharosScan (`https://pharosscan.xyz/address/0x...`) allowing users to independently verify any reported number.
 
-Run the automated test suite:
-```bash
-npm run task:26
-# or
-npm test tasks/26-portfolio-assistant
-```
+### 4. Zero-Guessing Sentinel
+When users ask about protocols that are unsupported or not deployed on Pharos (e.g. *"how much am I earning on Aave or Compound?"*):
+- The assistant **strictly refuses to guess or fabricate numbers**.
+- It halts forward processing and provides a clear disclaimer explaining that the requested protocol is unsupported, listing the verified venues available on Pharos (Harbor, Morpho Blue, and FaroSwap).
 
-Output:
-```
- ✓ tasks/26-portfolio-assistant/test/portfolio-assistant.test.ts (14 tests) 81ms
-   ✓ Task 26: Portfolio Assistant Specification (DeFi / Portfolio) (14)
-     ✓ Requirement 01: Reads positions from at least 2 protocols plus wallet balances (3)
-       ✓ reads positions across at least 2 protocols (Harbor RWA, Morpho Blue, FaroSwap)
-       ✓ reads native PROS and ERC-20 token balances in wallet
-       ✓ calculates correct aggregated net worth, total deposits, and total debt
-     ✓ Requirement 02: Answers at least 5 different natural-language question types correctly (5)
-       ✓ Type 1 (Yield & Earnings): answers "what am I earning?" with APY and annual income
-       ✓ Type 2 (Asset Location): answers "where is my USDC?" with exact venue distribution
-       ✓ Type 3 (Biggest Position): answers "what's my biggest position?" with concentration %
-       ✓ Type 4 (Net Worth Overview): answers "what is my total net worth?" with categorized balance overview
-       ✓ Type 5 (Debt & Liabilities): answers "do I have any loans or debt?" with borrowing balances and health factor
-     ✓ Requirement 03: Shows numbers with sources: contract address and block number (2)
-       ✓ cites physical EVM contract address and block height for every figure
-       ✓ reflects updated block heights across reader queries
-     ✓ Requirement 04: Says clearly when it doesn't know rather than guessing (3)
-       ✓ strictly rejects questions about unsupported foreign protocols with clear disclaimer
-       ✓ rejects unsupported protocols even if combined with a recognizable keyword
-       ✓ provides clear guidance when natural language query is completely unrecognizable
-     ✓ Requirement 05: Read-only: never initiates transactions (1)
-       ✓ strictly guarantees read-only mode in all answers and engines
-
- Test Files  1 passed (1)
-      Tests  14 passed (14)
-```
+### 5. Strict Read-Only Safety Invariant
+The assistant is strictly an information retrieval tool:
+- Contains zero private keys and zero signing abstractions.
+- All on-chain queries execute exclusively through read-only `eth_call` RPC methods.
+- It is architecturally impossible for the assistant to initiate, sign, or broadcast transactions.
 
 ---
 
-## CLI Commands
+## CLI Usage
+
+The package includes the `pharos-portfolio` CLI for interactive queries and balance inspections:
 
 ```bash
-# Run interactive live demonstration (5 questions + 1 zero-guessing check)
+# 1. Run demonstration covering all 5 query types + zero-guessing sentinel
 pharos-portfolio demo
 
-# Ask custom natural language question
-pharos-portfolio ask "where is my USDC deposited?"
-pharos-portfolio ask "what am I earning on my capital?"
-pharos-portfolio ask "what's my biggest position?"
-pharos-portfolio ask "do I have any loans or debt?"
+# 2. Ask a natural-language question about a wallet
+pharos-portfolio ask "what am I earning?" --wallet 0x6119871b4eb66db137dcfad59655853ea6fe58ce
+pharos-portfolio ask "where is my USDC?" --wallet 0x6119871b4eb66db137dcfad59655853ea6fe58ce
 
-# View complete portfolio snapshot with contract provenance
-pharos-portfolio snapshot
-
-# View supported protocol and vault registry
+# 3. View supported protocols and vaults on Pharos Mainnet
 pharos-portfolio protocols
 ```
+
+---
+
+## Verification & Test Suite
+
+The portfolio assistant is verified across 14 unit tests in Vitest:
+
+```bash
+./node_modules/.bin/vitest run tasks/26-portfolio-assistant
+```
+
+**Test Coverage Highlights**:
+- **Requirement 01**: Ingesting positions across multiple protocols (Harbor, Morpho, FaroSwap) and liquid wallet balances.
+- **Requirement 02**: Accurately classifying and answering all 5 query types (Yield, Asset Location, Biggest Position, Net Worth, Debt).
+- **Requirement 03**: Attaching physical contract addresses and confirmed block heights to every numerical output.
+- **Requirement 04**: Rejecting unsupported foreign protocols with clear disclaimers instead of guessing.
+- **Requirement 05**: Enforcing read-only operation with zero transaction signing code paths.
