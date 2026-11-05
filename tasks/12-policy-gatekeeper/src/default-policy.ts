@@ -64,8 +64,8 @@ export const DEFAULT_POLICY: PolicyConfig = {
       cooldownPeriodSeconds: 30,
       blackoutWindows: [
         {
-          start: '2026-11-15T02:00:00Z',
-          end: '2026-11-15T06:00:00Z',
+          start: '2026-11-16T14:00:00Z',
+          end: '2026-11-16T18:00:00Z',
           reason: 'Scheduled Hard Fork / Protocol Network Upgrade Window',
         },
       ],

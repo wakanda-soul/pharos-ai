@@ -157,6 +157,22 @@ describe('Task 12: Policy Gatekeeper - Zero-Trust Execution Sentinel', () => {
       expect(decToken.verdict).toBe('DENY');
       expect(decToken.decidingRuleType).toBe('SPEND_LIMIT');
       expect(decToken.decidingRuleId).toBe('RULE_SPEND_LIMIT_USDC');
+
+      // 1C: Global USD ceiling exceeded (native PROS within native cap, but aggregate USD value exceeds $2,500)
+      const globalUsdExceeded: ActionProposal = {
+        actionId: 'test-global-usd-limit',
+        agentId: 'test-agent',
+        actionType: 'HIGH_VALUE_SWAP',
+        targetContract: '0xcA11bde05977b3631167028862bE2a173976CA11',
+        functionSelector: 'aggregate3((address,bool,bytes)[])',
+        nativeValuePros: 2.0, // 2 PROS @ ~$2,300 = $4,600 USD (exceeds $2,500 USD ceiling)
+        tokenValueUsdc: 100.0,
+        timestamp: '2026-11-02T12:00:00Z',
+      };
+      const decGlobal = await engine.evaluate(globalUsdExceeded);
+      expect(decGlobal.verdict).toBe('DENY');
+      expect(decGlobal.decidingRuleType).toBe('SPEND_LIMIT');
+      expect(decGlobal.decidingRuleId).toBe('RULE_SPEND_LIMIT_GLOBAL_USD');
     });
 
     it('should demonstrate at least one deny for Allowlist rule type (Rule 2)', async () => {
@@ -180,7 +196,23 @@ describe('Task 12: Policy Gatekeeper - Zero-Trust Execution Sentinel', () => {
       expect(decUnreg.decidingRuleType).toBe('ALLOWLIST');
       expect(decUnreg.decidingRuleId).toBe('RULE_ALLOWLIST_CONTRACT');
 
-      // 2C: Unapproved function selector
+      // 2C: Unauthorized recipient address
+      const unauthRecipient: ActionProposal = {
+        actionId: 'test-unauth-recipient',
+        agentId: 'test-agent',
+        actionType: 'ERC20_TRANSFER',
+        targetContract: '0xc879c018db60520f4355c26ed1a6d572cdac1815', // Allowed USDC token
+        recipientAddress: '0x9999999999999999999999999999999999999999', // Unknown / untrusted recipient
+        functionSelector: 'transfer(address,uint256)',
+        tokenValueUsdc: 25.0,
+        timestamp: '2026-11-02T12:00:00Z',
+      };
+      const decRecipient = await engine.evaluate(unauthRecipient);
+      expect(decRecipient.verdict).toBe('DENY');
+      expect(decRecipient.decidingRuleType).toBe('ALLOWLIST');
+      expect(decRecipient.decidingRuleId).toBe('RULE_ALLOWLIST_RECIPIENT');
+
+      // 2D: Unapproved function selector
       const unauthFunc: ActionProposal = {
         actionId: 'test-unauth-func',
         agentId: 'test-agent',
@@ -216,6 +248,39 @@ describe('Task 12: Policy Gatekeeper - Zero-Trust Execution Sentinel', () => {
       expect(decWeekend.verdict).toBe('DENY');
       expect(decWeekend.decidingRuleType).toBe('TIME_WINDOW');
       expect(decWeekend.decidingRuleId).toBe('RULE_TIME_WINDOW_DAY_OF_WEEK');
+
+      // 3C: Scheduled protocol maintenance blackout window (Monday within working hours, but under blackout freeze)
+      const blackoutProposal: ActionProposal = {
+        actionId: 'test-blackout',
+        agentId: 'test-agent',
+        actionType: 'UPGRADE_WINDOW_TX',
+        targetContract: '0xc879c018db60520f4355c26ed1a6d572cdac1815',
+        functionSelector: 'transfer(address,uint256)',
+        tokenValueUsdc: 10,
+        timestamp: '2026-11-16T15:00:00Z', // During Nov 16 14:00-18:00 UTC blackout
+      };
+      const decBlackout = await engine.evaluate(blackoutProposal);
+      expect(decBlackout.verdict).toBe('DENY');
+      expect(decBlackout.decidingRuleType).toBe('TIME_WINDOW');
+      expect(decBlackout.decidingRuleId).toBe('RULE_TIME_WINDOW_BLACKOUT');
+    });
+
+    it('should correctly normalize mixed-case addresses during allowlist verification', async () => {
+      // Mixed-case version of allowed Multicall3 contract
+      const mixedCaseTarget = '0xCA11BDE05977B3631167028862BE2A173976CA11' as `0x${string}`;
+      const mixedCaseProposal: ActionProposal = {
+        actionId: 'test-casing',
+        agentId: 'test-agent',
+        actionType: 'MULTICALL_READ',
+        targetContract: mixedCaseTarget,
+        functionSelector: 'aggregate3((address,bool,bytes)[])',
+        nativeValuePros: 0,
+        timestamp: '2026-11-02T12:00:00Z',
+      };
+
+      const decision = await engine.evaluate(mixedCaseProposal);
+      expect(decision.verdict).toBe('ALLOW');
+      expect(decision.decidingRuleId).toBe('RULE_POLICY_CLEARANCE');
     });
   });
 
