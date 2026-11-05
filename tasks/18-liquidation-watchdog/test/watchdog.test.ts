@@ -132,6 +132,59 @@ describe('Task 18: Liquidation Watchdog Engine (Requirements 01-04)', () => {
       const outcome = await strictWatchdog.evaluatePosition(strictPosition);
       expect(outcome.riskLevel).toBe('WARNING');
     });
+
+    it('should trigger LIQUIDATION_IMMINENT when Health Factor drops below 1.0 (underwater collateral)', async () => {
+      // Collateral price crashes to $1,100 (below liquidation price $1,176.47):
+      // Collateral Value = 5 * 1100 = $5,500
+      // Debt Value = $5,000
+      // HF = (5,500 * 0.85) / 5,000 = 0.935 (< 1.00)
+      const underwaterPosition = await positionReader.readPosition({
+        borrowerAddress: testBorrower,
+        collateralAmountFormatted: 5.0,
+        debtAmountFormatted: 5000.0,
+        overrideCollateralPriceUsd: 1100.0,
+      });
+
+      const outcome = await watchdog.evaluatePosition(underwaterPosition);
+      expect(outcome.riskLevel).toBe('LIQUIDATION_IMMINENT');
+      expect(outcome.alertDispatched).toBe(true);
+      expect(outcome.alertPayload?.bufferToLiquidationPercent).toContain('COLLATERAL UNDERWATER');
+    });
+
+    it('should track position evaluation history across market price transitions', async () => {
+      // 1. Safe position ($2,000)
+      const p1 = await positionReader.readPosition({
+        borrowerAddress: testBorrower,
+        collateralAmountFormatted: 5.0,
+        debtAmountFormatted: 5000.0,
+        overrideCollateralPriceUsd: 2000.0,
+      });
+      await watchdog.evaluatePosition(p1);
+
+      // 2. Warning position ($1,470)
+      const p2 = await positionReader.readPosition({
+        borrowerAddress: testBorrower,
+        collateralAmountFormatted: 5.0,
+        debtAmountFormatted: 5000.0,
+        overrideCollateralPriceUsd: 1470.0,
+      });
+      await watchdog.evaluatePosition(p2);
+
+      // 3. Critical position ($1,235)
+      const p3 = await positionReader.readPosition({
+        borrowerAddress: testBorrower,
+        collateralAmountFormatted: 5.0,
+        debtAmountFormatted: 5000.0,
+        overrideCollateralPriceUsd: 1235.0,
+      });
+      await watchdog.evaluatePosition(p3);
+
+      const history = watchdog.getHistory();
+      expect(history.length).toBe(3);
+      expect(history[0].alert).toBeUndefined(); // Safe: no alert
+      expect(history[1].alert?.riskLevel).toBe('WARNING');
+      expect(history[2].alert?.riskLevel).toBe('CRITICAL');
+    });
   });
 
   describe('Requirement 03: Multi-Channel Alert Delivery with Timestamps', () => {
