@@ -44,6 +44,14 @@ published-digests/
 *.swp
 *~
 
+# Local Development, Pipeline & Workspace Overrides
+.local/
+*.local
+*.local.*
+.pipeline/
+.media/
+__pycache__/
+
 # IDE & Editor Configs
 .vscode/
 .idea/
@@ -53,14 +61,3 @@ published-digests/
 # Operating System Files
 .DS_Store
 Thumbs.db
-
-*.cookies
-*cookies*
-*.session
-screencasts/
-__pycache__/
-scripts/
-AGENTS.md
-tasks_criteria.json
-docs/
-
