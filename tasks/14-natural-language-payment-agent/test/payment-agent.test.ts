@@ -127,6 +127,44 @@ describe('Task 14: Natural-Language Payment Agent', () => {
       expect(result.validation?.isValid).toBe(true);
       expect(result.validation?.token?.address).toBe('0xc879c018db60520f4355c26ed1a6d572cdac1815');
     });
+
+    it('should reject transfers targeting the zero address to protect funds from accidental burning', async () => {
+      const result = await agent.preparePayment(
+        'send 50 USDC to 0x0000000000000000000000000000000000000000',
+        testSender,
+        { nativePros: 5.0, tokenAmount: 100.0 }
+      );
+
+      expect(result.status).toBe('VALIDATION_FAILED');
+      expect(result.validation?.isValid).toBe(false);
+      const zeroErr = result.validation?.errors.find((e) => e.code === 'ZERO_ADDRESS_PROHIBITED');
+      expect(zeroErr).toBeDefined();
+    });
+
+    it('should flag insufficient gas headroom when sender has enough tokens but 0 PROS for network gas', async () => {
+      const result = await agent.preparePayment(
+        'send 50 USDC to 0xa0c048d1afb32de4e4b8756a55e22fde5c74e932',
+        testSender,
+        { nativePros: 0.0, tokenAmount: 100.0 } // 100 USDC but 0 native gas!
+      );
+
+      expect(result.status).toBe('VALIDATION_FAILED');
+      expect(result.validation?.isValid).toBe(false);
+      expect(result.validation?.hasSufficientGas).toBe(false);
+      const gasErr = result.validation?.errors.find((e) => e.code === 'INSUFFICIENT_GAS_HEADROOM');
+      expect(gasErr).toBeDefined();
+      expect(gasErr?.message).toContain('Insufficient native PROS to pay for network gas fee');
+    });
+
+    it('should warn the user when sender and recipient addresses are identical', async () => {
+      const result = await agent.preparePayment(
+        `send 10 USDC to ${testSender}`,
+        testSender,
+        { nativePros: 5.0, tokenAmount: 100.0 }
+      );
+
+      expect(result.validation?.warnings.some((w) => w.code === 'SELF_TRANSFER_WARNING')).toBe(true);
+    });
   });
 
   // =========================================================================
