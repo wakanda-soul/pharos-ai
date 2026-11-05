@@ -56,6 +56,19 @@ describe('Task 16: Invoice-to-Payment Autonomous Agent', () => {
       expect(meta.payeeAddressOrDomain).toBe('treasury.pharos');
       expect(outcome.paymentSummary.resolvedPayee).toBe('0x90F79bf6EB2c4f870365E785982E1f101E93b906');
     });
+
+    it('should clean currency values formatted with commas like "$1,250.00" without parsing errors', () => {
+      const invoiceText = `
+Invoice Reference: INV-DEV-COMMA
+Payee: 0x70997970C51812dc3A010C7d01b50e0d17dc79C8
+Currency: USDC
+Amount Due: $1,250.00
+      `;
+      const outcome = invoiceAgent.processInvoice(invoiceText);
+      expect(outcome.parsingResult.success).toBe(true);
+      expect(outcome.parsingResult.extractedMetadata?.totalBilledAmount).toBe(1250.0);
+      expect(outcome.paymentSummary.billedAmountFormatted).toBe('1,250.00 USDC');
+    });
   });
 
   describe('Requirement 02: Discrepancy & Missing Field Anomaly Flagging (No Guessing)', () => {
