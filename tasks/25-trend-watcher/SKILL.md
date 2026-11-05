@@ -1,77 +1,36 @@
 ---
 name: pharos-trend-watcher
-description: Autonomous multi-observation trend evaluator, persistent state ledger, and noise sentinel skill for Pharos Mainnet. Stores observations across runs in atomic disk storage, enforces configurable multi-observation confirmation rules (minimum >= 3 observations), recovers cleanly from process crashes without history loss or duplicate ingestion, visualizes chronological observation timelines with trigger moment highlights, and suppresses transient flash-loan and sandwich spikes.
+description: Multi-observation trend detection skill for Pharos with persistent on-disk state storage that requires at least 3 consecutive readings, handles restarts without duplication, and suppresses single-tick spikes.
 ---
 
-# Pharos SkillEngine: Trend Watcher Skill
+# Pharos Skill: Trend Watcher
 
-## Overview
-The **Pharos Trend Watcher** is an autonomous market surveillance and stateful trend confirmation Skill engineered for **Pharos Mainnet (Chain ID 1672)**. In blockchain architectures and decentralized finance, reacting to single noisy ticks (such as temporary illiquid pool slippage, MEV sandwich attacks, flash-loans, or momentary RPC lags) causes severe whipsaws, erroneous liquidations, and wasted gas fees.
-
-The Trend Watcher solves this by acting as a **Skill with memory**. It stores all metric observations in an atomic on-disk ledger, enforces a configurable confirmation threshold requiring at least 3 consecutive confirming observations, gracefully survives process crashes and container restarts without losing or duplicating data, and pinpoints the exact moment a genuine trend is confirmed.
+## Purpose
+The **Trend Watcher** provides stateful memory and noise filtration for autonomous agents on Pharos Mainnet. It persists observations to disk, enforces a minimum 3-observation rule before confirming trends, recovers cleanly across process restarts, and suppresses single-block flash spikes.
 
 ### Core Capabilities:
-1. **Persistent On-Disk State Storage (Requirement 01)**:
-   - Persists observations directly to disk using atomic temporary-file swaps (`write-then-renameSync`).
-   - Ensures memory state survives daemon restarts, container reboots, and network disconnections without data corruption.
-2. **Configurable Multi-Observation Rule (Requirement 02)**:
-   - Enforces a minimum confirmation threshold of $\ge 3$ consecutive observations before allowing downstream action.
-   - Configurable for any on-chain metric (`PROS/USDC` spot price, Harbor Protocol TVL, Pharos base fee).
-   - Supports trend directions: `DOWNTREND`, `UPTREND`, and `OUTFLOW`, combined with minimum cumulative percentage delta hurdles.
-3. **Crash & Restart Recovery with Zero Duplication (Requirement 03)**:
-   - Seamlessly rehydrates historical observation windows on boot.
-   - Enforces deterministic content-based fingerprinting and observation IDs to ignore duplicate incoming readings cleanly.
-4. **Observation Timeline & Trigger Moment Highlight (Requirement 04)**:
-   - Renders formatted ASCII chronological timelines showing step-by-step $\Delta\%$, cumulative window change, and venue provenance.
-   - Visually tags the exact observation (`⭐ TRIGGER MOMENT`) that satisfied the multi-observation threshold.
-5. **Transient Single Spike Suppression (Requirement 05)**:
-   - Evaluates isolated flash-crashes or pump-and-dump spikes that snap back to mean.
-   - Flags transient noise as `NOISY_SPIKE_REJECTED` and suppresses automated triggers.
+1. **Persistent On-Disk Storage**:
+   - Stores observation history using atomic write patterns (`.pharos-storage/trend-watcher/`).
+   - Rehydrates full history on restart with duplicate fingerprint suppression.
+2. **Configurable Multi-Observation Rule**:
+   - Enforces a minimum of 3 consecutive confirming readings ($\ge 3$).
+   - Validates directional trajectories (`UPTREND`, `DOWNTREND`) and cumulative percentage hurdles.
+3. **Transient Noise & Flash Spike Filtration**:
+   - Detects single-tick flash-loan anomalies and suppresses them as `NOISY_SPIKE_REJECTED`.
+4. **Trigger Moment Identification**:
+   - Accurately highlights the exact observation and timestamp where the trend condition was met.
 
 ---
 
-## Architecture Flow
-
-```mermaid
-flowchart TD
-    A["Incoming Metric Reading\n(e.g., PROS/USDC Spot Price: $1.4200)"] --> B["Deduplication Sentinel & Content Fingerprint"]
-    
-    B -->|Duplicate Observation| C["Skip Ingestion\n(Zero History Duplication)"]
-    B -->|New Observation| D["Atomic Disk Persistence\n(write-then-renameSync to observations-ledger.json)"]
-
-    D --> E["Hydrate Chronological History Window"]
-    
-    E --> F{"Evaluate Consecutive Transitions\n(Streak Counter & Delta %)"]
-    
-    F -->|Single Tick Anomaly (>5% spike snapped back)| G["NOISY_SPIKE_REJECTED\n(Hold Action, Suppress False Alert)"]
-    
-    F -->|Adheres to Direction, Count < Threshold| H["ACCUMULATING_TREND\n(Buffering: e.g. 2 / 3 required)"]
-    
-    F -->|Counter-Trend Tick Detected| I["TREND_INVALIDATED\n(Reset Consecutive Counter to 0)"]
-    
-    F -->|Count >= Threshold (>= 3) & Delta >= Hurdle| J["TREND_CONFIRMED\n(Action Approved: Alert / Rebalance / Hedge)"]
-    
-    J --> K["Highlight Trigger Moment in Visual Timeline\n(Identify Exact Observation & Timestamp)"]
-```
-
----
-
-## CLI Usage
+## Quick Start & Usage
 
 ```bash
-# Run interactive live demonstration (Single Spike Rejection, Multi-Observation Trend, Restart Recovery)
+# Run demonstration suite
 pharos-trend demo
-npm run trend -- demo
 
-# Record a live metric reading into persistent disk storage
-pharos-trend record PROS/USDC 1.4200 --venue "FaroSwap AMM"
+# Record a new observation
+pharos-trend record --metric PROS_USD --value 1.42
 
-# Evaluate stored history against custom trend criteria
-pharos-trend evaluate PROS/USDC --consecutive 3 --direction DOWNTREND --min-delta 2.0
-
-# View complete historical timeline and trigger highlights
-pharos-trend history PROS/USDC
-
-# Reset persistent storage ledger
-pharos-trend reset
+# View history and trend status
+pharos-trend history --metric PROS_USD
 ```
