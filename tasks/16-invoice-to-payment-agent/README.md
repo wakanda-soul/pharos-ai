@@ -1,133 +1,103 @@
-# Task 16: Invoice-to-Payment Agent
+# Invoice-to-Payment Agent
 
-> **Pharos Agent Arena — Payments Category (Medium Tier: 100 pts + 50 pts Video Walkthrough = 150 pts)**  
-> **Challenge Slug**: `tasks/invoice-to-payment-agent`  
-> **Target Network**: [Pharos Mainnet](https://scan.pharos.xyz) (Chain ID: `1672`, RPC: `https://rpc.pharos.xyz`)  
-> **Pattern**: **Multi-Format Ingestion, Zero-Guessing Sentinel & Calldata-Bound Reference Pattern**
+When automating corporate treasury or DAO bill settlements, incoming payment requests rarely come in a single clean format. Invoices arrive as structured ERP JSON exports, unstructured plaintext emails or commercial memos, and delimited webhook receipts.
 
----
+Attempting to pay these automatically creates severe financial risks:
+- **Currency Assumption Risk**: Guessing an asset when the invoice says "Total: 500" can pay 500 PROS instead of 500 USDC (or vice versa).
+- **Line-Item Arithmetic Discrepancies**: Invoices where itemized line amounts fail to add up to the stated total indicate tampering, tax miscalculations, or faulty export scripts.
+- **On-Chain Reconciliation Void**: Payments sent without embedding the vendor's invoice reference in the transaction calldata make off-chain accounting reconciliation an operational nightmare.
 
-## Executive Summary
-
-The **Pharos Invoice-to-Payment Agent** is an enterprise-grade autonomous billing processor engineered for **Pharos Mainnet (Chain ID 1672)**. It ingests diverse billing formats (Structured JSON, Plaintext Commercial Memos, and Delimited Key-Value Receipts), verifies financial integrity without making dangerous assumptions, and synthesizes non-custodial payment summaries with unsigned transactions that embed the invoice reference directly into the on-chain calldata.
-
-### Key Architectural Invariants:
-1. **Multi-Format Ingestion (Requirement 01)**:
-   - Ingests **Structured JSON** (Peppol/UBL-like ERP exports).
-   - Ingests **Plaintext / Markdown Commercial Memos** with line items, formatted totals (`$1,250.00`), and PNS domain names (`alice.pharos`).
-   - Ingests **Delimited Key-Value Receipts** (`KEY=VALUE` DevOps and webhook billing formats).
-2. **Zero-Guessing Discrepancy Sentinel (Requirement 02)**:
-   - **No Currency Guessing**: If currency/token is omitted, the agent strictly refuses to guess default assets, flagging `MISSING_SETTLEMENT_CURRENCY`.
-   - **Line-Item Total Reconciliation**: Mathematically verifies that individual item costs tally to the stated total, flagging `LINE_ITEMS_SUM_MISMATCH` on discrepancy.
-   - **Payee & Zero-Address Protection**: Prohibits zero-address fund burns (`0x000...000`) and unresolvable domains.
-   - **Required Reference Enforcement**: Flags `MISSING_INVOICE_REFERENCE` if the invoice lacks an audit serial number.
-3. **Calldata-Bound On-Chain Reference (Requirement 03)**:
-   - Encodes the invoice reference as UTF-8 hex memo.
-   - For **Native PROS**: Binds memo to transaction `data` payload.
-   - For **ERC-20 (USDC)**: Appends memo suffix directly to the 68-byte `transfer(address,uint256)` calldata, permanently anchoring the reference on-chain for explorers and auditors without EVM execution side-effects.
-   - Outputs standardized EIP-1193 payloads and Foundry `cast send` commands.
-4. **Comprehensive Demo with Sample Invoices (Requirement 04)**:
-   - Built-in demonstration suite (`pharos-invoice demo`) covering 3 valid formats and 3 distinct anomaly failure blocks.
+The **Invoice-to-Payment Agent** ingests multi-format invoices, enforces strict zero-guessing discrepancy checks, displays human-readable summaries, and synthesizes unsigned transactions that permanently bind the invoice reference directly into on-chain calldata.
 
 ---
 
-## Arena Requirements Compliance Matrix
+## Key Mechanics & Invariants
 
-| Requirement | Description | Implementation Details & Proof | Status |
-| :--- | :--- | :--- | :---: |
-| **01** | **Extracts payee, amount, token or currency, and reference from at least 2 invoice formats** | Implemented in `src/parsers/` with 3 formats: `StructuredJsonInvoiceParser`, `PlaintextMemoInvoiceParser`, and `DelimitedReceiptParser`. Verified in `test/invoice-agent.test.ts`. | ✅ Compliant |
-| **02** | **Flags mismatches or missing fields instead of guessing** | Implemented in `src/invoice-validator.ts` via `InvoiceAnomalySentinel`. Flags missing payee, missing currency, missing reference, non-positive amounts, line-item sum discrepancies, and zero addresses. Verified in `test/invoice-agent.test.ts`. | ✅ Compliant |
-| **03** | **Produces a payment summary and an unsigned transaction that includes the invoice reference** | Implemented in `src/payment-synthesizer.ts`. Generates pre-flight summary with Chainlink USD valuation, EIP-1193 payload, and Foundry `cast send` reproduction command embedding the reference memo in calldata. Verified in `test/invoice-agent.test.ts`. | ✅ Compliant |
-| **04** | **Includes a demo with sample invoices** | Implemented in `src/sample-invoices.ts` and exposed via `pharos-invoice demo`. Demonstrates 3 valid formats and 3 discrepancy catches. Verified in `test/invoice-agent.test.ts`. | ✅ Compliant |
+### 1. Multi-Format Invoice Extraction
+The agent implements dedicated parser strategies for three industry formats:
+- **Structured JSON**: Reads standard ERP and e-invoicing JSON payloads with nested line items.
+- **Plaintext & Commercial Memos**: Extracts billing details from free-form markdown, handling domain aliases (like `alice.pharos`) and cleaning comma-formatted values like `$1,250.00`.
+- **Delimited Receipts**: Parses `KEY=VALUE` pairs frequently generated by automated DevOps hooks and server billing scripts.
+
+From each format, the parser reliably extracts: `payee`, `totalAmount`, `currency`, `invoiceReference`, and itemized `lineItems`.
+
+### 2. Zero-Guessing Discrepancy Sentinel
+Rather than making dangerous assumptions to force execution:
+- **Currency Protection**: If the invoice omits a settlement currency, the agent halts with `MISSING_SETTLEMENT_CURRENCY`. It **never** defaults to a guessed token.
+- **Line-Item Math Reconciliation**: Checks that the sum of line item quantities multiplied by unit prices matches the declared total. Any mismatch flags `LINE_ITEMS_SUM_MISMATCH` and blocks transaction synthesis.
+- **Recipient & Zero-Address Guard**: Rejects the zero-address (`0x0000000000000000000000000000000000000000`) and unresolvable domains.
+- **Required Reference Enforcement**: If an invoice lacks an audit reference code, it flags `MISSING_INVOICE_REFERENCE`.
+
+### 3. Calldata-Bound Reference (On-Chain Reconciliation)
+To ensure that an on-chain payment can be provably matched with internal accounting ledgers:
+- **Native PROS Transfers**: Encodes the reference string (e.g. `INV-DEV-9921`) as UTF-8 hex and attaches it directly to the transaction `data` field.
+- **ERC-20 (USDC) Transfers**: The standard ERC-20 `transfer(address,uint256)` calldata is 68 bytes. The agent appends the UTF-8 hex memo to the end of the calldata. The EVM executes the transfer as normal, while the calldata retains the invoice reference permanently indexed on Pharos block explorers and accounting indexers.
+
+### 4. Non-Custodial Output
+The output is strictly an unsigned transaction object (EIP-1193 format) and an executable Foundry `cast send` terminal command. The agent never asks for or manages private keys.
 
 ---
 
-## Architecture Flow
+## Workflow Diagram
 
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Vendor as Vendor Invoice (JSON / Memo / Receipt)
+    participant Agent as Invoice-to-Payment Agent
+    participant Parsers as Multi-Format Parsers
+    participant Sentinel as Zero-Guessing Sentinel
+    participant Builder as Calldata Reference Builder
+    participant User as Treasury Signer (Wallet / cast)
+
+    Vendor->>Agent: Submit raw invoice blob
+    Agent->>Parsers: Detect format & extract metadata
+    Parsers-->>Agent: payee, amount, currency, reference, lineItems
+    
+    Agent->>Sentinel: Run verification & mathematical reconciliation
+    
+    alt Missing Currency / Sum Mismatch / Invalid Payee
+        Sentinel-->>Agent: Anomaly Detected (BLOCKING_ERROR)
+        Agent-->>User: Flag discrepancy report (No transaction generated)
+    else All Checks Pass
+        Sentinel-->>Agent: VERIFIED_READY_FOR_SIGNATURE
+        Agent->>Builder: Encode invoice reference into calldata
+        Builder-->>Agent: Unsigned transaction with memo attachment
+        Agent-->>User: Display pre-flight summary & unsigned cast payload
+        User->>User: Verify details and sign via wallet
+    end
 ```
-tasks/16-invoice-to-payment-agent/
-├── bin/
-│   └── pharos-invoice.js           # Executable wrapper binary
-├── src/
-│   ├── types.ts                    # TypeScript types (Invoice, Anomalies, Payloads)
-│   ├── token-registry.ts           # Pharos Mainnet settlement assets (PROS, USDC, LINK)
-│   ├── parsers/
-│   │   ├── base-parser.ts          # Strategy interface for invoice parsers
-│   │   ├── json-invoice-parser.ts  # Structured JSON (RFC-8259) parser
-│   │   ├── plaintext-memo-parser.ts # Unstructured commercial memo & markdown parser
-│   │   └── delimited-receipt-parser.ts # Key-Value (.env / webhook) receipt parser
-│   ├── invoice-validator.ts        # Zero-guessing anomaly & discrepancy sentinel
-│   ├── payment-synthesizer.ts      # Unsigned transaction & calldata reference builder
-│   ├── sample-invoices.ts          # Enterprise test invoices (valid & discrepant)
-│   ├── formatter.ts                # Terminal audit report formatter
-│   ├── invoice-agent.ts            # Master orchestration engine
-│   ├── cli.ts                      # Commander CLI commands (`demo`, `parse`)
-│   └── index.ts                    # Barrel exports
-├── test/
-│   └── invoice-agent.test.ts       # 11 Vitest tests covering Requirements 01-04
-├── README.md                       # Documentation & video walkthrough script
-└── SKILL.md                        # Antigravity agent skill specification
-```
 
 ---
 
-## CLI Commands & Usage
+## CLI Usage
 
-Global command: `pharos-invoice` or via `npm run invoice`:
+The package includes the `pharos-invoice` CLI for testing and invoice evaluation:
 
-### 1. Interactive Demonstration
-Executes all 6 test scenarios (3 formats + 3 anomaly blocks):
 ```bash
+# 1. Run full demonstration suite (3 valid formats + 3 discrepancy catches)
 pharos-invoice demo
-# or
-npm run invoice -- demo
-```
 
-### 2. Parsing Any Custom Invoice File
-```bash
-pharos-invoice parse path/to/my-invoice.json
-```
+# 2. Process an invoice file directly
+pharos-invoice process ./invoice.json
+pharos-invoice process ./invoice-memo.txt
 
----
-
-## Automated Vitest Suite
-
-Run the full test suite:
-```bash
-npx vitest run tasks/16-invoice-to-payment-agent
-```
-
-Results (11/11 passing):
-```
- ✓ tasks/16-invoice-to-payment-agent/test/invoice-agent.test.ts (11 tests) 36ms
-   ✓ Task 16: Invoice-to-Payment Autonomous Agent (11)
-     ✓ Requirement 01: Multi-Format Invoice Ingestion & Extraction (3)
-       ✓ should correctly parse structured JSON e-invoice and extract payee, amount, currency, reference
-       ✓ should accurately parse plaintext commercial billing memo with line items and PNS domain
-       ✓ should parse delimited key-value receipt format and resolve native PROS currency
-     ✓ Requirement 02: Discrepancy & Missing Field Anomaly Flagging (No Guessing) (6)
-       ✓ should flag line item total sum mismatch instead of blindly executing
-       ✓ should strictly refuse to guess currency when omitted
-       ✓ should flag missing payee address
-       ✓ should flag missing invoice reference
-       ✓ should flag zero-address payee as invalid
-       ✓ should flag non-positive billing amount
-     ✓ Requirement 03: Payment Summary & Unsigned Transaction with Invoice Reference (2)
-       ✓ should generate pre-flight summary and unsigned ERC-20 transaction embedding reference memo in calldata
-       ✓ should generate native PROS transaction with invoice reference in transaction data
-
- Test Files  1 passed (1)
-      Tests  11 passed (11)
+# 3. View supported settlement tokens on Pharos Mainnet
+pharos-invoice tokens
 ```
 
 ---
 
-## Video Walkthrough Guide (50 pts Bonus)
+## Verification & Test Suite
 
-| Timestamp | Visual Action | Accompanying Explanation / Subtitle |
-| :--- | :--- | :--- |
-| `00:00 - 00:15` | Terminal: `pharos-invoice --help` | "Pharos Invoice-to-Payment Agent: Autonomous multi-format invoice parser and payment preparation agent for Pharos Mainnet." |
-| `00:15 - 00:45` | Terminal: `pharos-invoice demo` (Scenario 1 & 2) | "Requirement 01: Ingests structured JSON and plaintext billing memos, resolving payee, amount, token and references." |
-| `00:45 - 01:15` | Demo Scenarios 4, 5, 6 (Anomaly Sentinel) | "Requirement 02: Zero-Guessing Sentinel flags line-item sum mismatches, missing currencies, and unresolvable payees." |
-| `01:15 - 01:45` | Unsigned payload inspection | "Requirement 03: Produces payment summaries and unsigned transactions embedding the invoice reference directly into calldata." |
-| `01:45 - 02:10` | Terminal: `npm test` | "All 11 unit tests passing with full coverage of all arena requirements." |
+The invoice agent is validated by 12 tests in Vitest covering multi-format parsing, anomaly detection, calldata encoding, and transaction synthesis:
+
+```bash
+./node_modules/.bin/vitest run tasks/16-invoice-to-payment-agent
+```
+
+**Test Coverage Highlights**:
+- **Requirement 01**: Ingestion of structured JSON, commercial memos with line items and PNS aliases, comma-formatted amounts (`$1,250.00`), and delimited receipts.
+- **Requirement 02**: Anomaly flagging for line-item sum discrepancies, missing currency, missing payee, missing invoice reference, zero-address targets, and non-positive amounts.
+- **Requirement 03**: Pre-flight payment summary formatting and unsigned transaction generation with calldata-bound UTF-8 invoice references for both ERC-20 and native PROS.
+- **Requirement 04**: Comprehensive sample invoice demonstration covering valid and error flows.
