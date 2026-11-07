@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { PrivyProvider, usePrivy, useWallets, useLogin, useCreateWallet } from '@privy-io/react-auth';
+import { PrivyProvider, usePrivy, useWallets, useLogin } from '@privy-io/react-auth';
 import { pharosMainnet, pharosPublicClient, PHAROS_CONSTANTS, ERC20_ABI } from '@/lib/pharos-chain';
 import { formatEther, formatUnits } from 'viem';
 
@@ -54,7 +54,6 @@ function ActivePrivyAuthConsumer({
       console.warn('Privy login error or cancelled:', err);
     },
   });
-  const { createWallet } = useCreateWallet();
   const { wallets } = useWallets();
 
   const [walletBalanceUsdc, setWalletBalanceUsdc] = useState(0);
@@ -63,16 +62,6 @@ function ActivePrivyAuthConsumer({
   // Derived agent embedded wallet or primary connected wallet
   const embeddedWallet = wallets.find((w) => w.walletClientType === 'privy') || wallets[0];
   const walletAddress = user?.wallet?.address || embeddedWallet?.address || null;
-
-  // Auto-provision embedded agent wallet if user is authenticated but doesn't have an embedded wallet yet
-  useEffect(() => {
-    if (ready && authenticated && user && !walletAddress) {
-      createWallet().catch((err) => {
-        // Silently catch if wallet creation is already in progress or restricted
-        console.warn('Auto create embedded wallet notification:', err);
-      });
-    }
-  }, [ready, authenticated, user, walletAddress, createWallet]);
 
   const refreshBalances = async () => {
     if (!walletAddress) return;
