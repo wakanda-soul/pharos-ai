@@ -116,6 +116,57 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       };
     }
 
+    // 2b. AI Model, LLM & Architecture Questions
+    const isModelQuestion =
+      lower.includes('модел') ||
+      lower.includes('model') ||
+      lower.includes('llm') ||
+      lower.includes('нейросет') ||
+      lower.includes('нейронк') ||
+      lower.includes('интеллект') ||
+      lower.includes('gemini') ||
+      lower.includes('gpt') ||
+      lower.includes('claude') ||
+      lower.includes('движок');
+
+    if (isModelQuestion) {
+      const modelText = isRussian
+        ? `Я работаю на архитектуре **Google Gemini 1.5 Flash** в связке с защитным контуром **Gemini 3-Layer Shield**:\n\n1. **Layer 1 (Intent Guard)** — верификация намерений пользователя и защита от выполнения вредоносных скриптов.\n2. **Layer 2 (Sandboxed Tool-Gating)** — жестко ограниченный доступ только к проверенным ончейн-инструментам (покупка фидов через x402, аудит байткода, мониторинг DEX).\n3. **Layer 3 (Deterministic Policy Gatekeeper)** — автоматический контроль лимитов расходов кошелька (максимум 0.005 USDC за вызов) без кастодиального доступа.\n\n**Где берутся данные?**\nВсе фиды (киты, резервы Harbor, байткод контрактов) запрашиваются **напрямую из Pharos Mainnet** через RPC (\`https://rpc.pharos.xyz\`), а не из моков.\n\n*Хочешь использовать свой персональный ключ Gemini?* Нажми на иконку шестерёнки ⚙️ вверху страницы и вставь бесплатный Gemini API Key от Google AI Studio.`
+        : `I run on the **Google Gemini 1.5 Flash** architecture wrapped in an autonomous **Gemini 3-Layer Shield**:\n\n1. **Layer 1 (Intent Guard)**: Intercepts out-of-scope code generation requests.\n2. **Layer 2 (Tool-Gating)**: Strictly confines execution to verified on-chain x402 data brokers.\n3. **Layer 3 (Policy Gatekeeper)**: Enforces non-custodial spend caps (0.005 USDC ceiling).\n\nAll on-chain metrics (Whale transfers, Harbor DEX reserves, bytecode telemetry) are polled live from Pharos Mainnet RPC (\`https://rpc.pharos.xyz\`).\n\nYou can connect your personal Gemini API Key via the settings gear (⚙️) in the navbar.`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: modelText,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // 2c. Wallet & Balance Questions
+    const isWalletQuestion =
+      lower.includes('кошелек') ||
+      lower.includes('кошель') ||
+      lower.includes('wallet') ||
+      lower.includes('баланс') ||
+      lower.includes('balance') ||
+      lower.includes('приви') ||
+      lower.includes('privy') ||
+      lower.includes('address') ||
+      lower.includes('адрес');
+
+    if (isWalletQuestion && !lower.includes('risk') && !lower.includes('риск') && !lower.includes('чек')) {
+      const walletText = isRussian
+        ? `Твой текущий агентский кошелёк:\n• **Адрес**: \`${agentWalletAddress}\`\n• **Доступный баланс**: **${agentWalletBalanceUsdc.toFixed(3)} USDC**\n• **Сеть**: Pharos Mainnet (Chain ID 1672)\n• **Тип**: Некастодиальный Embedded Wallet (Privy)\n\nДля пополнения баланса нажми кнопку **«+»** рядом с балансом в шапке сайта. Каждая покупка фида через меня списывает ровно **0.001 USDC** с автоматической EIP-712 подписью.`
+        : `Your active agent wallet details:\n• **Address**: \`${agentWalletAddress}\`\n• **Balance**: **${agentWalletBalanceUsdc.toFixed(3)} USDC**\n• **Network**: Pharos Mainnet (Chain ID 1672)\n• **Type**: Non-custodial Embedded Wallet (Privy)\n\nUse the **+** button in the header to deposit USDC. Each intelligence request costs 0.001 USDC authorized via EIP-712 signatures.`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: walletText,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
     // 3. Search / Catalog / List Feeds
     const isSearch =
       lower.includes('search') ||
