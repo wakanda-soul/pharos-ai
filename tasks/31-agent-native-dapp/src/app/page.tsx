@@ -13,6 +13,7 @@ import { PrivyLoginModal } from '@/components/PrivyLoginModal';
 import { IntelligenceFeed } from '@/types/feed';
 import { CURATED_FEEDS_INITIAL } from '@/lib/pharos-intelligence';
 import { PHAROS_CONSTANTS, pharosPublicClient, ERC20_ABI } from '@/lib/pharos-chain';
+import { usePharosAuth } from '@/components/PrivyClientProvider';
 import { formatUnits, formatEther } from 'viem';
 import { Database, Cpu, Settings, Shield, ExternalLink, Code2 } from 'lucide-react';
 
@@ -24,7 +25,7 @@ export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [walletBalanceUsdc, setWalletBalanceUsdc] = useState<number>(0.0);
   const [walletBalancePros, setWalletBalancePros] = useState<number>(0.0);
-  const [walletProvider, setWalletProvider] = useState<'metamask' | 'session_key'>('metamask');
+  const [walletProvider, setWalletProvider] = useState<'metamask' | 'session_key' | 'privy'>('metamask');
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPrivyOpen, setIsPrivyOpen] = useState(false);
@@ -32,6 +33,19 @@ export default function Home() {
   const [oauthAccessToken, setOauthAccessToken] = useState<string>('');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [lastPurchaseResult, setLastPurchaseResult] = useState<Record<string, unknown> | null>(null);
+
+  // Privy hook integration
+  const {
+    isPrivyConfigured,
+    authenticated: isPrivyAuth,
+    walletAddress: privyWalletAddress,
+    walletBalanceUsdc: privyUsdcBal,
+    logout: privyLogout,
+    refreshBalances: privyRefreshBalances,
+  } = usePharosAuth();
+
+  const activeWalletAddress = isPrivyConfigured && isPrivyAuth ? privyWalletAddress : walletAddress;
+  const activeBalanceUsdc = isPrivyConfigured && isPrivyAuth ? privyUsdcBal : walletBalanceUsdc;
 
   // Real on-chain balance query
   const refreshLiveBalances = useCallback(async (address: string) => {
@@ -93,7 +107,7 @@ export default function Home() {
     derivedAddress: string,
     usdcBalance: number,
     prosBalance: number,
-    providerType: 'metamask' | 'session_key'
+    providerType: 'metamask' | 'session_key' | 'privy'
   ) => {
     setWalletAddress(derivedAddress);
     setWalletBalanceUsdc(usdcBalance);
@@ -125,7 +139,7 @@ export default function Home() {
   };
 
   const handleBuyFeed = async (feedSlug: string) => {
-    if (!walletAddress) {
+    if (!activeWalletAddress) {
       alert('Please connect your Web3 wallet first to authorize on-chain x402 payments on Pharos Mainnet.');
       setIsPrivyOpen(true);
       return;
@@ -151,7 +165,7 @@ export default function Home() {
               verifyingContract: PHAROS_CONSTANTS.registryContractAddress,
             },
             message: {
-              buyerAddress: walletAddress,
+              buyerAddress: activeWalletAddress,
               feedSlug,
               priceUsdcAtomic: feed.priceAtomicUnits,
               timestamp: Date.now(),
@@ -175,7 +189,7 @@ export default function Home() {
 
           authorizationSignature = await (window as any).ethereum.request({
             method: 'eth_signTypedData_v4',
-            params: [walletAddress, msgParams],
+            params: [activeWalletAddress, msgParams],
           });
         } catch (sigErr: any) {
           if (sigErr?.code === 4001) {
@@ -187,7 +201,7 @@ export default function Home() {
       }
 
       const proofPayload = {
-        buyerAddress: walletAddress,
+        buyerAddress: activeWalletAddress,
         authorizationSignature,
         nonce: Date.now(),
         queryHash: `0x${feedSlug}_${Date.now()}`,
@@ -204,8 +218,12 @@ export default function Home() {
       if (res.ok) {
         setLastPurchaseResult(data);
         await refreshFeeds();
-        if (walletAddress) {
-          await refreshLiveBalances(walletAddress);
+        if (activeWalletAddress) {
+          if (isPrivyConfigured && isPrivyAuth) {
+            await privyRefreshBalances();
+          } else {
+            await refreshLiveBalances(activeWalletAddress);
+          }
         }
       } else {
         alert(`Payment challenge failed: ${data.error || 'Server rejected authorization.'}`);
@@ -223,10 +241,10 @@ export default function Home() {
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        walletAddress={walletAddress}
-        walletBalanceUsdc={walletBalanceUsdc}
+        walletAddress={activeWalletAddress}
+        walletBalanceUsdc={activeBalanceUsdc}
         onOpenDeposit={() => {
-          if (!walletAddress) {
+          if (!activeWalletAddress) {
             setIsPrivyOpen(true);
           } else {
             setIsDepositOpen(true);
@@ -235,6 +253,9 @@ export default function Home() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenPrivyLogin={() => setIsPrivyOpen(true)}
         onDisconnectWallet={() => {
+          if (isPrivyConfigured && isPrivyAuth) {
+            privyLogout();
+          }
           setWalletAddress(null);
           setWalletBalanceUsdc(0);
           setWalletBalancePros(0);
@@ -263,10 +284,16 @@ export default function Home() {
 
         {activeTab === 'copilot' && (
           <AgentCopilotChat
-            walletAddress={walletAddress}
-            walletBalanceUsdc={walletBalanceUsdc}
+            walletAddress={activeWalletAddress}
+            walletBalanceUsdc={activeBalanceUsdc}
             onRefreshBalance={() => {
-              if (walletAddress) refreshLiveBalances(walletAddress);
+              if (activeWalletAddress) {
+                if (isPrivyConfigured && isPrivyAuth) {
+                  privyRefreshBalances();
+                } else {
+                  refreshLiveBalances(activeWalletAddress);
+                }
+              }
             }}
             geminiApiKey={geminiApiKey}
             oauthAccessToken={oauthAccessToken}
@@ -315,8 +342,8 @@ export default function Home() {
       <AgentWalletModal
         isOpen={isDepositOpen}
         onClose={() => setIsDepositOpen(false)}
-        walletAddress={walletAddress}
-        currentBalanceUsdc={walletBalanceUsdc}
+        walletAddress={activeWalletAddress}
+        currentBalanceUsdc={activeBalanceUsdc}
         onDeposit={handleDeposit}
       />
 

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { PrivyClientProvider } from '@/components/PrivyClientProvider';
 
 export const metadata: Metadata = {
   title: 'Pharos x402 Intelligence Mesh | Agent-Native Data Marketplace',
@@ -15,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="min-h-screen bg-[#f2f4f5] text-gray-900 antialiased">
-        {children}
+        <PrivyClientProvider>{children}</PrivyClientProvider>
       </body>
     </html>
   );
