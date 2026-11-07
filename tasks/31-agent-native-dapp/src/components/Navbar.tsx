@@ -9,6 +9,7 @@ interface NavbarProps {
   setActiveTab: (tab: 'marketplace' | 'copilot' | 'publisher' | 'curator') => void;
   walletAddress: string | null;
   walletBalanceUsdc: number;
+  isCurator?: boolean;
   onOpenDeposit: () => void;
   onOpenSettings: () => void;
   onOpenPrivyLogin: () => void;
@@ -20,6 +21,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   walletAddress,
   walletBalanceUsdc,
+  isCurator = false,
   onOpenDeposit,
   onOpenSettings,
   onOpenPrivyLogin,
@@ -88,17 +90,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Settings className="w-3.5 h-3.5 text-gray-600" />
               Publisher Hub
             </button>
-            <button
-              onClick={() => setActiveTab('curator')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all ${
-                activeTab === 'curator'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5 text-emerald-600" />
-              Curator Desk
-            </button>
+            {isCurator && (
+              <button
+                onClick={() => setActiveTab('curator')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all ${
+                  activeTab === 'curator'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5 text-emerald-600" />
+                Curator Desk
+              </button>
+            )}
           </nav>
 
           {/* Wallet & Auth Pill */}
@@ -169,12 +173,14 @@ export const Navbar: React.FC<NavbarProps> = ({
         >
           Publisher
         </button>
-        <button
-          onClick={() => setActiveTab('curator')}
-          className={`px-2 py-1 rounded ${activeTab === 'curator' ? 'font-bold text-emerald-700' : 'text-gray-600'}`}
-        >
-          Curator
-        </button>
+        {isCurator && (
+          <button
+            onClick={() => setActiveTab('curator')}
+            className={`px-2 py-1 rounded ${activeTab === 'curator' ? 'font-bold text-emerald-700' : 'text-gray-600'}`}
+          >
+            Curator
+          </button>
+        )}
       </div>
     </header>
   );

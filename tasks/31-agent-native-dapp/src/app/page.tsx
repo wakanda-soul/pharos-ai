@@ -48,6 +48,12 @@ export default function Home() {
   const activeWalletAddress = isPrivyConfigured && isPrivyAuth ? privyWalletAddress : walletAddress;
   const activeBalanceUsdc = isPrivyConfigured && isPrivyAuth ? privyUsdcBal : walletBalanceUsdc;
 
+  // On-chain curator access check (wakanda-soul / curator address / embedded wallet)
+  const isCurator =
+    !!activeWalletAddress &&
+    (activeWalletAddress.toLowerCase() === PHAROS_CONSTANTS.curatorAddress.toLowerCase() ||
+      activeWalletAddress.toLowerCase() === '0xf80622473df9c6babcf2d382458b7c75b74918b4');
+
   const handleOpenPrivyLogin = () => {
     if (isPrivyConfigured) {
       privyLogin();
@@ -252,6 +258,7 @@ export default function Home() {
         setActiveTab={setActiveTab}
         walletAddress={activeWalletAddress}
         walletBalanceUsdc={activeBalanceUsdc}
+        isCurator={isCurator}
         onOpenDeposit={() => {
           if (!activeWalletAddress) {
             handleOpenPrivyLogin();
@@ -313,14 +320,19 @@ export default function Home() {
         {activeTab === 'publisher' && (
           <PublisherDashboard
             feeds={feeds}
+            walletAddress={activeWalletAddress}
             onRefreshFeeds={refreshFeeds}
+            onConnectWallet={handleOpenPrivyLogin}
           />
         )}
 
         {activeTab === 'curator' && (
           <CuratorWhitelistDesk
             feeds={feeds}
+            isCurator={isCurator}
+            walletAddress={activeWalletAddress}
             onRefreshFeeds={refreshFeeds}
+            onConnectWallet={handleOpenPrivyLogin}
           />
         )}
       </main>

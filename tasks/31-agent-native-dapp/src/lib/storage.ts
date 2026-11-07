@@ -96,6 +96,10 @@ class FeedStore {
     feed.grossRevenueUsdc = Number((feed.grossRevenueUsdc + pricePaidUsdc).toFixed(4));
     feed.lastUpdated = new Date().toISOString();
   }
+
+  public registerFeed(feed: IntelligenceFeed) {
+    this.feeds.set(feed.slug, { ...feed, totalCalls: 0, grossRevenueUsdc: 0.0 });
+  }
 }
 
 // Global singleton across API routes in Next.js

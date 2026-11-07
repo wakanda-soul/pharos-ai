@@ -17,12 +17,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Invalid status '${status}'.` }, { status: 400 });
     }
 
-    // Verify curator identity (wakanda-soul)
+    // Verify curator identity (wakanda-soul or designated curator address)
     const normalizedCurator = (curatorAddress || '').toLowerCase();
     const authorizedCurator = PHAROS_CONSTANTS.curatorAddress.toLowerCase();
+    const authorizedPrivyWallet = '0xf80622473df9c6babcf2d382458b7c75b74918b4';
 
-    // Allow curator address or admin handle
-    if (normalizedCurator && normalizedCurator !== authorizedCurator && curatorAddress !== PHAROS_CONSTANTS.curatorHandle) {
+    if (
+      !normalizedCurator ||
+      (normalizedCurator !== authorizedCurator &&
+        normalizedCurator !== authorizedPrivyWallet &&
+        curatorAddress !== PHAROS_CONSTANTS.curatorHandle)
+    ) {
       return NextResponse.json(
         {
           error: `Access Denied: Only designated curator '${PHAROS_CONSTANTS.curatorHandle}' (${PHAROS_CONSTANTS.curatorAddress}) can approve or curate feeds.`,

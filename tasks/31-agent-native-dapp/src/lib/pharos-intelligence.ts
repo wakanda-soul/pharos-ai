@@ -17,8 +17,8 @@ export const CURATED_FEEDS_INITIAL: IntelligenceFeed[] = [
     schemaHash: 'sha256-a9f4c3b2810de059e3820fa4817d83b9c02e5b882',
     curationStatus: 'ACTIVE',
     auditedBy: PHAROS_CONSTANTS.curatorHandle,
-    totalCalls: 342,
-    grossRevenueUsdc: 0.342,
+    totalCalls: 0,
+    grossRevenueUsdc: 0.0,
     sampleQuery: '?minAmount=50000&windowHours=4',
     sampleResponse: {
       network: 'Pharos Mainnet',
@@ -43,8 +43,8 @@ export const CURATED_FEEDS_INITIAL: IntelligenceFeed[] = [
     schemaHash: 'sha256-c774d08e1a3bc883901f44238e8201a0cb8b3012a',
     curationStatus: 'ACTIVE',
     auditedBy: PHAROS_CONSTANTS.curatorHandle,
-    totalCalls: 518,
-    grossRevenueUsdc: 0.518,
+    totalCalls: 0,
+    grossRevenueUsdc: 0.0,
     sampleQuery: '?pool=PROS-USDC&depthLevels=5',
     sampleResponse: {
       pool: 'PROS/USDC (0.05% fee)',
@@ -71,8 +71,8 @@ export const CURATED_FEEDS_INITIAL: IntelligenceFeed[] = [
     schemaHash: 'sha256-ff1894a02be098114cd40b99147a22830de15039a',
     curationStatus: 'ACTIVE',
     auditedBy: PHAROS_CONSTANTS.curatorHandle,
-    totalCalls: 289,
-    grossRevenueUsdc: 0.289,
+    totalCalls: 0,
+    grossRevenueUsdc: 0.0,
     sampleQuery: '?pair=PROS-USDC&metric=realized_volatility',
     sampleResponse: {
       pair: 'PROS/USDC',
@@ -98,8 +98,8 @@ export const CURATED_FEEDS_INITIAL: IntelligenceFeed[] = [
     schemaHash: 'sha256-91e0a29381c1bb430932a104085f1c900384aa28e',
     curationStatus: 'ACTIVE',
     auditedBy: PHAROS_CONSTANTS.curatorHandle,
-    totalCalls: 194,
-    grossRevenueUsdc: 0.194,
+    totalCalls: 0,
+    grossRevenueUsdc: 0.0,
     sampleQuery: `?target=${PHAROS_CONSTANTS.nativeUsdcAddress}`,
     sampleResponse: {
       targetAddress: PHAROS_CONSTANTS.nativeUsdcAddress,
