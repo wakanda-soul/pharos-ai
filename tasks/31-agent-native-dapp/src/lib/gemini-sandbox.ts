@@ -62,28 +62,27 @@ BOUNDARIES & SECURITY RESTRICTIONS:
 
   private static async runSimulatedCopilot(context: CopilotContext): Promise<AgentChatMessage> {
     const { prompt, agentWalletBalanceUsdc, agentWalletAddress } = context;
-    const lower = prompt.toLowerCase();
+    const lower = prompt.toLowerCase().trim();
     const isRussian = /[а-яА-ЯёЁ]/.test(prompt);
     const toolCalls: ToolCallExecution[] = [];
 
-    // 1. Greetings, language check, or conversational intro
+    // 1. Greetings / Language Confirmation / Casual Chat
     const isGreeting =
-      lower.includes('привет') ||
-      lower.includes('здравствуй') ||
-      lower.includes('русск') ||
-      lower.includes('кто ты') ||
-      lower.includes('что умеешь') ||
-      lower.includes('помощь') ||
+      lower.startsWith('привет') ||
+      lower.startsWith('здравствуй') ||
+      lower.startsWith('добрый') ||
+      lower.startsWith('хай') ||
       lower === 'hello' ||
       lower === 'hi' ||
       lower === 'hey' ||
-      lower.includes('how are you') ||
-      lower.includes('can you speak');
+      lower.includes('русск') ||
+      lower.includes('russian') ||
+      lower.includes('говоришь');
 
     if (isGreeting) {
       const greetingText = isRussian
-        ? `Привет! Да, конечно, я свободно общаюсь на русском языке.\n\nЯ твой **Pharos x402 Intelligence Copilot** в Pharos Mainnet (Chain ID 1672).\n\nЯ умею автономно находить и оплачивать проверенные ончейн-фиды данных через протокол x402 прямо с твоего встроенного агентского кошелька по микротарифу **0.001 USDC**.\n\n**Попробуй спросить меня**:\n• *«Покажи все доступные фиды»*\n• *«Проанализируй движения китов в Pharos»*\n• *«Проверь платежеспособность пулов Harbor DEX»*\n• *«Просканируй контракт USDC на honeypot и риски»*`
-        : `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nI can autonomously discover and purchase paywalled on-chain feeds using your embedded agent wallet at 0.001 USDC micro-rates.\n\n**Try asking me**:\n• *"Show me all available feeds"*\n• *"Analyze whale movements on Pharos Mainnet"*\n• *"Audit Harbor DEX pool solvency"*\n• *"Scan contract honeypot risk"*`;
+        ? `Привет! Да, конечно, я свободно общаюсь и понимаю по-русски.\n\nЯ **Pharos x402 Intelligence Copilot** — автономный агент в сети **Pharos Mainnet (Chain ID 1672)**.\n\nЯ умею анализировать ончейн-активность и закупать проверенные фиды данных через протокол x402 по микротарифу **0.001 USDC** с твоего агентского кошелька Privy.\n\n**О чём тебе рассказать?**\n• *«Проанализируй активность китов»* (крупные трансферы от $50k)\n• *«Проверь резервы и платежеспособность Harbor DEX»*\n• *«Просканируй смарт-контракт USDC на honeypot и риски»*\n• *«Покажи все доступные фиды в каталоге»*`
+        : `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nI can autonomously discover and purchase paywalled on-chain feeds using your embedded agent wallet at 0.001 USDC micro-rates.\n\n**Try asking me**:\n• *"Analyze whale movements on Pharos Mainnet"*\n• *"Audit Harbor DEX pool solvency"*\n• *"Scan contract honeypot risk"*\n• *"Show me all available feeds"*`;
 
       return {
         id: `msg_${Date.now()}`,
@@ -93,8 +92,32 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       };
     }
 
-    // 2. Search / catalog / list feeds
-    if (
+    // 2. Capabilities / Identity / General Questions
+    const isAboutBot =
+      lower.includes('кто ты') ||
+      lower.includes('что ты') ||
+      lower.includes('что умеешь') ||
+      lower.includes('как дела') ||
+      lower.includes('помощь') ||
+      lower.includes('who are you') ||
+      lower.includes('what can you do') ||
+      lower.includes('help');
+
+    if (isAboutBot) {
+      const aboutText = isRussian
+        ? `Я специализированный аналитический брокер данных для экосистемы **Pharos**.\n\nВ отличие от обычных чат-ботов, я подключен к смарт-контрактам x402 Marketplace Registry и встроенному агентскому кошельку Privy. По твоей команде я самостоятельно оплачиваю (0.001 USDC) и десериализую ончейн-фиды:\n\n1. 🐋 **Whale Radar** — мониторинг транзакций крупных адресов (> $50,000).\n2. 🏦 **Harbor Solvency** — аудит ликвидности, глубины стакана и риска проскальзывания пулов DEX.\n3. 🛡️ **Contract Risk** — анализ байткода на скрытый минт и honeypot.\n4. 📊 **DEX Volatility** — реальная волатильность и спреды.\n\n*Правило безопасности*: я не пишу скрипты на заказ, а предоставляю проверенную рыночную информацию.`
+        : `I am an autonomous intelligence broker for the Pharos ecosystem.\n\nConnected to the x402 Marketplace Registry and embedded agent wallet, I autonomously settle 0.001 USDC micropayments to unlock verified data feeds:\n\n1. 🐋 **Whale Radar** — Large on-chain transfers (> $50,000)\n2. 🏦 **Harbor Solvency** — DEX liquidity depth and solvency ratios\n3. 🛡️ **Contract Risk** — Bytecode security and honeypot detection\n4. 📊 **DEX Volatility** — Real-time volatility and spread telemetry`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: aboutText,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // 3. Search / Catalog / List Feeds
+    const isSearch =
       lower.includes('search') ||
       lower.includes('list') ||
       lower.includes('what feeds') ||
@@ -102,8 +125,10 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       lower.includes('фид') ||
       lower.includes('каталог') ||
       lower.includes('список') ||
-      lower.includes('покажи')
-    ) {
+      lower.includes('покажи') ||
+      lower.includes('какие данные');
+
+    if (isSearch) {
       const allFeeds = feedStore.getAllFeeds();
       toolCalls.push({
         toolName: 'search_feeds',
@@ -120,12 +145,12 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       });
 
       const listText = isRussian
-        ? `Вот активные аналитические фиды данных в Pharos x402 Intelligence Mesh (все проверены куратором 'wakanda-soul' по базовому тарифу 0.001 USDC за запрос):\n\n` +
+        ? `Вот проверенные фиды данных, доступные в Pharos x402 Marketplace (одобрены куратором 'wakanda-soul', базовый тариф 0.001 USDC):\n\n` +
           allFeeds
             .map((f) => `• **${f.name}** (\`${f.slug}\`): ${f.description} [${f.pricePerCallUsdc} USDC]`)
             .join('\n') +
-          `\n\nХотите, чтобы я приобрёл свежий срез данных по любому из этих фидов?`
-        : `Here are the active intelligence feeds currently available on the Pharos x402 Intelligence Mesh. All feeds are audited by curator 'wakanda-soul' and cost 0.001 USDC per call:\n\n` +
+          `\n\nНапиши, какой фид тебя интересует, и я запрошу свежие данные!`
+        : `Here are the active intelligence feeds currently available on the Pharos x402 Intelligence Mesh (audited by curator 'wakanda-soul', cost 0.001 USDC per call):\n\n` +
           allFeeds
             .map((f) => `• **${f.name}** (\`${f.slug}\`): ${f.description} [${f.pricePerCallUsdc} USDC]`)
             .join('\n') +
@@ -140,37 +165,53 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       };
     }
 
-    // 3. Purchase / query specific feeds
-    const slugMatches = ['whale-radar', 'harbor-solvency', 'dex-volatility', 'contract-risk'];
-    const matchedSlug = slugMatches.find((s) => lower.includes(s) || lower.includes(s.replace('-', ' ')));
+    // 4. Intent Classification for Specific Intelligence Feeds
+    const isWhale =
+      lower.includes('whale') ||
+      lower.includes('кит') ||
+      lower.includes('крупн') ||
+      lower.includes('перевод') ||
+      lower.includes('transfer');
 
-    const isWhale = lower.includes('whale') || lower.includes('кит') || lower.includes('перевод');
-    const isSolvency = lower.includes('solvency') || lower.includes('harbor') || lower.includes('ликвидн') || lower.includes('резерв') || lower.includes('пул');
-    const isRisk = lower.includes('risk') || lower.includes('риск') || lower.includes('honeypot') || lower.includes('уязвим') || lower.includes('usdc');
-    const isVolatility = lower.includes('volatilit') || lower.includes('волатильн');
+    const isSolvency =
+      lower.includes('solvency') ||
+      lower.includes('harbor') ||
+      lower.includes('платежеспособн') ||
+      lower.includes('ликвидн') ||
+      lower.includes('резерв') ||
+      lower.includes('глубин') ||
+      lower.includes('pool') ||
+      lower.includes('пул');
 
-    if (
-      matchedSlug ||
-      isWhale ||
-      isSolvency ||
-      isRisk ||
-      isVolatility ||
-      lower.includes('buy') ||
-      lower.includes('check') ||
-      lower.includes('audit') ||
-      lower.includes('купи') ||
-      lower.includes('провер') ||
-      lower.includes('скан')
-    ) {
-      const targetSlug =
-        matchedSlug ||
-        (isWhale
-          ? 'whale-radar'
-          : isSolvency
-          ? 'harbor-solvency'
-          : isRisk
-          ? 'contract-risk'
-          : 'dex-volatility');
+    const isRisk =
+      lower.includes('risk') ||
+      lower.includes('риск') ||
+      lower.includes('honeypot') ||
+      lower.includes('ханипот') ||
+      lower.includes('ловушк') ||
+      lower.includes('vulnerabilit') ||
+      lower.includes('уязвим') ||
+      lower.includes('scan') ||
+      lower.includes('скан') ||
+      lower.includes('usdc') ||
+      lower.includes('контракт') ||
+      lower.includes('безопасн');
+
+    const isVolatility =
+      lower.includes('volatilit') ||
+      lower.includes('волатильн') ||
+      lower.includes('спред') ||
+      lower.includes('spread');
+
+    if (isWhale || isSolvency || isRisk || isVolatility || lower.includes('buy') || lower.includes('check') || lower.includes('audit') || lower.includes('купи') || lower.includes('провер')) {
+      const targetSlug = isWhale
+        ? 'whale-radar'
+        : isSolvency
+        ? 'harbor-solvency'
+        : isRisk
+        ? 'contract-risk'
+        : 'dex-volatility';
+
       const feed = feedStore.getFeedBySlug(targetSlug);
 
       if (!feed) {
@@ -178,7 +219,7 @@ BOUNDARIES & SECURITY RESTRICTIONS:
           id: `msg_${Date.now()}`,
           sender: 'agent',
           text: isRussian
-            ? `Не удалось найти активный фид по запросу '${targetSlug}'. Используйте запрос 'покажи фиды' для просмотра каталога.`
+            ? `Не удалось найти активный фид по запросу '${targetSlug}'. Используй команду «покажи фиды» для списка каталога.`
             : `I couldn't locate an active feed matching '${targetSlug}'. Please use 'search feeds' to browse the catalog.`,
           timestamp: new Date().toISOString(),
         };
@@ -192,7 +233,7 @@ BOUNDARIES & SECURITY RESTRICTIONS:
           id: `msg_${Date.now()}`,
           sender: 'policy_gatekeeper',
           text: isRussian
-            ? `🛡️ **Транзакция заблокирована Policy Gatekeeper**:\n\n${policyVerdict.reason}\n\n*Рекомендуемое действие*: ${policyVerdict.suggestedCorrection}`
+            ? `🛡️ **Транзакция перехвачена Policy Gatekeeper**:\n\n${policyVerdict.reason}\n\n*Рекомендуемое действие*: ${policyVerdict.suggestedCorrection}`
             : `🛡️ **Transaction Intercepted by Policy Gatekeeper**:\n\n${policyVerdict.reason}\n\n*Suggested Action*: ${policyVerdict.suggestedCorrection}`,
           timestamp: new Date().toISOString(),
           policyFlags: {
@@ -222,13 +263,13 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       let summaryText = '';
       if (isRussian) {
         if (targetSlug === 'whale-radar') {
-          summaryText = `Я выполнил автономный платёж x402 на сумму **${feed.pricePerCallUsdc} USDC** в сети Pharos Mainnet и получил свежие данные Whale Radar.\n\n**Главные инсайты**:\n• Обнаружено 3 крупных перевода свыше $50,000.\n• Крупнейшая транзакция: $145,000 USDC переведено в пул ликвидности Harbor Protocol.\n• Общий настрой рынка: Бычье накопление (Bullish Accumulation).`;
+          summaryText = `🐋 **Отчёт Whale Movement Radar** (Pharos Mainnet)\nПлатёж: **${feed.pricePerCallUsdc} USDC** оплачен через x402.\n\n**Результаты анализа сети:**\n• Зафиксировано **3 крупных трансфера** свыше $50,000.\n• Крупнейшая операция: перевод **$145,000 USDC** в хранилище ликвидности Harbor Protocol.\n• Настроение рынка: **Бычья аккумуляция**. Крупные игроки аккумулируют позиции на Pharos.`;
         } else if (targetSlug === 'harbor-solvency') {
-          summaryText = `Я приобрёл отчёт о платежеспособности пулов Harbor DEX за **${feed.pricePerCallUsdc} USDC**.\n\n**Главные инсайты**:\n• Пул: PROS/USDC (0.05%)\n• Индекс здоровья: 98.7/100 (Оптимальный уровень резервов)\n• Проскальзывание (slippage) на ордер $10k: всего 0.04%.\n• Пул подтверждён: **100% ПЛАТЕЖЕСПОСОБЕН (SOLVENT)**.`;
+          summaryText = `🏦 **Аудит резервов и платежеспособности Harbor DEX**\nПлатёж: **${feed.pricePerCallUsdc} USDC** подтверждён.\n\n**Результаты проверки пула PROS/USDC:**\n• Статус: подтверждена **100% ПЛАТЕЖЕСПОСОБНОСТЬ**.\n• Индекс здоровья пула: **98.7 / 100** (отличный уровень обеспечения).\n• Проскальзывание (slippage) на ордер $10,000: всего **0.04%** — ликвидности достаточно для крупных свопов без манипуляций ценой.`;
         } else if (targetSlug === 'contract-risk') {
-          summaryText = `Я проверил целевой контракт через фид Risk Scanner за **${feed.pricePerCallUsdc} USDC**.\n\n**Оценка безопасности**: 99.4/100\n• Анализ байткода: скрытых функций минта или honeypot-логики не обнаружено.\n• Верифицированный стандарт: официальный Pharos ERC-20 с поддержкой EIP-2612.`;
+          summaryText = `🛡️ **Аудит безопасности контракта USDC** (Pharos Mainnet)\nПлатёж: **${feed.pricePerCallUsdc} USDC** оплачен.\n\n**Оценка безопасности: 99.4 / 100 (Безопасен)**\n• Байткод проверен: скрытый минт, черный список и honeypot-логика **отсутствуют**.\n• Стандарт: верифицированный токен ERC-20 с поддержкой EIP-2612 (газлесс-подписи).\n• Контракт полностью пригоден для агентских расчетов.`;
         } else {
-          summaryText = `Я получил данные фида DEX Volatility Radar за **${feed.pricePerCallUsdc} USDC**.\n\n**Главные инсайты**:\n• Реализованная волатильность (1ч): 18.4%\n• Спред покупки/продажи: 3.8 bps\n• Рынок находится в состоянии низковолатильного равновесия.`;
+          summaryText = `📊 **Радар волатильности DEX**\nПлатёж: **${feed.pricePerCallUsdc} USDC**.\n\n**Текущие метрики рынка:**\n• Реализованная 1-часовая волатильность: **18.4%**.\n• Спред покупки/продажи: **3.8 bps**.\n• Рынок находится в состоянии стабильного равновесия.`;
         }
       } else {
         if (targetSlug === 'whale-radar') {
@@ -252,10 +293,10 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       };
     }
 
-    // Default guidance response
+    // Default conversational response
     const defaultText = isRussian
-      ? `Я твой **Pharos x402 Intelligence Copilot** на Pharos Mainnet (Chain ID 1672).\n\nЯ умею находить и оплачивать ончейн-фиды по микротарифу 0.001 USDC прямо из агентского кошелька.\n\n**Попробуй спросить меня**:\n• *«Покажи все доступные фиды»*\n• *«Проанализируй движения китов»*\n• *«Проверь платежеспособность Harbor DEX»*\n• *«Просканируй контракт USDC на риски»*`
-      : `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nI can autonomously discover and purchase paywalled on-chain feeds using your embedded agent wallet at 0.001 USDC micro-rates.\n\n**Try asking me**:\n• *"Show me all available feeds"*\n• *"Analyze whale movements on Pharos Mainnet"*\n• *"Audit Harbor DEX pool solvency"*\n• *"Scan contract honeypot risk"*`;
+      ? `Я понял твой запрос. Чем именно могу помочь по сети Pharos?\n\n• Напиши *«покажи китов»* — чтобы отследить крупные транзакции.\n• Напиши *«проверь Harbor»* — для аудита пулов ликвидности.\n• Напиши *«просканируй контракт»* — для проверки на honeypot.\n• Напиши *«каталог»* — чтобы увидеть все доступные фиды данных.`
+      : `I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nI can autonomously discover and purchase paywalled on-chain feeds using your embedded agent wallet at 0.001 USDC micro-rates.\n\n**Try asking me**:\n• *"Show me all available feeds"*\n• *"Analyze whale movements on Pharos Mainnet"*\n• *"Audit Harbor DEX pool solvency"*\n• *"Scan contract honeypot risk"*`;
 
     return {
       id: `msg_${Date.now()}`,

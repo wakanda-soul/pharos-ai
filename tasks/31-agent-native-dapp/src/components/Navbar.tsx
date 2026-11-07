@@ -7,10 +7,12 @@ import { PHAROS_CONSTANTS } from '@/lib/pharos-chain';
 interface NavbarProps {
   activeTab: 'marketplace' | 'copilot' | 'publisher' | 'curator';
   setActiveTab: (tab: 'marketplace' | 'copilot' | 'publisher' | 'curator') => void;
-  walletAddress: string;
+  walletAddress: string | null;
   walletBalanceUsdc: number;
   onOpenDeposit: () => void;
   onOpenSettings: () => void;
+  onOpenPrivyLogin: () => void;
+  onDisconnectWallet: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -20,10 +22,12 @@ export const Navbar: React.FC<NavbarProps> = ({
   walletBalanceUsdc,
   onOpenDeposit,
   onOpenSettings,
+  onOpenPrivyLogin,
+  onDisconnectWallet,
 }) => {
   const shortAddress = walletAddress
     ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
-    : '0x...';
+    : null;
 
   return (
     <header className="sticky top-0 z-50 bg-[#ffffff] border-b border-[#e5e7eb] shadow-sm">
@@ -107,23 +111,40 @@ export const Navbar: React.FC<NavbarProps> = ({
               <Settings className="w-4 h-4" />
             </button>
 
-            {/* Embedded Agent Wallet */}
-            <div className="flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded-md p-1 pl-2 gap-2 text-xs">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-mono text-gray-700 hidden sm:inline">{shortAddress}</span>
+            {/* Embedded Agent Wallet / Privy Login */}
+            {walletAddress ? (
+              <div className="flex items-center bg-[#f9fafb] border border-[#e5e7eb] rounded-md p-1 pl-2 gap-2 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="font-mono text-gray-700 hidden sm:inline">{shortAddress}</span>
+                </div>
+                <div className="bg-white border border-[#e5e7eb] px-2 py-0.5 rounded font-semibold text-[#0012b8]">
+                  {walletBalanceUsdc.toFixed(3)} USDC
+                </div>
+                <button
+                  onClick={onOpenDeposit}
+                  className="bg-[#0012b8] hover:bg-[#000fa0] text-white p-1 rounded-sm flex items-center justify-center transition-colors"
+                  title="Deposit USDC to Embedded Agent Wallet"
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={onDisconnectWallet}
+                  className="text-gray-400 hover:text-red-600 px-1 text-[11px] font-medium transition-colors"
+                  title="Disconnect Wallet"
+                >
+                  ✕
+                </button>
               </div>
-              <div className="bg-white border border-[#e5e7eb] px-2 py-0.5 rounded font-semibold text-[#0012b8]">
-                {walletBalanceUsdc.toFixed(3)} USDC
-              </div>
+            ) : (
               <button
-                onClick={onOpenDeposit}
-                className="bg-[#0012b8] hover:bg-[#000fa0] text-white p-1 rounded-sm flex items-center justify-center transition-colors"
-                title="Deposit USDC to Embedded Agent Wallet"
+                onClick={onOpenPrivyLogin}
+                className="flex items-center gap-1.5 bg-[#5c41ff] hover:bg-[#4b32e0] text-white px-3 py-1.5 rounded-md text-xs font-semibold transition-all shadow-sm"
               >
-                <PlusCircle className="w-3.5 h-3.5" />
+                <Wallet className="w-3.5 h-3.5" />
+                <span>Connect with Privy</span>
               </button>
-            </div>
+            )}
           </div>
         </div>
       </div>

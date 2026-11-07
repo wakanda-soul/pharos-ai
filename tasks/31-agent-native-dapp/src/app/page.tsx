@@ -9,6 +9,7 @@ import { PublisherDashboard } from '@/components/PublisherDashboard';
 import { CuratorWhitelistDesk } from '@/components/CuratorWhitelistDesk';
 import { AgentWalletModal } from '@/components/AgentWalletModal';
 import { SandboxSettingsModal } from '@/components/SandboxSettingsModal';
+import { PrivyLoginModal } from '@/components/PrivyLoginModal';
 import { IntelligenceFeed } from '@/types/feed';
 import { CURATED_FEEDS_INITIAL } from '@/lib/mock-intelligence';
 import { PHAROS_CONSTANTS } from '@/lib/pharos-chain';
@@ -19,10 +20,11 @@ export default function Home() {
     'marketplace'
   );
   const [feeds, setFeeds] = useState<IntelligenceFeed[]>(CURATED_FEEDS_INITIAL);
-  const [walletAddress] = useState<string>('0x71C8364f3B3974E2f35f76AC8615b32935553a71');
-  const [walletBalanceUsdc, setWalletBalanceUsdc] = useState<number>(0.5);
+  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [walletBalanceUsdc, setWalletBalanceUsdc] = useState<number>(0.0);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isPrivyOpen, setIsPrivyOpen] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState<string>('');
   const [oauthAccessToken, setOauthAccessToken] = useState<string>('');
   const [isPurchasing, setIsPurchasing] = useState(false);
@@ -33,9 +35,11 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       const savedKey = localStorage.getItem('pharos_gemini_api_key') || '';
       const savedOAuth = localStorage.getItem('pharos_oauth_token') || '';
+      const savedAddress = localStorage.getItem('pharos_agent_wallet_address');
       const savedBalance = localStorage.getItem('pharos_agent_balance');
       if (savedKey) setGeminiApiKey(savedKey);
       if (savedOAuth) setOauthAccessToken(savedOAuth);
+      if (savedAddress) setWalletAddress(savedAddress);
       if (savedBalance) setWalletBalanceUsdc(parseFloat(savedBalance));
     }
   }, []);
@@ -79,6 +83,12 @@ export default function Home() {
   };
 
   const handleBuyFeed = async (feedSlug: string) => {
+    if (!walletAddress) {
+      alert('Please connect your agent wallet with Privy first to authorize x402 payments on Pharos Mainnet.');
+      setIsPrivyOpen(true);
+      return;
+    }
+
     const feed = feeds.find((f) => f.slug === feedSlug);
     if (!feed) return;
 
@@ -136,8 +146,23 @@ export default function Home() {
         setActiveTab={setActiveTab}
         walletAddress={walletAddress}
         walletBalanceUsdc={walletBalanceUsdc}
-        onOpenDeposit={() => setIsDepositOpen(true)}
+        onOpenDeposit={() => {
+          if (!walletAddress) {
+            setIsPrivyOpen(true);
+          } else {
+            setIsDepositOpen(true);
+          }
+        }}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenPrivyLogin={() => setIsPrivyOpen(true)}
+        onDisconnectWallet={() => {
+          setWalletAddress(null);
+          setWalletBalanceUsdc(0);
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('pharos_agent_wallet_address');
+            localStorage.removeItem('pharos_agent_balance');
+          }
+        }}
       />
 
       {/* Hero Banner */}
@@ -164,6 +189,7 @@ export default function Home() {
             }}
             geminiApiKey={geminiApiKey}
             oauthAccessToken={oauthAccessToken}
+            onOpenPrivyLogin={() => setIsPrivyOpen(true)}
           />
         )}
 
@@ -176,11 +202,26 @@ export default function Home() {
         )}
       </main>
 
+      {/* Privy Login Modal */}
+      <PrivyLoginModal
+        isOpen={isPrivyOpen}
+        onClose={() => setIsPrivyOpen(false)}
+        onLoginSuccess={(newAddr) => {
+          setWalletAddress(newAddr);
+          const initialCredit = 0.5;
+          setWalletBalanceUsdc(initialCredit);
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('pharos_agent_wallet_address', newAddr);
+            localStorage.setItem('pharos_agent_balance', initialCredit.toString());
+          }
+        }}
+      />
+
       {/* Deposit Modal */}
       <AgentWalletModal
         isOpen={isDepositOpen}
         onClose={() => setIsDepositOpen(false)}
-        walletAddress={walletAddress}
+        walletAddress={walletAddress || '0x1bF848814D174F5A85bD3FDf9f6C9201'}
         currentBalanceUsdc={walletBalanceUsdc}
         onDeposit={handleDeposit}
       />

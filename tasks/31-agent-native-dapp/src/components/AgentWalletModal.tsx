@@ -7,7 +7,7 @@ import { PHAROS_CONSTANTS } from '@/lib/pharos-chain';
 interface AgentWalletModalProps {
   isOpen: boolean;
   onClose: () => void;
-  walletAddress: string;
+  walletAddress: string | null;
   currentBalanceUsdc: number;
   onDeposit: (amountUsdc: number) => void;
 }

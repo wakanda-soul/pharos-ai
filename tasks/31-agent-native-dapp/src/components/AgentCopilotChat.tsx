@@ -5,11 +5,12 @@ import { AgentChatMessage } from '@/types/agent';
 import { Cpu, Send, ShieldAlert, CheckCircle, Zap, Terminal, CornerDownLeft, Sparkles, AlertOctagon } from 'lucide-react';
 
 interface AgentCopilotChatProps {
-  walletAddress: string;
+  walletAddress: string | null;
   walletBalanceUsdc: number;
   onRefreshBalance: () => void;
   geminiApiKey?: string;
   oauthAccessToken?: string;
+  onOpenPrivyLogin?: () => void;
 }
 
 export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
@@ -18,6 +19,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
   onRefreshBalance,
   geminiApiKey,
   oauthAccessToken,
+  onOpenPrivyLogin,
 }) => {
   const [messages, setMessages] = useState<AgentChatMessage[]>([
     {
@@ -122,9 +124,18 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
           </div>
         </div>
 
-        <div className="text-xs text-gray-600 bg-white border border-[#e5e7eb] px-2.5 py-1 rounded-md font-mono">
-          Budget: <span className="text-[#0012b8] font-bold">{walletBalanceUsdc.toFixed(3)} USDC</span>
-        </div>
+        {walletAddress ? (
+          <div className="text-xs text-gray-600 bg-white border border-[#e5e7eb] px-2.5 py-1 rounded-md font-mono">
+            Budget: <span className="text-[#0012b8] font-bold">{walletBalanceUsdc.toFixed(3)} USDC</span>
+          </div>
+        ) : (
+          <button
+            onClick={onOpenPrivyLogin}
+            className="text-xs bg-[#5c41ff] hover:bg-[#4b32e0] text-white px-2.5 py-1 rounded-md font-medium transition-colors shadow-sm"
+          >
+            Connect with Privy
+          </button>
+        )}
       </div>
 
       {/* Preset Action Chips */}
