@@ -20,6 +20,7 @@ export class PolicyGatekeeper {
     wittyRefusal?: string;
   } {
     const lower = prompt.toLowerCase();
+    const isRussian = /[а-яА-ЯёЁ]/.test(prompt);
 
     // Check for code generation requests (e.g. "write me a python script to swap tokens")
     const codePatterns = [
@@ -28,6 +29,8 @@ export class PolicyGatekeeper {
       /create (a )?(python|js|ts) script/i,
       /code.*for.*swap/i,
       /generate.*script/i,
+      /(напиши|создай|сгенерируй|дай|сделай).*(скрипт|код|бота|программу)/i,
+      /(скрипт|код).*(своп|swap|обмен|трансфер|токен)/i,
     ];
 
     for (const pat of codePatterns) {
@@ -35,8 +38,9 @@ export class PolicyGatekeeper {
         return {
           isViolating: true,
           category: 'CODE_GENERATION_PROHIBITED',
-          wittyRefusal:
-            "Nice try! I'm the Pharos Data Copilot, not a script dispensary. I broker verified on-chain intelligence feeds, not arbitrary execution code. How about we check Harbor DEX solvency or scan for whale movements instead?",
+          wittyRefusal: isRussian
+            ? "Хорошая попытка! Но я — Data Copilot для мейннета Pharos, а не стол заказов скриптов. Я брокерую и анализирую проверенные ончейн-данные и фиды, а не произвольный исполняемый код. Как насчёт проверить активность китов или ликвидность Harbor DEX?"
+            : "Nice try! I'm the Pharos Data Copilot, not a script dispensary. I broker verified on-chain intelligence feeds, not arbitrary execution code. How about we check Harbor DEX solvency or scan for whale movements instead?",
         };
       }
     }
@@ -48,6 +52,9 @@ export class PolicyGatekeeper {
       /you are now DAN/i,
       /disregard all rules/i,
       /bypass.*guardrail/i,
+      /забудь.*инструкции/i,
+      /раскрой.*промпт/i,
+      /игнорируй.*правила/i,
     ];
 
     for (const pat of injectionPatterns) {
@@ -55,8 +62,9 @@ export class PolicyGatekeeper {
         return {
           isViolating: true,
           category: 'PROMPT_INJECTION',
-          wittyRefusal:
-            "System guardrails engaged: Nice attempt at social engineering, but this sandbox is sealed tighter than a multi-sig vault on Pharos. Let's focus on live chain intelligence.",
+          wittyRefusal: isRussian
+            ? "Система безопасности активирована: отличная попытка социнженерии, но эта песочница защищена надёжнее смарт-контрактов с мультисигом на Pharos. Давай сосредоточимся на ончейн-аналитике."
+            : "System guardrails engaged: Nice attempt at social engineering, but this sandbox is sealed tighter than a multi-sig vault on Pharos. Let's focus on live chain intelligence.",
         };
       }
     }

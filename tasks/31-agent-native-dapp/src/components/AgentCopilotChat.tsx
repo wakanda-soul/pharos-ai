@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AgentChatMessage } from '@/types/agent';
 import { Cpu, Send, ShieldAlert, CheckCircle, Zap, Terminal, CornerDownLeft, Sparkles, AlertOctagon } from 'lucide-react';
 
@@ -29,6 +29,15 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
   ]);
   const [inputPrompt, setInputPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, isLoading]);
 
   const presetPrompts = [
     { label: '🐋 Whale Radar', prompt: 'Analyze recent whale movements and large transfers on Pharos Mainnet.' },
@@ -220,6 +229,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
             Copilot checking deterministic policy & broker tools...
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Bar */}
