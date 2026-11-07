@@ -1,5 +1,5 @@
 import { IntelligenceFeed, FeedCurationStatus } from '@/types/feed';
-import { CURATED_FEEDS_INITIAL } from './mock-intelligence';
+import { CURATED_FEEDS_INITIAL } from './pharos-intelligence';
 import { PHAROS_CONSTANTS } from './pharos-chain';
 
 /**

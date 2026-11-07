@@ -1,12 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Shield, Mail, Key, Sparkles, Check, ArrowRight, Wallet } from 'lucide-react';
+import { X, Shield, Mail, Sparkles, Check, ArrowRight, Wallet, ExternalLink, AlertCircle, Copy, CheckCheck } from 'lucide-react';
+import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import { formatUnits, formatEther } from 'viem';
+import { pharosPublicClient, PHAROS_CONSTANTS, ERC20_ABI } from '@/lib/pharos-chain';
 
 interface PrivyLoginModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLoginSuccess: (derivedAddress: string) => void;
+  onLoginSuccess: (derivedAddress: string, usdcBalance: number, prosBalance: number, providerType: 'metamask' | 'session_key') => void;
 }
 
 export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
@@ -16,46 +19,152 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
 }) => {
   const [email, setEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [loginStep, setLoginStep] = useState<'methods' | 'verifying' | 'created'>('methods');
   const [createdAddress, setCreatedAddress] = useState('');
+  const [createdBalances, setCreatedBalances] = useState<{ usdc: number; pros: number }>({ usdc: 0, pros: 0 });
+  const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleEmailSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email) return;
-    executePrivyCreation(email);
-  };
-
-  const handleWalletSubmit = () => {
-    executePrivyCreation('browser_injected_wallet');
-  };
-
-  const handleSocialSubmit = (provider: string) => {
-    executePrivyCreation(`social_${provider}`);
-  };
-
-  const executePrivyCreation = (identifier: string) => {
+  // 1. Connect via real MetaMask / Browser Injected Wallet (EIP-1193)
+  const handleConnectBrowserWallet = async () => {
     setIsSubmitting(true);
+    setErrorMessage(null);
     setLoginStep('verifying');
 
-    setTimeout(() => {
-      // Deterministically derive or generate agent address on Pharos Mainnet
-      const deterministicAddress = '0x1bF848814D174F5A85bD3FDf9f6C9201';
-      setCreatedAddress(deterministicAddress);
+    try {
+      if (typeof window === 'undefined' || !(window as any).ethereum) {
+        throw new Error('No Web3 browser wallet detected (e.g. MetaMask, Rabby). Install MetaMask or create an Autonomous Agent Session Key below.');
+      }
+
+      const ethereum = (window as any).ethereum;
+      const accounts: string[] = await ethereum.request({ method: 'eth_requestAccounts' });
+
+      if (!accounts || accounts.length === 0) {
+        throw new Error('No accounts selected in your browser wallet.');
+      }
+
+      const userAddress = accounts[0] as `0x${string}`;
+
+      // Verify and switch to Pharos Mainnet (Chain ID 1672 / 0x688)
+      try {
+        await ethereum.request({
+          method: 'wallet_switchEthereumChain',
+          params: [{ chainId: PHAROS_CONSTANTS.chainIdHex }],
+        });
+      } catch (switchError: any) {
+        if (switchError.code === 4902 || switchError.message?.includes('4902')) {
+          await ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [
+              {
+                chainId: PHAROS_CONSTANTS.chainIdHex,
+                chainName: PHAROS_CONSTANTS.chainName,
+                rpcUrls: [PHAROS_CONSTANTS.rpcUrl],
+                nativeCurrency: { name: 'PROS', symbol: 'PROS', decimals: 18 },
+                blockExplorerUrls: [PHAROS_CONSTANTS.explorerUrl],
+              },
+            ],
+          });
+        }
+      }
+
+      // Fetch real live on-chain balances from Pharos RPC
+      const [prosRaw, usdcRaw] = await Promise.all([
+        pharosPublicClient.getBalance({ address: userAddress }),
+        pharosPublicClient.readContract({
+          address: PHAROS_CONSTANTS.nativeUsdcAddress,
+          abi: ERC20_ABI,
+          functionName: 'balanceOf',
+          args: [userAddress],
+        }).catch(() => BigInt(0)),
+      ]);
+
+      const prosBal = parseFloat(formatEther(prosRaw));
+      const usdcBal = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
+
+      setCreatedAddress(userAddress);
+      setCreatedBalances({ usdc: usdcBal, pros: prosBal });
       setLoginStep('created');
 
       setTimeout(() => {
         setIsSubmitting(false);
-        onLoginSuccess(deterministicAddress);
+        onLoginSuccess(userAddress, usdcBal, prosBal, 'metamask');
         onClose();
         setLoginStep('methods');
       }, 1200);
-    }, 1000);
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setLoginStep('methods');
+      setErrorMessage(err?.message || 'Failed to connect browser wallet.');
+    }
+  };
+
+  // 2. Generate Real Cryptographic Session Key (Autonomous Agent Non-Custodial Wallet)
+  const handleGenerateSessionWallet = async () => {
+    setIsSubmitting(true);
+    setErrorMessage(null);
+    setLoginStep('verifying');
+
+    try {
+      // Cryptographically generate private key using Viem
+      const privateKey = generatePrivateKey();
+      const account = privateKeyToAccount(privateKey);
+
+      // Save session key in localStorage for autonomous agent use
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pharos_agent_session_pk', privateKey);
+        localStorage.setItem('pharos_agent_wallet_address', account.address);
+      }
+
+      // Query real on-chain balance on Pharos Mainnet
+      const [prosRaw, usdcRaw] = await Promise.all([
+        pharosPublicClient.getBalance({ address: account.address }),
+        pharosPublicClient.readContract({
+          address: PHAROS_CONSTANTS.nativeUsdcAddress,
+          abi: ERC20_ABI,
+          functionName: 'balanceOf',
+          args: [account.address],
+        }).catch(() => BigInt(0)),
+      ]);
+
+      const prosBal = parseFloat(formatEther(prosRaw));
+      const usdcBal = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
+
+      setCreatedAddress(account.address);
+      setCreatedBalances({ usdc: usdcBal, pros: prosBal });
+      setLoginStep('created');
+
+      setTimeout(() => {
+        setIsSubmitting(false);
+        onLoginSuccess(account.address, usdcBal, prosBal, 'session_key');
+        onClose();
+        setLoginStep('methods');
+      }, 1200);
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setLoginStep('methods');
+      setErrorMessage(err?.message || 'Failed to provision session key.');
+    }
+  };
+
+  const handleSocialClick = (provider: string) => {
+    setErrorMessage(
+      `Direct ${provider} social OAuth requires setting NEXT_PUBLIC_PRIVY_APP_ID in your environment. To interact with Pharos Mainnet immediately, connect MetaMask or generate a Session Key below!`
+    );
+  };
+
+  const handleCopy = () => {
+    if (createdAddress) {
+      navigator.clipboard.writeText(createdAddress);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
       <div className="bg-white rounded-2xl border border-[#e5e7eb] max-w-sm w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
         <button
           onClick={onClose}
@@ -72,83 +181,90 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
               </div>
               <div>
                 <h3 className="text-base font-bold text-gray-900 tracking-tight">
-                  Connect with Privy
+                  Connect Wallet to Pharos
                 </h3>
                 <p className="text-[11px] text-gray-500">
-                  Autonomous Embedded Wallet on Pharos
+                  Pharos Mainnet (Chain ID 1672)
                 </p>
               </div>
             </div>
 
             <p className="text-xs text-gray-600 mb-4 leading-relaxed">
-              Sign in to automatically provision an embedded agent wallet. Fund it with micro-amounts of USDC to enable zero-popup autonomous x402 data requests.
+              Connect your Web3 wallet or generate a non-custodial session key to authorize real on-chain x402 data micropayments.
             </p>
 
-            {/* Email form */}
-            <form onSubmit={handleEmailSubmit} className="space-y-2 mb-4">
-              <label className="block text-[11px] font-semibold text-gray-700">
-                Email Address
-              </label>
-              <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Mail className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@domain.xyz"
-                    required
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-[#e5e7eb] rounded-lg focus:outline-none focus:border-[#5c41ff] transition-colors"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="bg-[#5c41ff] hover:bg-[#4b32e0] text-white px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shrink-0 shadow-sm"
-                >
-                  Continue <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+            {errorMessage && (
+              <div className="mb-3 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-start gap-1.5 leading-normal">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>{errorMessage}</span>
               </div>
-            </form>
+            )}
+
+            {/* Primary Option: Real MetaMask / Injected Browser Wallet */}
+            <div className="space-y-2 mb-4">
+              <button
+                onClick={handleConnectBrowserWallet}
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold bg-[#0012b8] hover:bg-[#000f96] text-white rounded-xl transition-all shadow-sm active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-2">
+                  <Wallet className="w-4 h-4 text-white" />
+                  <span>Connect MetaMask / Rabby</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 text-blue-200" />
+              </button>
+
+              <button
+                onClick={handleGenerateSessionWallet}
+                disabled={isSubmitting}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold border border-[#5c41ff]/30 bg-purple-50 hover:bg-purple-100 text-[#5c41ff] rounded-xl transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#5c41ff]" />
+                  <span>Generate Agent Session Key</span>
+                </div>
+                <span className="text-[10px] bg-white px-1.5 py-0.5 rounded border border-purple-200 font-mono">
+                  Autonomous
+                </span>
+              </button>
+            </div>
 
             <div className="relative flex py-1 items-center mb-3">
               <div className="flex-grow border-t border-gray-200"></div>
               <span className="flex-shrink mx-3 text-[10px] text-gray-400 uppercase font-mono tracking-wider">
-                or
+                or social sign-in
               </span>
               <div className="flex-grow border-t border-gray-200"></div>
             </div>
 
-            {/* Web3 Browser Wallet */}
-            <div className="space-y-2">
+            {/* Social Options (Privy SDK integrations) */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
               <button
-                onClick={handleWalletSubmit}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium border border-[#e5e7eb] rounded-lg hover:bg-[#f9fafb] text-gray-800 transition-colors"
+                onClick={() => handleSocialClick('Google')}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#e5e7eb] rounded-lg hover:bg-[#f9fafb] text-gray-700 transition-colors"
               >
-                <Wallet className="w-4 h-4 text-[#0012b8]" />
-                Connect Browser Wallet (MetaMask / Pharos)
+                <span className="font-bold text-red-500 text-xs">G</span> Google
               </button>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => handleSocialSubmit('google')}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#e5e7eb] rounded-lg hover:bg-[#f9fafb] text-gray-700 transition-colors"
-                >
-                  <span className="font-bold text-red-500 text-xs">G</span> Google
-                </button>
-                <button
-                  onClick={() => handleSocialSubmit('github')}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#e5e7eb] rounded-lg hover:bg-[#f9fafb] text-gray-700 transition-colors"
-                >
-                  <span className="font-bold text-gray-900 text-xs">⌘</span> GitHub
-                </button>
-              </div>
+              <button
+                onClick={() => handleSocialClick('GitHub')}
+                className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium border border-[#e5e7eb] rounded-lg hover:bg-[#f9fafb] text-gray-700 transition-colors"
+              >
+                <span className="font-bold text-gray-900 text-xs">⌘</span> GitHub
+              </button>
             </div>
 
             <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400">
               <span className="flex items-center gap-1">
-                <Shield className="w-3 h-3 text-emerald-500" /> Non-custodial session key
+                <Shield className="w-3 h-3 text-emerald-500" /> Real RPC: rpc.pharos.xyz
               </span>
-              <span>Chain ID 1672</span>
+              <a
+                href="https://pharosscan.xyz"
+                target="_blank"
+                rel="noreferrer"
+                className="hover:text-gray-600 flex items-center gap-0.5"
+              >
+                Explorer <ExternalLink className="w-2.5 h-2.5" />
+              </a>
             </div>
           </div>
         )}
@@ -159,9 +275,9 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
               <Sparkles className="w-6 h-6 animate-spin" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-gray-900">Provisioning Embedded Wallet</h4>
+              <h4 className="text-sm font-bold text-gray-900">Querying Pharos Mainnet...</h4>
               <p className="text-xs text-gray-500 mt-1">
-                Deriving cryptographic session key for autonomous agent execution on Pharos Mainnet...
+                Connecting address and querying live balances from https://rpc.pharos.xyz...
               </p>
             </div>
           </div>
@@ -173,12 +289,21 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
               <Check className="w-6 h-6 stroke-[3]" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-gray-900">Privy Wallet Connected!</h4>
-              <p className="text-xs text-gray-500 mt-1">
-                Agent address successfully created on Pharos Mainnet:
-              </p>
-              <div className="mt-2 bg-[#f2f4f5] px-2.5 py-1.5 rounded font-mono text-[11px] text-gray-800 break-all font-semibold">
-                {createdAddress}
+              <h4 className="text-sm font-bold text-gray-900">Connected to Pharos Mainnet!</h4>
+              <div className="mt-2 bg-[#f2f4f5] px-2.5 py-1.5 rounded font-mono text-[11px] text-gray-800 break-all flex items-center justify-between gap-1">
+                <span>{createdAddress}</span>
+                <button onClick={handleCopy} className="text-gray-500 hover:text-gray-900 shrink-0">
+                  {copied ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+
+              <div className="mt-3 flex items-center justify-center gap-4 text-xs font-mono">
+                <div className="text-gray-600">
+                  PROS: <span className="font-bold text-gray-900">{createdBalances.pros.toFixed(4)}</span>
+                </div>
+                <div className="text-gray-600">
+                  USDC: <span className="font-bold text-[#0012b8]">{createdBalances.usdc.toFixed(3)}</span>
+                </div>
               </div>
             </div>
           </div>

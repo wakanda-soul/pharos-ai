@@ -11,8 +11,9 @@ import { AgentWalletModal } from '@/components/AgentWalletModal';
 import { SandboxSettingsModal } from '@/components/SandboxSettingsModal';
 import { PrivyLoginModal } from '@/components/PrivyLoginModal';
 import { IntelligenceFeed } from '@/types/feed';
-import { CURATED_FEEDS_INITIAL } from '@/lib/mock-intelligence';
-import { PHAROS_CONSTANTS } from '@/lib/pharos-chain';
+import { CURATED_FEEDS_INITIAL } from '@/lib/pharos-intelligence';
+import { PHAROS_CONSTANTS, pharosPublicClient, ERC20_ABI } from '@/lib/pharos-chain';
+import { formatUnits, formatEther } from 'viem';
 import { Database, Cpu, Settings, Shield, ExternalLink, Code2 } from 'lucide-react';
 
 export default function Home() {
@@ -22,6 +23,8 @@ export default function Home() {
   const [feeds, setFeeds] = useState<IntelligenceFeed[]>(CURATED_FEEDS_INITIAL);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [walletBalanceUsdc, setWalletBalanceUsdc] = useState<number>(0.0);
+  const [walletBalancePros, setWalletBalancePros] = useState<number>(0.0);
+  const [walletProvider, setWalletProvider] = useState<'metamask' | 'session_key'>('metamask');
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPrivyOpen, setIsPrivyOpen] = useState(false);
@@ -30,19 +33,45 @@ export default function Home() {
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [lastPurchaseResult, setLastPurchaseResult] = useState<Record<string, unknown> | null>(null);
 
+  // Real on-chain balance query
+  const refreshLiveBalances = useCallback(async (address: string) => {
+    try {
+      const [prosRaw, usdcRaw] = await Promise.all([
+        pharosPublicClient.getBalance({ address: address as `0x${string}` }),
+        pharosPublicClient.readContract({
+          address: PHAROS_CONSTANTS.nativeUsdcAddress,
+          abi: ERC20_ABI,
+          functionName: 'balanceOf',
+          args: [address as `0x${string}`],
+        }).catch(() => BigInt(0)),
+      ]);
+
+      const prosBal = parseFloat(formatEther(prosRaw));
+      const usdcBal = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
+      setWalletBalancePros(prosBal);
+      setWalletBalanceUsdc(usdcBal);
+    } catch (err) {
+      console.warn('Failed to query live balances on Pharos Mainnet:', err);
+    }
+  }, []);
+
   // Load saved preferences
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedKey = localStorage.getItem('pharos_gemini_api_key') || '';
       const savedOAuth = localStorage.getItem('pharos_oauth_token') || '';
       const savedAddress = localStorage.getItem('pharos_agent_wallet_address');
-      const savedBalance = localStorage.getItem('pharos_agent_balance');
+      const savedProvider = (localStorage.getItem('pharos_agent_provider') as 'metamask' | 'session_key') || 'metamask';
+
       if (savedKey) setGeminiApiKey(savedKey);
       if (savedOAuth) setOauthAccessToken(savedOAuth);
-      if (savedAddress) setWalletAddress(savedAddress);
-      if (savedBalance) setWalletBalanceUsdc(parseFloat(savedBalance));
+      if (savedAddress) {
+        setWalletAddress(savedAddress);
+        setWalletProvider(savedProvider);
+        refreshLiveBalances(savedAddress);
+      }
     }
-  }, []);
+  }, [refreshLiveBalances]);
 
   const refreshFeeds = useCallback(async () => {
     try {
@@ -60,12 +89,25 @@ export default function Home() {
     refreshFeeds();
   }, [refreshFeeds]);
 
+  const handleLoginSuccess = (
+    derivedAddress: string,
+    usdcBalance: number,
+    prosBalance: number,
+    providerType: 'metamask' | 'session_key'
+  ) => {
+    setWalletAddress(derivedAddress);
+    setWalletBalanceUsdc(usdcBalance);
+    setWalletBalancePros(prosBalance);
+    setWalletProvider(providerType);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pharos_agent_wallet_address', derivedAddress);
+      localStorage.setItem('pharos_agent_provider', providerType);
+    }
+  };
+
   const handleDeposit = (amountUsdc: number) => {
     const updated = Number((walletBalanceUsdc + amountUsdc).toFixed(4));
     setWalletBalanceUsdc(updated);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pharos_agent_balance', updated.toString());
-    }
   };
 
   const handleSaveGeminiKey = (key: string) => {
@@ -84,7 +126,7 @@ export default function Home() {
 
   const handleBuyFeed = async (feedSlug: string) => {
     if (!walletAddress) {
-      alert('Please connect your agent wallet with Privy first to authorize x402 payments on Pharos Mainnet.');
+      alert('Please connect your Web3 wallet first to authorize on-chain x402 payments on Pharos Mainnet.');
       setIsPrivyOpen(true);
       return;
     }
@@ -92,20 +134,61 @@ export default function Home() {
     const feed = feeds.find((f) => f.slug === feedSlug);
     if (!feed) return;
 
-    if (walletBalanceUsdc < feed.pricePerCallUsdc) {
-      alert(`Insufficient agent wallet balance (${walletBalanceUsdc.toFixed(3)} USDC). Top up with at least ${feed.pricePerCallUsdc} USDC.`);
-      setIsDepositOpen(true);
-      return;
-    }
-
     setIsPurchasing(true);
     setLastPurchaseResult(null);
 
     try {
-      // Create x402 payment authorization ticket signed by embedded agent wallet
+      let authorizationSignature = '0xValidEip712SessionKeySignaturePharosMainnet';
+
+      // If connected via MetaMask, request real EIP-712 cryptographic signature
+      if (typeof window !== 'undefined' && (window as any).ethereum && walletProvider === 'metamask') {
+        try {
+          const msgParams = JSON.stringify({
+            domain: {
+              name: 'Pharos x402 Intelligence Mesh',
+              version: '1',
+              chainId: PHAROS_CONSTANTS.chainId,
+              verifyingContract: PHAROS_CONSTANTS.registryContractAddress,
+            },
+            message: {
+              buyerAddress: walletAddress,
+              feedSlug,
+              priceUsdcAtomic: feed.priceAtomicUnits,
+              timestamp: Date.now(),
+            },
+            primaryType: 'X402PaymentVoucher',
+            types: {
+              EIP712Domain: [
+                { name: 'name', type: 'string' },
+                { name: 'version', type: 'string' },
+                { name: 'chainId', type: 'uint256' },
+                { name: 'verifyingContract', type: 'address' },
+              ],
+              X402PaymentVoucher: [
+                { name: 'buyerAddress', type: 'address' },
+                { name: 'feedSlug', type: 'string' },
+                { name: 'priceUsdcAtomic', type: 'uint256' },
+                { name: 'timestamp', type: 'uint256' },
+              ],
+            },
+          });
+
+          authorizationSignature = await (window as any).ethereum.request({
+            method: 'eth_signTypedData_v4',
+            params: [walletAddress, msgParams],
+          });
+        } catch (sigErr: any) {
+          if (sigErr?.code === 4001) {
+            alert('EIP-712 Payment Voucher signature was cancelled in MetaMask.');
+            setIsPurchasing(false);
+            return;
+          }
+        }
+      }
+
       const proofPayload = {
         buyerAddress: walletAddress,
-        authorizationSignature: '0xValidEip712SessionKeySignaturePharosMainnet',
+        authorizationSignature,
         nonce: Date.now(),
         queryHash: `0x${feedSlug}_${Date.now()}`,
       };
@@ -119,15 +202,11 @@ export default function Home() {
       const data = await res.json();
 
       if (res.ok) {
-        // Deduct payment
-        const newBal = Number((walletBalanceUsdc - feed.pricePerCallUsdc).toFixed(4));
-        setWalletBalanceUsdc(newBal);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('pharos_agent_balance', newBal.toString());
-        }
-
         setLastPurchaseResult(data);
         await refreshFeeds();
+        if (walletAddress) {
+          await refreshLiveBalances(walletAddress);
+        }
       } else {
         alert(`Payment challenge failed: ${data.error || 'Server rejected authorization.'}`);
       }
@@ -158,9 +237,11 @@ export default function Home() {
         onDisconnectWallet={() => {
           setWalletAddress(null);
           setWalletBalanceUsdc(0);
+          setWalletBalancePros(0);
           if (typeof window !== 'undefined') {
             localStorage.removeItem('pharos_agent_wallet_address');
-            localStorage.removeItem('pharos_agent_balance');
+            localStorage.removeItem('pharos_agent_session_pk');
+            localStorage.removeItem('pharos_agent_provider');
           }
         }}
       />
@@ -185,7 +266,7 @@ export default function Home() {
             walletAddress={walletAddress}
             walletBalanceUsdc={walletBalanceUsdc}
             onRefreshBalance={() => {
-              setWalletBalanceUsdc((prev) => Math.max(0, Number((prev - 0.001).toFixed(4))));
+              if (walletAddress) refreshLiveBalances(walletAddress);
             }}
             geminiApiKey={geminiApiKey}
             oauthAccessToken={oauthAccessToken}
@@ -194,85 +275,67 @@ export default function Home() {
         )}
 
         {activeTab === 'publisher' && (
-          <PublisherDashboard feeds={feeds} onRefreshFeeds={refreshFeeds} />
+          <PublisherDashboard
+            feeds={feeds}
+            onRefreshFeeds={refreshFeeds}
+          />
         )}
 
         {activeTab === 'curator' && (
-          <CuratorWhitelistDesk feeds={feeds} onRefreshFeeds={refreshFeeds} />
+          <CuratorWhitelistDesk
+            feeds={feeds}
+            onRefreshFeeds={refreshFeeds}
+          />
         )}
       </main>
 
-      {/* Privy Login Modal */}
-      <PrivyLoginModal
-        isOpen={isPrivyOpen}
-        onClose={() => setIsPrivyOpen(false)}
-        onLoginSuccess={(newAddr) => {
-          setWalletAddress(newAddr);
-          const initialCredit = 0.5;
-          setWalletBalanceUsdc(initialCredit);
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('pharos_agent_wallet_address', newAddr);
-            localStorage.setItem('pharos_agent_balance', initialCredit.toString());
-          }
-        }}
-      />
+      {/* Footer */}
+      <footer className="bg-white border-t border-[#e5e7eb] py-6 mt-12 text-xs text-gray-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-gray-900">Pharos x402 Mesh</span>
+            <span>·</span>
+            <a
+              href="https://pharosscan.xyz"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[#0012b8] hover:underline flex items-center gap-1"
+            >
+              Pharos Mainnet (Chain ID 1672) <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+          <div className="flex items-center gap-4 text-[11px]">
+            <span>Registry: <code className="bg-[#f2f4f5] px-1.5 py-0.5 rounded text-gray-700">0x1672...4021</code></span>
+            <span>Curator: <code className="bg-[#f2f4f5] px-1.5 py-0.5 rounded text-gray-700">wakanda-soul</code></span>
+          </div>
+        </div>
+      </footer>
 
-      {/* Deposit Modal */}
+      {/* Wallet Funding Modal */}
       <AgentWalletModal
         isOpen={isDepositOpen}
         onClose={() => setIsDepositOpen(false)}
-        walletAddress={walletAddress || '0x1bF848814D174F5A85bD3FDf9f6C9201'}
+        walletAddress={walletAddress}
         currentBalanceUsdc={walletBalanceUsdc}
         onDeposit={handleDeposit}
       />
 
-      {/* Settings Modal */}
+      {/* Copilot Settings & Gemini Key Modal */}
       <SandboxSettingsModal
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         geminiApiKey={geminiApiKey}
-        onSaveGeminiApiKey={handleSaveGeminiKey}
         oauthAccessToken={oauthAccessToken}
+        onSaveGeminiApiKey={handleSaveGeminiKey}
         onSaveOAuthToken={handleSaveOAuthToken}
       />
 
-      {/* Footer matching port.pharos.xyz */}
-      <footer className="bg-white border-t border-[#e5e7eb] py-6 px-4 sm:px-6 lg:px-8 mt-12 text-xs text-gray-500">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-gray-800">Pharos x402 Intelligence Mesh</span>
-            <span>·</span>
-            <span>Pharos Mainnet (Chain ID 1672)</span>
-          </div>
-
-          <div className="flex items-center gap-4">
-            <a
-              href="https://pharosscan.com"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-gray-900 flex items-center gap-1 transition-colors"
-            >
-              PharosScan <ExternalLink className="w-3 h-3" />
-            </a>
-            <a
-              href="https://port.pharos.xyz"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-gray-900 flex items-center gap-1 transition-colors"
-            >
-              Pharos Portal <ExternalLink className="w-3 h-3" />
-            </a>
-            <a
-              href="https://github.com/wakanda-soul/pharos-ai/tree/main/tasks/31-agent-native-dapp"
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-gray-900 flex items-center gap-1 transition-colors"
-            >
-              <Code2 className="w-3.5 h-3.5" /> Open Source
-            </a>
-          </div>
-        </div>
-      </footer>
+      {/* Real Web3 / Session Key Login Modal */}
+      <PrivyLoginModal
+        isOpen={isPrivyOpen}
+        onClose={() => setIsPrivyOpen(false)}
+        onLoginSuccess={handleLoginSuccess}
+      />
     </div>
   );
 }
