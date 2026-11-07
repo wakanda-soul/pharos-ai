@@ -18,8 +18,8 @@ import { formatUnits, formatEther } from 'viem';
 import { Database, Cpu, Settings, Shield, ExternalLink, Code2 } from 'lucide-react';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'marketplace' | 'copilot' | 'publisher' | 'curator'>(
-    'marketplace'
+  const [activeTab, setActiveTab] = useState<'copilot' | 'marketplace' | 'publisher' | 'curator'>(
+    'copilot'
   );
   const [feeds, setFeeds] = useState<IntelligenceFeed[]>(CURATED_FEEDS_INITIAL);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);

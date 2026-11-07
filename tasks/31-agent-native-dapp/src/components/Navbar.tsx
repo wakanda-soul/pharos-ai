@@ -58,17 +58,6 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Navigation Tabs */}
           <nav className="hidden md:flex items-center gap-1 bg-[#f2f4f5] p-1 rounded-md border border-[#e5e7eb]">
             <button
-              onClick={() => setActiveTab('marketplace')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all ${
-                activeTab === 'marketplace'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Database className="w-3.5 h-3.5 text-[#0012b8]" />
-              Data Catalog
-            </button>
-            <button
               onClick={() => setActiveTab('copilot')}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all ${
                 activeTab === 'copilot'
@@ -78,6 +67,17 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Cpu className="w-3.5 h-3.5 text-[#5c41ff]" />
               AI Copilot
+            </button>
+            <button
+              onClick={() => setActiveTab('marketplace')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded transition-all ${
+                activeTab === 'marketplace'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Database className="w-3.5 h-3.5 text-[#0012b8]" />
+              Data Catalog
             </button>
             <button
               onClick={() => setActiveTab('publisher')}
@@ -156,16 +156,16 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Mobile navigation tab bar */}
       <div className="md:hidden flex items-center justify-around border-t border-[#e5e7eb] bg-[#f9fafb] p-1.5 text-xs">
         <button
-          onClick={() => setActiveTab('marketplace')}
-          className={`px-2 py-1 rounded ${activeTab === 'marketplace' ? 'font-bold text-[#0012b8]' : 'text-gray-600'}`}
-        >
-          Catalog
-        </button>
-        <button
           onClick={() => setActiveTab('copilot')}
           className={`px-2 py-1 rounded ${activeTab === 'copilot' ? 'font-bold text-[#5c41ff]' : 'text-gray-600'}`}
         >
           AI Copilot
+        </button>
+        <button
+          onClick={() => setActiveTab('marketplace')}
+          className={`px-2 py-1 rounded ${activeTab === 'marketplace' ? 'font-bold text-[#0012b8]' : 'text-gray-600'}`}
+        >
+          Catalog
         </button>
         <button
           onClick={() => setActiveTab('publisher')}

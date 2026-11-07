@@ -25,7 +25,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
     {
       id: 'init_1',
       sender: 'agent',
-      text: `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nI autonomously query the verified marketplace mesh and execute 0.001 USDC micro-payments on your behalf using your embedded agent wallet.\n\n*Notice: I am strictly an on-chain data researcher. I do not generate programming scripts or arbitrary execution code.*`,
+      text: `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nConnected MCP Gateways:\n• ⚡ **Pharos Chain MCP**: \`https://mcp.pharos.xyz/mcp\` (Live Streamable HTTP RPC telemetry)\n• 📚 **Pharos Docs MCP**: \`https://docs.pharos.xyz/index.md?ask=...\` (Official developer documentation RAG)\n\nI autonomously query the verified marketplace mesh and execute 0.001 USDC micro-payments on your behalf using your embedded agent wallet.\n\n*Notice: I am strictly an on-chain data researcher & documentation assistant. I do not generate programming scripts or arbitrary execution code.*`,
       timestamp: new Date().toISOString(),
     },
   ]);
@@ -42,6 +42,9 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
   }, [messages, isLoading]);
 
   const presetPrompts = [
+    { label: '🔗 Check MCP Mesh', prompt: 'Check live status and links for https://mcp.pharos.xyz/mcp and Pharos Docs MCP' },
+    { label: '📚 Docs MCP: Deploy Guide', prompt: 'How do I compile, test, and deploy a contract using Foundry on Pharos?' },
+    { label: '⚡ Chain MCP: Live Status', prompt: 'Query live block and tool status from Pharos Chain MCP server at https://mcp.pharos.xyz/mcp' },
     { label: '🐋 Whale Radar', prompt: 'Analyze recent whale movements and large transfers on Pharos Mainnet.' },
     { label: '🏦 Harbor Solvency', prompt: 'Audit the solvency and reserves depth of Harbor DEX pools.' },
     { label: '🛡️ Contract Risk', prompt: 'Run a honeypot and vulnerability scan on native USDC contract.' },
@@ -118,9 +121,28 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
                 Gemini 3-Layer Shield
               </span>
             </div>
-            <p className="text-[11px] text-gray-500">
-              Autonomous x402 broker · Tool-gated · Non-custodial execution
-            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <a
+                href="https://mcp.pharos.xyz/mcp"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded hover:underline inline-flex items-center gap-1 font-mono"
+                title="Hosted Streamable HTTP Chain MCP (https://mcp.pharos.xyz/mcp)"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Chain MCP: mcp.pharos.xyz/mcp
+              </a>
+              <a
+                href="https://docs.pharos.xyz/tooling-and-infrastructure/mcp.md"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded hover:underline inline-flex items-center gap-1 font-mono"
+                title="Official Developer Docs MCP (https://docs.pharos.xyz/index.md?ask=...)"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                Docs MCP: docs.pharos.xyz
+              </a>
+            </div>
           </div>
         </div>
 

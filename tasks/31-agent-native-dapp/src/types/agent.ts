@@ -1,9 +1,14 @@
 import { IntelligenceFeed } from './feed';
 
 export interface ToolCallExecution {
-  toolName: 'search_feeds' | 'buy_intelligence_feed' | 'synthesize_mesh_report';
-  arguments: Record<string, unknown>;
-  output?: Record<string, unknown>;
+  toolName:
+    | 'search_feeds'
+    | 'buy_intelligence_feed'
+    | 'synthesize_mesh_report'
+    | 'call_chain_mcp'
+    | 'query_docs_mcp';
+  arguments: Record<string, any>;
+  output?: any;
   paymentReceipt?: string;
   costUsdc?: number;
 }

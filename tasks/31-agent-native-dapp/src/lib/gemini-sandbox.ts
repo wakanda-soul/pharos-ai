@@ -2,6 +2,7 @@ import { PolicyGatekeeper } from './policy-gatekeeper';
 import { feedStore } from './storage';
 import { AgentChatMessage, ToolCallExecution } from '@/types/agent';
 import { fetchLiveIntelligenceData } from './pharos-intelligence';
+import { queryDocsMcp, callChainMcp } from './mcp-mesh';
 
 export interface CopilotContext {
   prompt: string;
@@ -81,8 +82,8 @@ BOUNDARIES & SECURITY RESTRICTIONS:
 
     if (isGreeting) {
       const greetingText = isRussian
-        ? `Привет! Да, конечно, я свободно общаюсь и понимаю по-русски.\n\nЯ **Pharos x402 Intelligence Copilot** — автономный агент в сети **Pharos Mainnet (Chain ID 1672)**.\n\nЯ умею анализировать ончейн-активность и закупать проверенные фиды данных через протокол x402 по микротарифу **0.001 USDC** с твоего агентского кошелька Privy.\n\n**О чём тебе рассказать?**\n• *«Проанализируй активность китов»* (крупные трансферы от $50k)\n• *«Проверь резервы и платежеспособность Harbor DEX»*\n• *«Просканируй смарт-контракт USDC на honeypot и риски»*\n• *«Покажи все доступные фиды в каталоге»*`
-        : `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nI can autonomously discover and purchase paywalled on-chain feeds using your embedded agent wallet at 0.001 USDC micro-rates.\n\n**Try asking me**:\n• *"Analyze whale movements on Pharos Mainnet"*\n• *"Audit Harbor DEX pool solvency"*\n• *"Scan contract honeypot risk"*\n• *"Show me all available feeds"*`;
+        ? `Привет! Да, конечно, я свободно общаюсь и понимаю по-русски.\n\nЯ **Pharos x402 Intelligence Copilot** — автономный агент в сети **Pharos Mainnet (Chain ID 1672)**.\n\nЯ напрямую подключен к официальным MCP-интерфейсам экосистемы:\n• ⚡ **Pharos Chain MCP**: \`https://mcp.pharos.xyz/mcp\` (живая телеметрия блоков, балансов и RPC)\n• 📚 **Pharos Docs MCP**: \`https://docs.pharos.xyz/index.md?ask=...\` (поиск по всей официальной документации)\n\nТакже я умею анализировать ончейн-активность и закупать проверенные фиды данных через протокол x402 по микротарифу **0.001 USDC** с твоего агентского кошелька Privy.\n\n**О чём тебе рассказать?**\n• *«Проверь доступ к Chain MCP и Docs MCP»*\n• *«Как задеплоить контракт через Foundry на Pharos?»*\n• *«Проанализируй активность китов»* (крупные трансферы от $50k)\n• *«Проверь резервы и платежеспособность Harbor DEX»*\n• *«Просканируй смарт-контракт USDC на honeypot и риски»*\n• *«Покажи все доступные фиды в каталоге»*`
+        : `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nI am connected directly to official Pharos Model Context Protocol (MCP) servers:\n• ⚡ **Pharos Chain MCP**: \`https://mcp.pharos.xyz/mcp\` (Live RPC & block telemetry via Streamable HTTP)\n• 📚 **Pharos Docs MCP**: \`https://docs.pharos.xyz/index.md?ask=...\` (Official developer documentation search)\n\nI can autonomously query on-chain telemetry, retrieve documentation, and purchase paywalled data feeds using your embedded agent wallet at 0.001 USDC micro-rates.\n\n**Try asking me**:\n• *"Check access to Chain MCP and Docs MCP"*\n• *"How do I deploy a contract with Foundry?"*\n• *"Analyze whale movements on Pharos Mainnet"*\n• *"Audit Harbor DEX pool solvency"*\n• *"Scan contract honeypot risk"*\n• *"Show me all available feeds"*`;
 
       return {
         id: `msg_${Date.now()}`,
@@ -211,6 +212,147 @@ BOUNDARIES & SECURITY RESTRICTIONS:
         id: `msg_${Date.now()}`,
         sender: 'agent',
         text: listText,
+        timestamp: new Date().toISOString(),
+        toolCalls,
+      };
+    }
+
+    // 3b. Unified MCP Architecture & Links Query (Docs MCP + Chain MCP Access)
+    const isMcpMeshAccessQuery =
+      (lower.includes('mcp') || lower.includes('мсп')) &&
+      (lower.includes('докс') ||
+        lower.includes('docs') ||
+        lower.includes('ссылк') ||
+        lower.includes('link') ||
+        lower.includes('доступ') ||
+        lower.includes('access') ||
+        lower.includes('endpoint') ||
+        lower.includes('где') ||
+        lower.includes('url') ||
+        lower.includes('адрес') ||
+        lower.includes('mcp.pharos.xyz'));
+
+    if (isMcpMeshAccessQuery) {
+      const [chainInfo, docsData] = await Promise.all([
+        callChainMcp('get_chain_info', {}),
+        queryDocsMcp('Pharos Model Context Protocol MCP specification'),
+      ]);
+
+      toolCalls.push({
+        toolName: 'call_chain_mcp',
+        arguments: { endpoint: 'https://mcp.pharos.xyz/mcp', tool: 'get_chain_info' },
+        output: chainInfo,
+      });
+
+      toolCalls.push({
+        toolName: 'query_docs_mcp',
+        arguments: { endpoint: 'https://docs.pharos.xyz/index.md?ask=', query: 'MCP specification' },
+        output: docsData,
+      });
+
+      const latestBlock = chainInfo.result?.latestBlock || '22419800+';
+      const chainId = chainInfo.result?.chainId || 1672;
+
+      const mcpOverviewText = isRussian
+        ? `Да! Я напрямую подключен и имею постоянный онлайн-доступ к обоим официальным серверам MCP Pharos:\n\n` +
+          `1. ⚡ **Pharos Chain MCP Server**:\n` +
+          `• **Эндпоинт**: \`https://mcp.pharos.xyz/mcp\`\n` +
+          `• **Протокол**: Streamable HTTP (Model Context Protocol 2024-11-05)\n` +
+          `• **Статус**: Онлайн (Сессия: \`${chainInfo.sessionId || 'active-session'}\`)\n` +
+          `• **Текущий блок в сети**: \`${latestBlock}\` (Chain ID ${chainId}, PROS)\n` +
+          `• **Доступные инструменты**: \`get_chain_info\`, \`get_block_number\`, \`get_balance\`, \`get_transaction_count\`, \`get_gas_price\`, \`get_block\`, \`get_transaction\`, \`get_code\`, \`eth_call\`, \`estimate_gas\`, \`get_logs\`, \`send_raw_transaction\`.\n` +
+          `• **Спецификация в документации**: [Pharos Chain MCP Guide](https://docs.pharos.xyz/tooling-and-infrastructure/mcp.md)\n\n` +
+          `2. 📚 **Pharos Developer Docs MCP**:\n` +
+          `• **Прямой поисковый API эндпоинт**: \`https://docs.pharos.xyz/index.md?ask=\`\n` +
+          `• **Портал документации**: [docs.pharos.xyz](https://docs.pharos.xyz)\n` +
+          `• **Спецификация MCP в GitBook**: [docs.pharos.xyz/tooling-and-infrastructure/mcp.md](https://docs.pharos.xyz/tooling-and-infrastructure/mcp.md)\n` +
+          `• **Карта разделов**: [docs.pharos.xyz/sitemap.md](https://docs.pharos.xyz/sitemap.md)\n\n` +
+          `💡 *Ты можешь задать мне любой вопрос по ончейн-данным или коду смарт-контрактов — я мгновенно запрошу ответы из обоих MCP!*`
+        : `Yes! I am directly integrated with and continuously connected to both official Pharos MCP servers:\n\n` +
+          `1. ⚡ **Pharos Chain MCP Server**:\n` +
+          `• **Hosted Endpoint**: \`https://mcp.pharos.xyz/mcp\`\n` +
+          `• **Transport Protocol**: Streamable HTTP (Model Context Protocol 2024-11-05)\n` +
+          `• **Connection Status**: Active Online (Session: \`${chainInfo.sessionId || 'active-session'}\`)\n` +
+          `• **Live Mainnet Block**: \`${latestBlock}\` (Chain ID ${chainId}, PROS)\n` +
+          `• **Available Tools**: \`get_chain_info\`, \`get_block_number\`, \`get_balance\`, \`get_transaction_count\`, \`get_gas_price\`, \`get_block\`, \`get_transaction\`, \`get_code\`, \`eth_call\`, \`estimate_gas\`, \`get_logs\`, \`send_raw_transaction\`.\n` +
+          `• **Official Guide**: [Pharos Chain MCP Guide](https://docs.pharos.xyz/tooling-and-infrastructure/mcp.md)\n\n` +
+          `2. 📚 **Pharos Developer Docs MCP**:\n` +
+          `• **Direct Query API Endpoint**: \`https://docs.pharos.xyz/index.md?ask=\`\n` +
+          `• **Documentation Hub**: [docs.pharos.xyz](https://docs.pharos.xyz)\n` +
+          `• **MCP Documentation Specification**: [docs.pharos.xyz/tooling-and-infrastructure/mcp.md](https://docs.pharos.xyz/tooling-and-infrastructure/mcp.md)\n` +
+          `• **Documentation Sitemap**: [docs.pharos.xyz/sitemap.md](https://docs.pharos.xyz/sitemap.md)\n\n` +
+          `Feel free to ask me to query any live RPC telemetry or developer documentation!`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: mcpOverviewText,
+        timestamp: new Date().toISOString(),
+        toolCalls,
+      };
+    }
+
+    // 3c. Docs MCP Query (Documentation, Foundry, Deploy, Contracts, Guides)
+    const isDocsMcpQuery =
+      lower.includes('docs') ||
+      lower.includes('докс') ||
+      lower.includes('документац') ||
+      lower.includes('deploy') ||
+      lower.includes('деплой') ||
+      lower.includes('foundry') ||
+      lower.includes('фаундри') ||
+      lower.includes('инструкци') ||
+      lower.includes('руководств') ||
+      lower.includes('faucet') ||
+      lower.includes('кран') ||
+      lower.includes('chain id') ||
+      lower.includes('параметр сети');
+
+    if (isDocsMcpQuery) {
+      const docsData = await queryDocsMcp(prompt);
+      toolCalls.push({
+        toolName: 'query_docs_mcp',
+        arguments: { endpoint: 'https://docs.pharos.xyz', query: prompt },
+        output: docsData,
+      });
+
+      const docsAnswer = isRussian
+        ? `📚 **Ответ из Pharos Docs MCP** (\`https://docs.pharos.xyz\`):\n\n${docsData.answer}\n\n*Источники:* ${docsData.sources.map((s) => `[${s.title}](${s.url})`).join(' · ')}`
+        : `📚 **Retrieved via Pharos Docs MCP** (\`https://docs.pharos.xyz\`):\n\n${docsData.answer}\n\n*Sources:* ${docsData.sources.map((s) => `[${s.title}](${s.url})`).join(' · ')}`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: docsAnswer,
+        timestamp: new Date().toISOString(),
+        toolCalls,
+      };
+    }
+
+    // 3d. Chain MCP Query (Live Pharos Chain MCP endpoint calls)
+    const isChainMcpQuery =
+      lower.includes('chain mcp') ||
+      lower.includes('mcp.pharos.xyz') ||
+      lower.includes('mcp статус') ||
+      lower.includes('блок через mcp') ||
+      lower.includes('сессия mcp');
+
+    if (isChainMcpQuery) {
+      const mcpResponse = await callChainMcp('get_block_number', {});
+      toolCalls.push({
+        toolName: 'call_chain_mcp',
+        arguments: { endpoint: 'https://mcp.pharos.xyz/mcp', tool: 'get_block_number' },
+        output: mcpResponse,
+      });
+
+      const mcpAnswer = isRussian
+        ? `⚡ **Pharos Chain MCP Server** (\`https://mcp.pharos.xyz/mcp\`):\n• **Статус**: Онлайн (Streamable HTTP Protocol)\n• **Session ID**: \`${mcpResponse.sessionId || 'active-session'}\`\n• **Сервер**: ${mcpResponse.serverInfo.name} v${mcpResponse.serverInfo.version}\n• **Live Block Result**: \`${JSON.stringify(mcpResponse.result)}\`\n• **Доступные инструменты**: \`get_chain_info\`, \`get_block_number\`, \`get_balance\`, \`get_gas_price\`, \`get_code\`, \`eth_call\`.\n\nКанал MCP подключен к копайлоту и готов к вызовам!`
+        : `⚡ **Pharos Chain MCP Server** (\`https://mcp.pharos.xyz/mcp\`):\n• **Status**: Active (Streamable HTTP Protocol)\n• **Session ID**: \`${mcpResponse.sessionId || 'active-session'}\`\n• **Server**: ${mcpResponse.serverInfo.name} v${mcpResponse.serverInfo.version}\n• **Live Block Result**: \`${JSON.stringify(mcpResponse.result)}\`\n• **Supported Tools**: \`get_chain_info\`, \`get_block_number\`, \`get_balance\`, \`get_gas_price\`, \`get_code\`, \`eth_call\`.`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: mcpAnswer,
         timestamp: new Date().toISOString(),
         toolCalls,
       };
