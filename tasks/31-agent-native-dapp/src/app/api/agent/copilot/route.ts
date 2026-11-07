@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       prompt,
       agentWalletAddress,
       agentWalletBalanceUsdc,
-      geminiApiKey,
+      geminiApiKey: geminiApiKey || process.env.GEMINI_API_KEY,
       oauthAccessToken,
     });
 

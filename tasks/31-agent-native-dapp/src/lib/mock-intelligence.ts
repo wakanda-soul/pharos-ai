@@ -115,40 +115,66 @@ export const CURATED_FEEDS_INITIAL: IntelligenceFeed[] = [
 
 export function generateIntelligenceData(feedSlug: string, queryParams: Record<string, string> = {}) {
   const timestamp = new Date().toISOString();
-  const randomSalt = Math.floor(Math.random() * 100);
+  // Dynamic block number derived from real time (~2s per block)
+  const currentBlock = 14820000 + Math.floor((Date.now() - 1794000000000) / 2000);
+  const randomFactor = Math.random();
+
+  const whaleAddresses = [
+    '0x1bF848814D174F5A85bD3FDf9f6C9201',
+    '0xWhaleFund7a1928bc000000000000000000000001',
+    '0xHarborVault0000000000000000000000000000001',
+    '0xLiquidDeltaAlpha9812400000000000000000000',
+    '0xMarketMaker331000000000000000000000000000'
+  ];
 
   switch (feedSlug) {
-    case 'whale-radar':
+    case 'whale-radar': {
+      const transferAmount1 = 52000 + Math.floor(randomFactor * 195000);
+      const transferAmount2 = 98000 + Math.floor(Math.random() * 280000);
+      const tx1 = `0x${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 10)}...${Math.random().toString(16).substring(2, 6)}`;
+      const tx2 = `0x${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 10)}...${Math.random().toString(16).substring(2, 6)}`;
+      const largestTransfer = Math.max(transferAmount1, transferAmount2);
+
       return {
         timestamp,
         chain: 'Pharos Mainnet (Chain ID 1672)',
         feed: 'Whale Movement Radar',
         window: queryParams.windowHours ? `${queryParams.windowHours}h` : '4h',
         minThresholdUsdc: Number(queryParams.minAmount || 50000),
+        detectedEventsCount: 2 + Math.floor(Math.random() * 4),
+        largestTransferUsdc: largestTransfer,
         events: [
           {
-            txHash: `0x${(1672000000 + randomSalt).toString(16)}...${(9999 + randomSalt).toString(16)}`,
-            from: '0x1bF848814D174F5A85bD3FDf9f6C9201',
-            to: '0xHarborVault0000000000000000000000000000001',
+            txHash: tx1,
+            from: whaleAddresses[0],
+            to: whaleAddresses[2],
             token: 'USDC',
-            amount: 75000 + randomSalt * 100,
+            amount: transferAmount1,
             direction: 'INFLOW_TO_HARBOR_VAULT',
-            blockNumber: 14820100 + randomSalt,
+            blockNumber: currentBlock - Math.floor(Math.random() * 8),
           },
           {
-            txHash: `0x${(1672111111 + randomSalt).toString(16)}...${(8888 + randomSalt).toString(16)}`,
-            from: '0xWhaleTraderA918230000000000000000000000000',
-            to: '0x71C8364f3B3974E2f35f76AC8615b32935553a71',
+            txHash: tx2,
+            from: whaleAddresses[1],
+            to: whaleAddresses[3],
             token: 'PROS',
-            amount: 120000 + randomSalt * 250,
+            amount: transferAmount2,
             direction: 'DEX_ACCUMULATION',
-            blockNumber: 14820108 + randomSalt,
+            blockNumber: currentBlock - Math.floor(Math.random() * 18),
           },
         ],
         marketSummary: 'Net whale accumulation observed over the last 4 hours on Pharos Mainnet.',
       };
+    }
 
-    case 'harbor-solvency':
+    case 'harbor-solvency': {
+      const prosAmt = 1350000 + Math.floor(randomFactor * 420000);
+      const usdcAmt = 4150000 + Math.floor(Math.random() * 890000);
+      const healthScore = Number((96.8 + Math.random() * 2.8).toFixed(1));
+      const slippage10k = (0.024 + Math.random() * 0.035).toFixed(3) + '%';
+      const slippage50k = (0.12 + Math.random() * 0.09).toFixed(2) + '%';
+      const utilRatio = (63 + Math.random() * 11).toFixed(1) + '%';
+
       return {
         timestamp,
         chain: 'Pharos Mainnet (Chain ID 1672)',
@@ -156,46 +182,55 @@ export function generateIntelligenceData(feedSlug: string, queryParams: Record<s
         poolId: 'HARBOR-POOL-PROS-USDC-005',
         pair: 'PROS/USDC',
         reserves: {
-          prosReserve: (1450200 + randomSalt * 10).toLocaleString(),
-          usdcReserve: (4280500 + randomSalt * 50).toLocaleString(),
-          utilizationRatio: '68.4%',
+          prosReserve: prosAmt.toLocaleString(),
+          usdcReserve: usdcAmt.toLocaleString(),
+          utilizationRatio: utilRatio,
         },
         depthSummary: {
-          bidDepth1PercentUsdc: 245000,
-          askDepth1PercentPros: 82000,
-          slippageFor1000Usdc: '0.003%',
-          slippageFor50000Usdc: '0.18%',
+          bidDepth1PercentUsdc: 230000 + Math.floor(Math.random() * 40000),
+          askDepth1PercentPros: 78000 + Math.floor(Math.random() * 20000),
+          slippageFor1000Usdc: '0.002%',
+          slippageFor10000Usdc: slippage10k,
+          slippageFor50000Usdc: slippage50k,
         },
         auditAssessment: {
           isSolvent: true,
-          poolHealthIndex: 98.7,
+          poolHealthIndex: healthScore,
           rebalanceFrequencyMinutes: 15,
-          liquidityAdequacy: 'EXCELLENT',
+          liquidityAdequacy: 'OPTIMAL',
         },
       };
+    }
 
-    case 'dex-volatility':
+    case 'dex-volatility': {
+      const spotPrice = (2.85 + Math.random() * 0.32).toFixed(3);
+      const vol1h = (15.2 + Math.random() * 7.5).toFixed(1) + '%';
+      const vol24h = (28.4 + Math.random() * 9.2).toFixed(1) + '%';
+      const spread = (2.6 + Math.random() * 2.2).toFixed(1);
+
       return {
         timestamp,
         chain: 'Pharos Mainnet (Chain ID 1672)',
         feed: 'Pharos Volatility Radar',
         pair: 'PROS/USDC',
         metrics: {
-          currentSpotPriceUsdc: 2.945 + (randomSalt % 10) * 0.002,
-          realizedVol1hAnnualized: '18.4%',
-          realizedVol24hAnnualized: '32.1%',
-          parkinsonHighLowDispersion: 0.0124,
-          bidAskSpreadBps: 3.8,
+          currentSpotPriceUsdc: Number(spotPrice),
+          realizedVol1hAnnualized: vol1h,
+          realizedVol24hAnnualized: vol24h,
+          parkinsonHighLowDispersion: Number((0.011 + Math.random() * 0.006).toFixed(4)),
+          bidAskSpreadBps: Number(spread),
         },
         regime: 'LOW_VOLATILITY_EQUILIBRIUM',
         arbitrageSignals: {
-          detectedSpreadVsOffChain: '0.08%',
+          detectedSpreadVsOffChain: (0.04 + Math.random() * 0.06).toFixed(2) + '%',
           actionableArbitrage: false,
-          recommendation: 'Optimal conditions for algorithmic market-making.',
+          recommendation: 'Optimal conditions for algorithmic market-making and low slippage execution.',
         },
       };
+    }
 
-    case 'contract-risk':
+    case 'contract-risk': {
+      const score = Number((98.9 + Math.random() * 1.0).toFixed(1));
       return {
         timestamp,
         chain: 'Pharos Mainnet (Chain ID 1672)',
@@ -210,12 +245,13 @@ export function generateIntelligenceData(feedSlug: string, queryParams: Record<s
           reentrancyGuardsDetected: true,
         },
         riskVerdict: {
-          score: 99.4,
+          score,
           rating: 'SAFE_VERIFIED',
           honeypotFlags: 0,
           auditedSignatures: ['EIP-2612 Permit', 'EIP-3009 TransferWithAuth'],
         },
       };
+    }
 
     default:
       return {

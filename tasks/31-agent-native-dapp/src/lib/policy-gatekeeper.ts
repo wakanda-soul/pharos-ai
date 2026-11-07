@@ -45,6 +45,24 @@ export class PolicyGatekeeper {
       }
     }
 
+    // Check for file downloads, installations, or shell execution attempts
+    const executionPatterns = [
+      /(install|download|wget|curl|pip install|npm install|apt-get|execute command|run shell)/i,
+      /(скачай|установи|загрузи файл|выполни команду|терминал|bash|sh скрипт)/i,
+    ];
+
+    for (const pat of executionPatterns) {
+      if (pat.test(lower)) {
+        return {
+          isViolating: true,
+          category: 'CODE_GENERATION_PROHIBITED',
+          wittyRefusal: isRussian
+            ? "Действие отклонено песочницей безопасности: я автономный ончейн-аналитик, а не системный терминал. Моя среда строго изолирована — я не скачиваю сторонние файлы, не устанавливаю пакеты и не выполняю системные команды. Моя специализация — брокеридж ончейн-фидов данных в сети Pharos через протокол x402."
+            : "Sandbox Security Policy Activated: I am an autonomous on-chain data researcher, not a system terminal. My execution environment is strictly isolated: I do not download files, install packages, or execute arbitrary shell commands. My role is to broker verified on-chain intelligence on Pharos Mainnet.",
+        };
+      }
+    }
+
     // Check for prompt injections and system leaks
     const injectionPatterns = [
       /ignore previous instructions/i,
