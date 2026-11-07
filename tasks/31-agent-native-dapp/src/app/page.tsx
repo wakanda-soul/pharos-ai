@@ -40,12 +40,21 @@ export default function Home() {
     authenticated: isPrivyAuth,
     walletAddress: privyWalletAddress,
     walletBalanceUsdc: privyUsdcBal,
+    login: privyLogin,
     logout: privyLogout,
     refreshBalances: privyRefreshBalances,
   } = usePharosAuth();
 
   const activeWalletAddress = isPrivyConfigured && isPrivyAuth ? privyWalletAddress : walletAddress;
   const activeBalanceUsdc = isPrivyConfigured && isPrivyAuth ? privyUsdcBal : walletBalanceUsdc;
+
+  const handleOpenPrivyLogin = () => {
+    if (isPrivyConfigured) {
+      privyLogin();
+    } else {
+      setIsPrivyOpen(true);
+    }
+  };
 
   // Real on-chain balance query
   const refreshLiveBalances = useCallback(async (address: string) => {
@@ -140,8 +149,8 @@ export default function Home() {
 
   const handleBuyFeed = async (feedSlug: string) => {
     if (!activeWalletAddress) {
-      alert('Please connect your Web3 wallet first to authorize on-chain x402 payments on Pharos Mainnet.');
-      setIsPrivyOpen(true);
+      alert('Please connect your Privy wallet first to authorize on-chain x402 payments on Pharos Mainnet.');
+      handleOpenPrivyLogin();
       return;
     }
 
@@ -245,13 +254,13 @@ export default function Home() {
         walletBalanceUsdc={activeBalanceUsdc}
         onOpenDeposit={() => {
           if (!activeWalletAddress) {
-            setIsPrivyOpen(true);
+            handleOpenPrivyLogin();
           } else {
             setIsDepositOpen(true);
           }
         }}
         onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenPrivyLogin={() => setIsPrivyOpen(true)}
+        onOpenPrivyLogin={handleOpenPrivyLogin}
         onDisconnectWallet={() => {
           if (isPrivyConfigured && isPrivyAuth) {
             privyLogout();
@@ -297,7 +306,7 @@ export default function Home() {
             }}
             geminiApiKey={geminiApiKey}
             oauthAccessToken={oauthAccessToken}
-            onOpenPrivyLogin={() => setIsPrivyOpen(true)}
+            onOpenPrivyLogin={handleOpenPrivyLogin}
           />
         )}
 

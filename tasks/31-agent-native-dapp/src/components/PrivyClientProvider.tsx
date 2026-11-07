@@ -162,16 +162,18 @@ function UnconfiguredPrivyProvider({
   );
 }
 
+export const DEFAULT_PRIVY_APP_ID = 'cmw6zurar00910hl1rsqen5go';
+
 export function PrivyClientProvider({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
-  const [appId, setAppId] = useState<string>('');
+  const [appId, setAppId] = useState<string>(DEFAULT_PRIVY_APP_ID);
 
   useEffect(() => {
     setMounted(true);
     const envAppId = process.env.NEXT_PUBLIC_PRIVY_APP_ID || '';
-    const storedAppId = localStorage.getItem('pharos_privy_app_id') || '';
-    const resolved = envAppId || storedAppId;
-    if (resolved && resolved.startsWith('cl') && resolved.length >= 15) {
+    const storedAppId = typeof window !== 'undefined' ? localStorage.getItem('pharos_privy_app_id') || '' : '';
+    const resolved = envAppId || storedAppId || DEFAULT_PRIVY_APP_ID;
+    if (resolved && resolved.length >= 15) {
       setAppId(resolved);
     }
   }, []);
