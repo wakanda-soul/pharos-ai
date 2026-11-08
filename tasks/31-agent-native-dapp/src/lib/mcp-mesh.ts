@@ -184,7 +184,7 @@ export async function queryDocsMcp(question: string): Promise<DocsMcpResponse> {
         Accept: 'text/markdown, text/plain',
         'User-Agent': 'pharos-x402-copilot/1.0.0 (DocsMCP; wakanda-soul)',
       },
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(8000),
     });
 
     if (res.ok) {
