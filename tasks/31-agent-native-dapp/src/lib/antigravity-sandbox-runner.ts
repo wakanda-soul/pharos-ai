@@ -10,7 +10,7 @@ export interface AntigravityExecutionOptions {
 
 export class AntigravitySandboxRunner {
   private static readonly RUNNER_PATH = '/usr/local/bin/project-gemini-runner';
-  private static readonly DEFAULT_MODEL = 'gemini-3.8-flash-medium';
+  private static readonly DEFAULT_MODEL = 'gemini-3.8-flash-low';
   private static readonly MAX_CONCURRENT_SLOTS = 4;
   private static readonly DEFAULT_TIMEOUT_MS = 25000;
 

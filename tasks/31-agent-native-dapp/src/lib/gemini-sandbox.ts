@@ -54,7 +54,7 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       try {
         const liveAiResponse = await AntigravitySandboxRunner.executePrompt({
           prompt,
-          model: 'gemini-3.8-flash-medium',
+          model: 'gemini-3.8-flash-low',
           systemPersona: this.SYSTEM_PERSONA,
         });
 
