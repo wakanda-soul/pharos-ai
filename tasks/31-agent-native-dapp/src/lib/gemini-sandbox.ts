@@ -3,6 +3,7 @@ import { feedStore } from './storage';
 import { AgentChatMessage, ToolCallExecution } from '@/types/agent';
 import { fetchLiveIntelligenceData } from './pharos-intelligence';
 import { queryDocsMcp, callChainMcp } from './mcp-mesh';
+import { AntigravitySandboxRunner } from './antigravity-sandbox-runner';
 
 export interface CopilotContext {
   prompt: string;
@@ -48,7 +49,29 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       };
     }
 
-    // If real Gemini API key or OAuth token is provided, we can call Google Gemini API:
+    // Priority 1: Hardware-isolated Bubblewrap Antigravity CLI sandbox (Gemini 3.8 Flash)
+    if (AntigravitySandboxRunner.isAvailable()) {
+      try {
+        const liveAiResponse = await AntigravitySandboxRunner.executePrompt({
+          prompt,
+          model: 'gemini-3.8-flash-medium',
+          systemPersona: this.SYSTEM_PERSONA,
+        });
+
+        if (liveAiResponse) {
+          return {
+            id: `msg_${Date.now()}`,
+            sender: 'agent',
+            text: liveAiResponse,
+            timestamp: new Date().toISOString(),
+          };
+        }
+      } catch (err) {
+        console.warn('Antigravity sandbox runner invocation failed, falling back:', err);
+      }
+    }
+
+    // Priority 2: Google Gemini REST API (if API Key provided)
     if (geminiApiKey || oauthAccessToken) {
       try {
         return await this.callGeminiApi(context);
