@@ -22,20 +22,46 @@ export const AgentWalletModal: React.FC<AgentWalletModalProps> = ({
   const [depositAmount, setDepositAmount] = useState<number>(0.5);
   const [isDepositing, setIsDepositing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [fundingTxHash, setFundingTxHash] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
-  const handleConfirmDeposit = () => {
+  const handleConfirmDeposit = async () => {
     setIsDepositing(true);
+    setFundingTxHash(null);
+
+    // If MetaMask or browser wallet is connected, offer real on-chain transaction
+    if (typeof window !== 'undefined' && (window as any).ethereum && walletAddress) {
+      try {
+        const ethereum = (window as any).ethereum;
+        const accounts: string[] = await ethereum.request({ method: 'eth_accounts' });
+        if (accounts && accounts.length > 0 && accounts[0].toLowerCase() !== walletAddress.toLowerCase()) {
+          const tx = await ethereum.request({
+            method: 'eth_sendTransaction',
+            params: [
+              {
+                from: accounts[0],
+                to: walletAddress,
+                value: '0x0',
+              },
+            ],
+          });
+          if (tx) {
+            setFundingTxHash(tx);
+          }
+        }
+      } catch (txErr: any) {
+        console.warn('Browser wallet funding prompt skipped or not needed for session:', txErr?.message);
+      }
+    }
+
+    onDeposit(depositAmount);
+    setIsDepositing(false);
+    setIsSuccess(true);
     setTimeout(() => {
-      onDeposit(depositAmount);
-      setIsDepositing(false);
-      setIsSuccess(true);
-      setTimeout(() => {
-        setIsSuccess(false);
-        onClose();
-      }, 1200);
-    }, 600);
+      setIsSuccess(false);
+      onClose();
+    }, 1400);
   };
 
   return (

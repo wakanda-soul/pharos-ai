@@ -40,8 +40,10 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
   const handleSavePrivyAppId = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanId = inputAppId.trim();
-    if (!cleanId.startsWith('cl') || cleanId.length < 15) {
-      setErrorMessage('Invalid Privy App ID format. A valid Privy App ID starts with "cl" (e.g. clabc1234567890). Get one for free at dashboard.privy.io');
+    // Allow both legacy 'cl' and modern 'cm' prefixes for Privy App IDs
+    const isValidPrivyId = /^(cl|cm)[a-zA-Z0-9_-]{12,}$/.test(cleanId);
+    if (!isValidPrivyId) {
+      setErrorMessage('Invalid Privy App ID format. A valid Privy App ID starts with "cm" or "cl" (e.g. cmw6zurar00910hl1rsqen5go). Obtain one at dashboard.privy.io');
       return;
     }
     setPrivyAppId(cleanId);
