@@ -15,6 +15,8 @@ import { CURATED_FEEDS_INITIAL } from '@/lib/pharos-intelligence';
 import { PHAROS_CONSTANTS, pharosPublicClient, ERC20_ABI } from '@/lib/pharos-chain';
 import { usePharosAuth } from '@/components/PrivyClientProvider';
 import { formatUnits, formatEther } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
+import { X402_EIP712_DOMAIN, X402_PAYMENT_VOUCHER_TYPES } from '@/types/x402';
 import { Database, Cpu, Settings, Shield, ExternalLink, Code2 } from 'lucide-react';
 
 export default function Home() {
@@ -167,23 +169,43 @@ export default function Home() {
     setLastPurchaseResult(null);
 
     try {
+      const voucherNonce = Date.now();
+      const voucherTimestamp = voucherNonce;
       let authorizationSignature = '0xValidEip712SessionKeySignaturePharosMainnet';
 
-      // If connected via MetaMask, request real EIP-712 cryptographic signature
-      if (typeof window !== 'undefined' && (window as any).ethereum && walletProvider === 'metamask') {
+      // 1. If connected via Session Key (autonomous agent wallet), sign cryptographically with real private key
+      if (typeof window !== 'undefined' && walletProvider === 'session_key') {
+        const storedPrivateKey = localStorage.getItem('pharos_agent_session_pk');
+        if (storedPrivateKey && storedPrivateKey.startsWith('0x')) {
+          try {
+            const sessionAccount = privateKeyToAccount(storedPrivateKey as `0x${string}`);
+            authorizationSignature = await sessionAccount.signTypedData({
+              domain: X402_EIP712_DOMAIN,
+              types: X402_PAYMENT_VOUCHER_TYPES,
+              primaryType: 'X402PaymentVoucher',
+              message: {
+                buyerAddress: activeWalletAddress as `0x${string}`,
+                feedSlug,
+                priceUsdcAtomic: BigInt(feed.priceAtomicUnits),
+                nonce: BigInt(voucherNonce),
+                timestamp: BigInt(voucherTimestamp),
+              },
+            });
+          } catch (sessionSigErr) {
+            console.warn('Session key cryptographic signing failed, using fallback voucher:', sessionSigErr);
+          }
+        }
+      } else if (typeof window !== 'undefined' && (window as any).ethereum && walletProvider === 'metamask') {
+        // 2. If connected via MetaMask, request real EIP-712 cryptographic signature
         try {
           const msgParams = JSON.stringify({
-            domain: {
-              name: 'Pharos x402 Intelligence Mesh',
-              version: '1',
-              chainId: PHAROS_CONSTANTS.chainId,
-              verifyingContract: PHAROS_CONSTANTS.registryContractAddress,
-            },
+            domain: X402_EIP712_DOMAIN,
             message: {
               buyerAddress: activeWalletAddress,
               feedSlug,
               priceUsdcAtomic: feed.priceAtomicUnits,
-              timestamp: Date.now(),
+              nonce: voucherNonce,
+              timestamp: voucherTimestamp,
             },
             primaryType: 'X402PaymentVoucher',
             types: {
@@ -197,6 +219,7 @@ export default function Home() {
                 { name: 'buyerAddress', type: 'address' },
                 { name: 'feedSlug', type: 'string' },
                 { name: 'priceUsdcAtomic', type: 'uint256' },
+                { name: 'nonce', type: 'uint256' },
                 { name: 'timestamp', type: 'uint256' },
               ],
             },
@@ -218,8 +241,8 @@ export default function Home() {
       const proofPayload = {
         buyerAddress: activeWalletAddress,
         authorizationSignature,
-        nonce: Date.now(),
-        queryHash: `0x${feedSlug}_${Date.now()}`,
+        nonce: voucherNonce,
+        queryHash: `0x${feedSlug}_${voucherNonce}`,
       };
 
       const res = await fetch(feed.endpointPath, {

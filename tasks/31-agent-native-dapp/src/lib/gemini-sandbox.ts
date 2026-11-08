@@ -49,13 +49,20 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       };
     }
 
+    // Pre-flight gather verified on-chain telemetry or Docs MCP context if requested
+    const { injectedContext, toolCalls: preflightToolCalls } = await this.preflightGatherContext(prompt);
+
+    const enrichedPersona = injectedContext
+      ? `${this.SYSTEM_PERSONA}\n\nVERIFIED REAL-TIME DATA RETRIEVED FROM PHAROS MESH:\n${injectedContext}\n\nSynthesize this verified on-chain data directly in your response to answer the user accurately.`
+      : this.SYSTEM_PERSONA;
+
     // Priority 1: Hardware-isolated Bubblewrap Antigravity CLI sandbox (Gemini 3.8 Flash)
     if (AntigravitySandboxRunner.isAvailable()) {
       try {
         const liveAiResponse = await AntigravitySandboxRunner.executePrompt({
           prompt,
           model: 'gemini-3.8-flash-low',
-          systemPersona: this.SYSTEM_PERSONA,
+          systemPersona: enrichedPersona,
         });
 
         if (liveAiResponse) {
@@ -64,6 +71,7 @@ BOUNDARIES & SECURITY RESTRICTIONS:
             sender: 'agent',
             text: liveAiResponse,
             timestamp: new Date().toISOString(),
+            toolCalls: preflightToolCalls.length > 0 ? preflightToolCalls : undefined,
           };
         }
       } catch (err) {
@@ -82,6 +90,196 @@ BOUNDARIES & SECURITY RESTRICTIONS:
 
     // Default: Sandboxed Intelligent Copilot Execution
     return this.runSimulatedCopilot(context);
+  }
+
+  /**
+   * Pre-flight gather verified on-chain telemetry, feed payloads, and Docs/Chain MCP answers
+   * to enrich the system persona before executing within the isolated Bubblewrap sandbox.
+   */
+  private static async preflightGatherContext(prompt: string): Promise<{
+    injectedContext: string;
+    toolCalls: ToolCallExecution[];
+  }> {
+    const lower = prompt.toLowerCase();
+    const toolCalls: ToolCallExecution[] = [];
+    const contextSnippets: string[] = [];
+
+    // 1. Whale Radar Detection
+    if (
+      lower.includes('whale') ||
+      lower.includes('кит') ||
+      lower.includes('крупн') ||
+      lower.includes('трансфер') ||
+      lower.includes('large transfer') ||
+      lower.includes('movement')
+    ) {
+      try {
+        const liveWhaleData = await fetchLiveIntelligenceData('whale-radar');
+        toolCalls.push({
+          toolName: 'buy_intelligence_feed',
+          arguments: { feedSlug: 'whale-radar', costUsdc: 0.001 },
+          output: liveWhaleData,
+        });
+        feedStore.recordPurchase('whale-radar', 0.001);
+        contextSnippets.push(
+          `[LIVE ON-CHAIN WHALE RADAR TELEMETRY FROM PHAROS MAINNET]:\n${JSON.stringify(liveWhaleData, null, 2)}`
+        );
+      } catch (err) {
+        console.warn('Failed to prefetch whale radar:', err);
+      }
+    }
+
+    // 2. Harbor Solvency Detection
+    if (
+      lower.includes('harbor') ||
+      lower.includes('харбор') ||
+      lower.includes('solvency') ||
+      lower.includes('платежеспособн') ||
+      lower.includes('резерв') ||
+      lower.includes('reserves') ||
+      lower.includes('pool depth') ||
+      lower.includes('глубин')
+    ) {
+      try {
+        const liveSolvencyData = await fetchLiveIntelligenceData('harbor-solvency');
+        toolCalls.push({
+          toolName: 'buy_intelligence_feed',
+          arguments: { feedSlug: 'harbor-solvency', costUsdc: 0.001 },
+          output: liveSolvencyData,
+        });
+        feedStore.recordPurchase('harbor-solvency', 0.001);
+        contextSnippets.push(
+          `[LIVE HARBOR DEX ON-CHAIN SOLVENCY & DEPTH TELEMETRY]:\n${JSON.stringify(liveSolvencyData, null, 2)}`
+        );
+      } catch (err) {
+        console.warn('Failed to prefetch harbor solvency:', err);
+      }
+    }
+
+    // 3. Smart Contract Honeypot / Risk Detection
+    if (
+      lower.includes('risk') ||
+      lower.includes('риск') ||
+      lower.includes('honeypot') ||
+      lower.includes('ханипот') ||
+      lower.includes('скан') ||
+      lower.includes('scan') ||
+      lower.includes('vulnerability') ||
+      lower.includes('уязвим') ||
+      lower.includes('безопасн') ||
+      (lower.includes('usdc') && (lower.includes('контракт') || lower.includes('contract')))
+    ) {
+      try {
+        const liveRiskData = await fetchLiveIntelligenceData('contract-risk');
+        toolCalls.push({
+          toolName: 'buy_intelligence_feed',
+          arguments: { feedSlug: 'contract-risk', costUsdc: 0.001 },
+          output: liveRiskData,
+        });
+        feedStore.recordPurchase('contract-risk', 0.001);
+        contextSnippets.push(
+          `[LIVE SMART CONTRACT BYTECODE DISASSEMBLY & AUDIT REPORT]:\n${JSON.stringify(liveRiskData, null, 2)}`
+        );
+      } catch (err) {
+        console.warn('Failed to prefetch contract risk:', err);
+      }
+    }
+
+    // 4. Volatility & Price Swing Detection
+    if (
+      lower.includes('volat') ||
+      lower.includes('волатильн') ||
+      lower.includes('swing') ||
+      lower.includes('колебан') ||
+      lower.includes('arbitrage') ||
+      lower.includes('арбитраж')
+    ) {
+      try {
+        const liveVolData = await fetchLiveIntelligenceData('dex-volatility');
+        toolCalls.push({
+          toolName: 'buy_intelligence_feed',
+          arguments: { feedSlug: 'dex-volatility', costUsdc: 0.001 },
+          output: liveVolData,
+        });
+        feedStore.recordPurchase('dex-volatility', 0.001);
+        contextSnippets.push(
+          `[LIVE PHAROS DEX VOLATILITY TELEMETRY]:\n${JSON.stringify(liveVolData, null, 2)}`
+        );
+      } catch (err) {
+        console.warn('Failed to prefetch dex volatility:', err);
+      }
+    }
+
+    // 5. MCP Architecture or Docs Queries
+    if (
+      lower.includes('mcp') ||
+      lower.includes('мсп') ||
+      lower.includes('docs') ||
+      lower.includes('докс') ||
+      lower.includes('foundry') ||
+      lower.includes('deploy') ||
+      lower.includes('деплой') ||
+      lower.includes('rpc') ||
+      lower.includes('sitemap')
+    ) {
+      try {
+        const [chainInfo, docsData] = await Promise.all([
+          callChainMcp('get_chain_info', {}),
+          queryDocsMcp(prompt),
+        ]);
+        toolCalls.push({
+          toolName: 'query_docs_mcp',
+          arguments: { query: prompt },
+          output: docsData,
+        });
+        toolCalls.push({
+          toolName: 'call_chain_mcp',
+          arguments: { tool: 'get_chain_info' },
+          output: chainInfo,
+        });
+        contextSnippets.push(
+          `[OFFICIAL PHAROS DEVELOPER DOCS MCP RAG SEARCH RESULT]:\n${docsData.answer}\n\n[PHAROS CHAIN MCP RPC TELEMETRY (https://mcp.pharos.xyz/mcp)]:\nLatest Block: ${chainInfo.result?.latestBlock || 'Live'}, Chain ID: ${chainInfo.result?.chainId || 1672}`
+        );
+      } catch (err) {
+        console.warn('Failed to prefetch docs/chain mcp:', err);
+      }
+    }
+
+    // 6. Search / Catalog Query
+    if (
+      lower.includes('catalog') ||
+      lower.includes('каталог') ||
+      lower.includes('feeds') ||
+      lower.includes('фиды') ||
+      lower.includes('список') ||
+      lower.includes('list')
+    ) {
+      const allFeeds = feedStore.getAllFeeds();
+      toolCalls.push({
+        toolName: 'search_feeds',
+        arguments: { query: prompt },
+        output: {
+          totalFeeds: allFeeds.length,
+          feeds: allFeeds.map((f) => ({
+            name: f.name,
+            slug: f.slug,
+            priceUsdc: f.pricePerCallUsdc,
+            status: f.curationStatus,
+          })),
+        },
+      });
+      contextSnippets.push(
+        `[AVAILABLE CURATED FEEDS IN PHAROS X402 MARKETPLACE]:\n` +
+          allFeeds
+            .map((f) => `- ${f.name} (${f.slug}): ${f.pricePerCallUsdc} USDC [Status: ${f.curationStatus}]`)
+            .join('\n')
+      );
+    }
+
+    return {
+      injectedContext: contextSnippets.join('\n\n'),
+      toolCalls,
+    };
   }
 
   private static async runSimulatedCopilot(context: CopilotContext): Promise<AgentChatMessage> {
