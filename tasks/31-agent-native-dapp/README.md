@@ -2,9 +2,11 @@
 
 > **Capstone Project for Pharos Agent Arena**  
 > **Network**: Pharos Mainnet (Chain ID `1672`)  
-> **Native USDC**: `0x52c48d4213107b20bc583832b0d951fb9ca8f0b0` (6 decimals)  
-> **Curator**: `wakanda-soul` (`0x1bF848814D174F5A85bD3FDf9f6C9201`)  
+> **Native USDC**: `0xc879c018db60520f4355c26ed1a6d572cdac1815` (6 decimals)  
+> **WPROS**: `0x52c48d4213107b20bc583832b0d951fb9ca8f0b0` (18 decimals)  
+> **Curator**: `wakanda-soul` (`0x1bF848814D174F5A85bD3FDf9f6C920100000000`)  
 > **Base Fee**: `0.001 USDC` (1,000 atomic micro-units)  
+> **Sandboxed Engine**: Google Gemini 3.8 Flash (`gemini-3.8-flash-low` in Bubblewrap jail)  
 > **Design Language**: Styled directly after [`port.pharos.xyz`](https://port.pharos.xyz)
 
 ---
@@ -107,7 +109,7 @@ The **Pharos x402 Intelligence Mesh** solves this natively on Pharos Mainnet:
 - `contracts/X402MarketplaceRegistry.sol`:
   - EIP-712 payment authorization settlement engine.
   - Replay protection with buyer nonces.
-  - Native USDC atomic transfers (`0x52c48d4213107b20bc583832b0d951fb9ca8f0b0`).
+  - Native USDC atomic transfers (`0xc879c018db60520f4355c26ed1a6d572cdac1815`).
   - Curator whitelist and mutation lockdown hooks.
 - `contracts/IX402PaywallReceipt.sol`:
   - Interface emitting `PaymentSettled`, `FeedRegistered`, and `FeedCurated` events.
@@ -128,10 +130,10 @@ cd tasks/31-agent-native-dapp
 # Install dependencies
 npm install
 
-# Run unit & integration test suite
+# Run full Vitest suite (20 unit & integration tests)
 npm test
 
-# Build production bundle
+# Build production Next.js bundle
 npm run build
 
 # Start local server on port 3000
@@ -140,14 +142,9 @@ npm run dev
 
 ### Verification Suite
 ```
- RUN  v5.0.5 /root/pharos-ai/tasks/31-agent-native-dapp
-
- ✓ test/x402-gateway.test.ts (3 tests)
- ✓ test/feed-curation.test.ts (3 tests)
- ✓ test/policy-gatekeeper.test.ts (6 tests)
-
- Test Files  3 passed (3)
-      Tests  12 passed (12)
+ Test Files  4 passed (4)
+      Tests  20 passed (20)
+   Duration  8.13s
 ```
 
 ---
