@@ -21,7 +21,7 @@ interface IERC20Token {
  */
 contract X402MarketplaceRegistry is IX402PaywallReceipt {
     // Official Pharos Mainnet native USDC address (6 decimals)
-    address public constant PHAROS_USDC = 0x52c48D4213107B20BC583832b0d951Fb9CA8F0b0;
+    address public constant PHAROS_USDC = 0xc879c018db60520f4355c26ed1a6d572cdac1815;
 
     // Default base fee: 0.001 USDC = 1,000 micro-units (6 decimals)
     uint256 public constant DEFAULT_FEED_PRICE = 1000;

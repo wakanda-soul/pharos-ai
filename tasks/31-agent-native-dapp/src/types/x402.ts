@@ -30,3 +30,20 @@ export interface X402GateResult<T> {
   receiptId?: string;
   error?: string;
 }
+
+export const X402_EIP712_DOMAIN = {
+  name: 'Pharos x402 Intelligence Mesh',
+  version: '1',
+  chainId: 1672,
+  verifyingContract: '0x1672402000000000000000000000000000004021' as `0x${string}`,
+} as const;
+
+export const X402_PAYMENT_VOUCHER_TYPES = {
+  X402PaymentVoucher: [
+    { name: 'buyerAddress', type: 'address' },
+    { name: 'feedSlug', type: 'string' },
+    { name: 'priceUsdcAtomic', type: 'uint256' },
+    { name: 'nonce', type: 'uint256' },
+    { name: 'timestamp', type: 'uint256' },
+  ],
+} as const;
