@@ -7,7 +7,7 @@ import {
   X402PaymentProof,
   X402_EIP712_DOMAIN,
   X402_PAYMENT_VOUCHER_TYPES,
-} from '@/types/x402';
+} from '../types/x402';
 
 /**
  * Validates or challenges an incoming request under the x402 Payment Protocol.
