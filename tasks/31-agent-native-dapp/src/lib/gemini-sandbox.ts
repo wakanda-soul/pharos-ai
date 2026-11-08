@@ -67,7 +67,7 @@ BOUNDARIES & SECURITY RESTRICTIONS:
     const isRussian = /[а-яА-ЯёЁ]/.test(prompt);
     const toolCalls: ToolCallExecution[] = [];
 
-    // 1. Greetings / Language Confirmation / Casual Chat
+    // 1. Greetings / Casual Chat
     const isGreeting =
       lower.startsWith('привет') ||
       lower.startsWith('здравствуй') ||
@@ -82,8 +82,8 @@ BOUNDARIES & SECURITY RESTRICTIONS:
 
     if (isGreeting) {
       const greetingText = isRussian
-        ? `Привет! Да, конечно, я свободно общаюсь и понимаю по-русски.\n\nЯ **Pharos x402 Intelligence Copilot** — автономный агент в сети **Pharos Mainnet (Chain ID 1672)**.\n\nЯ напрямую подключен к официальным MCP-интерфейсам экосистемы:\n• ⚡ **Pharos Chain MCP**: \`https://mcp.pharos.xyz/mcp\` (живая телеметрия блоков, балансов и RPC)\n• 📚 **Pharos Docs MCP**: \`https://docs.pharos.xyz/index.md?ask=...\` (поиск по всей официальной документации)\n\nТакже я умею анализировать ончейн-активность и закупать проверенные фиды данных через протокол x402 по микротарифу **0.001 USDC** с твоего агентского кошелька Privy.\n\n**О чём тебе рассказать?**\n• *«Проверь доступ к Chain MCP и Docs MCP»*\n• *«Как задеплоить контракт через Foundry на Pharos?»*\n• *«Проанализируй активность китов»* (крупные трансферы от $50k)\n• *«Проверь резервы и платежеспособность Harbor DEX»*\n• *«Просканируй смарт-контракт USDC на honeypot и риски»*\n• *«Покажи все доступные фиды в каталоге»*`
-        : `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nI am connected directly to official Pharos Model Context Protocol (MCP) servers:\n• ⚡ **Pharos Chain MCP**: \`https://mcp.pharos.xyz/mcp\` (Live RPC & block telemetry via Streamable HTTP)\n• 📚 **Pharos Docs MCP**: \`https://docs.pharos.xyz/index.md?ask=...\` (Official developer documentation search)\n\nI can autonomously query on-chain telemetry, retrieve documentation, and purchase paywalled data feeds using your embedded agent wallet at 0.001 USDC micro-rates.\n\n**Try asking me**:\n• *"Check access to Chain MCP and Docs MCP"*\n• *"How do I deploy a contract with Foundry?"*\n• *"Analyze whale movements on Pharos Mainnet"*\n• *"Audit Harbor DEX pool solvency"*\n• *"Scan contract honeypot risk"*\n• *"Show me all available feeds"*`;
+        ? `Привет! Чем могу помочь по сети Pharos, ончейн-аналитике или протоколу x402?`
+        : `Hello! How can I assist you with Pharos on-chain intelligence or x402 feeds today?`;
 
       return {
         id: `msg_${Date.now()}`,
@@ -106,8 +106,8 @@ BOUNDARIES & SECURITY RESTRICTIONS:
 
     if (isAboutBot) {
       const aboutText = isRussian
-        ? `Я специализированный аналитический брокер данных для экосистемы **Pharos**.\n\nВ отличие от обычных чат-ботов, я подключен к смарт-контрактам x402 Marketplace Registry и встроенному агентскому кошельку Privy. По твоей команде я самостоятельно оплачиваю (0.001 USDC) и десериализую ончейн-фиды:\n\n1. 🐋 **Whale Radar** — мониторинг транзакций крупных адресов (> $50,000).\n2. 🏦 **Harbor Solvency** — аудит ликвидности, глубины стакана и риска проскальзывания пулов DEX.\n3. 🛡️ **Contract Risk** — анализ байткода на скрытый минт и honeypot.\n4. 📊 **DEX Volatility** — реальная волатильность и спреды.\n\n*Правило безопасности*: я не пишу скрипты на заказ, а предоставляю проверенную рыночную информацию.`
-        : `I am an autonomous intelligence broker for the Pharos ecosystem.\n\nConnected to the x402 Marketplace Registry and embedded agent wallet, I autonomously settle 0.001 USDC micropayments to unlock verified data feeds:\n\n1. 🐋 **Whale Radar** — Large on-chain transfers (> $50,000)\n2. 🏦 **Harbor Solvency** — DEX liquidity depth and solvency ratios\n3. 🛡️ **Contract Risk** — Bytecode security and honeypot detection\n4. 📊 **DEX Volatility** — Real-time volatility and spread telemetry`;
+        ? `Я аналитический брокер данных в сети Pharos Mainnet (Chain ID 1672). Подключен к x402 Marketplace и кошельку Privy — могу проверять пулы ликвидности, мониторить транзакции китов, анализировать риски смарт-контрактов и искать документацию через MCP.`
+        : `I am an autonomous on-chain intelligence broker on Pharos Mainnet. Connected to the x402 Marketplace and Privy agent wallet, I query liquidity depth, whale flows, contract bytecode security, and official docs via MCP.`;
 
       return {
         id: `msg_${Date.now()}`,
@@ -132,8 +132,8 @@ BOUNDARIES & SECURITY RESTRICTIONS:
 
     if (isModelQuestion) {
       const modelText = isRussian
-        ? `Я работаю на архитектуре **Google Gemini 1.5 Flash** в связке с защитным контуром **Gemini 3-Layer Shield**:\n\n1. **Layer 1 (Intent Guard)** — верификация намерений пользователя и защита от выполнения вредоносных скриптов.\n2. **Layer 2 (Sandboxed Tool-Gating)** — жестко ограниченный доступ только к проверенным ончейн-инструментам (покупка фидов через x402, аудит байткода, мониторинг DEX).\n3. **Layer 3 (Deterministic Policy Gatekeeper)** — автоматический контроль лимитов расходов кошелька (максимум 0.005 USDC за вызов) без кастодиального доступа.\n\n**Где берутся данные?**\nВсе фиды (киты, резервы Harbor, байткод контрактов) запрашиваются **напрямую из Pharos Mainnet** через RPC (\`https://rpc.pharos.xyz\`), а не из моков.\n\n*Хочешь использовать свой персональный ключ Gemini?* Нажми на иконку шестерёнки ⚙️ вверху страницы и вставь бесплатный Gemini API Key от Google AI Studio.`
-        : `I run on the **Google Gemini 1.5 Flash** architecture wrapped in an autonomous **Gemini 3-Layer Shield**:\n\n1. **Layer 1 (Intent Guard)**: Intercepts out-of-scope code generation requests.\n2. **Layer 2 (Tool-Gating)**: Strictly confines execution to verified on-chain x402 data brokers.\n3. **Layer 3 (Policy Gatekeeper)**: Enforces non-custodial spend caps (0.005 USDC ceiling).\n\nAll on-chain metrics (Whale transfers, Harbor DEX reserves, bytecode telemetry) are polled live from Pharos Mainnet RPC (\`https://rpc.pharos.xyz\`).\n\nYou can connect your personal Gemini API Key via the settings gear (⚙️) in the navbar.`;
+        ? `Я работаю на архитектуре **Google Gemini** в связке с защитным контуром **Gemini 3-Layer Shield**. Для генеративных ответов в реальном времени подключи бесплатный Gemini API Key от Google AI Studio (иконка ⚙️ вверху).`
+        : `I run on the **Google Gemini** architecture wrapped in a **Gemini 3-Layer Shield**. For live generative completions, link a free Gemini API Key from Google AI Studio via the settings gear (⚙️) above.`;
 
       return {
         id: `msg_${Date.now()}`,
@@ -547,8 +547,8 @@ BOUNDARIES & SECURITY RESTRICTIONS:
 
     // 8. General conversational fallback (dynamically reflecting user prompt)
     const fallbackText = isRussian
-      ? `Я тебя услышал. Как аналитический AI-агент мейннета Pharos, я готов помочь тебе в исследовании ончейн-данных, оценке рисков смарт-контрактов или мониторинге пулов ликвидности.\n\nНапиши интересующий тебя запрос, например:\n• *«Проверь активность китов»*\n• *«Проанализируй резервы Harbor DEX»*\n• *«Просканируй контракт USDC на honeypot»*\n• Или задай любой вопрос об архитектуре x402!`
-      : `Understood. As an autonomous intelligence copilot on Pharos Mainnet, I can query verified DeFi solvency, monitor high-value whale transactions, and audit smart contracts via 0.001 USDC micropayments.\n\nLet me know what you'd like to analyze or explore!`;
+      ? `Принято. Чем конкретно помочь по ончейн-данным Pharos, фидам x402 или документации MCP?`
+      : `Understood. How can I assist you with Pharos on-chain data, x402 feeds, or MCP documentation?`;
 
     return {
       id: `msg_${Date.now()}`,
