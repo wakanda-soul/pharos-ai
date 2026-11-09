@@ -3,6 +3,9 @@ import { feedStore } from '@/lib/storage';
 import { PHAROS_CONSTANTS } from '@/lib/pharos-chain';
 import { FeedCurationStatus } from '@/types/feed';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

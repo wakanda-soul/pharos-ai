@@ -36,13 +36,18 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl pharos-gradient-bg flex items-center justify-center text-white font-bold text-lg shadow-sm shadow-[#0012b8]/20 transition-transform hover:scale-105">
+          <button
+            type="button"
+            onClick={() => setActiveTab('copilot')}
+            className="flex items-center gap-3 text-left cursor-pointer group hover:opacity-90 transition-all focus:outline-none"
+            title="Return to Pharos Intelligence Copilot (Home)"
+          >
+            <div className="w-9 h-9 rounded-xl pharos-gradient-bg flex items-center justify-center text-white font-bold text-lg shadow-sm shadow-[#0012b8]/20 transition-transform group-hover:scale-105">
               <span className="tracking-tighter">φ</span>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900 text-base tracking-tight">
+                <span className="font-bold text-gray-900 text-base tracking-tight group-hover:text-[#0012b8] transition-colors">
                   Pharos x402 Mesh
                 </span>
                 <span className="text-[10px] font-semibold bg-[#eef2ff] text-[#0012b8] px-2 py-0.5 rounded-full border border-[#c7d2fe] flex items-center gap-1 font-mono">
@@ -54,7 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 Agent-Native Data Marketplace · port.pharos.xyz
               </span>
             </div>
-          </div>
+          </button>
 
           {/* Navigation Tabs */}
           <nav className="hidden md:flex items-center gap-1 bg-[#f1f5f9] p-1 rounded-xl border border-[#e2e8f0]">

@@ -99,26 +99,34 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside className="w-64 sm:w-72 bg-white border-r border-[#e2e8f0] flex flex-col h-screen shrink-0 select-none">
       {/* Brand Header */}
       <div className="p-4 border-b border-[#e2e8f0] flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl pharos-gradient-bg flex items-center justify-center text-white font-bold text-base shadow-xs">
-            φ
+        <button
+          type="button"
+          onClick={() => setActiveTab('copilot')}
+          className="flex items-center gap-3 text-left cursor-pointer group hover:opacity-90 transition-all p-1 -m-1 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0012b8]/20"
+          title="Return to Pharos Intelligence Copilot (Home)"
+        >
+          <div className="w-9 h-9 rounded-xl pharos-gradient-bg flex items-center justify-center text-white font-bold text-lg shadow-sm shadow-[#0012b8]/20 transition-transform group-hover:scale-105 shrink-0">
+            <span className="tracking-tighter">φ</span>
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-gray-900 tracking-tight text-sm">
-                Pharos Mesh
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-gray-900 text-sm tracking-tight group-hover:text-[#0012b8] transition-colors">
+                Pharos x402 Mesh
               </span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-[10px] font-semibold bg-[#eef2ff] text-[#0012b8] px-2 py-0.5 rounded-full border border-[#c7d2fe] flex items-center gap-1 font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Mainnet 1672
+              </span>
             </div>
-            <p className="text-[11px] text-gray-500 font-mono">
-              x402 Protocol · Chain 1672
-            </p>
+            <span className="text-[11px] text-gray-500 hidden sm:block">
+              Agent-Native Data Marketplace · port.pharos.xyz
+            </span>
           </div>
-        </div>
+        </button>
 
         <button
           onClick={onOpenSettings}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
           title="Copilot Sandbox Settings"
         >
           <Sliders className="w-4 h-4" />

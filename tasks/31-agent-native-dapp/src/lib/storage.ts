@@ -15,7 +15,11 @@ class FeedStore {
   private readonly stateFilePath: string;
 
   constructor() {
-    this.stateFilePath = path.join(process.cwd(), '.state', 'pharos-feeds.json');
+    const fileName =
+      process.env.NODE_ENV === 'test'
+        ? 'pharos-feeds.test.json'
+        : 'pharos-feeds.json';
+    this.stateFilePath = path.join(process.cwd(), '.state', fileName);
     this.initStore();
   }
 
@@ -70,14 +74,17 @@ class FeedStore {
   }
 
   public getAllFeeds(): IntelligenceFeed[] {
+    this.loadFromDisk();
     return Array.from(this.feeds.values());
   }
 
   public getFeedBySlug(slug: string): IntelligenceFeed | undefined {
+    this.loadFromDisk();
     return this.feeds.get(slug);
   }
 
   public getFeedById(id: string): IntelligenceFeed | undefined {
+    this.loadFromDisk();
     return Array.from(this.feeds.values()).find((f) => f.id === id);
   }
 
@@ -85,6 +92,7 @@ class FeedStore {
    * Updates feed price (base 0.001 USDC). Publisher privilege.
    */
   public updatePrice(slug: string, newPriceUsdc: number): boolean {
+    this.loadFromDisk();
     const feed = this.feeds.get(slug);
     if (!feed) return false;
 
@@ -108,6 +116,7 @@ class FeedStore {
     newEndpointPath: string,
     newSchemaHash: string
   ): { success: boolean; status: FeedCurationStatus } {
+    this.loadFromDisk();
     const feed = this.feeds.get(slug);
     if (!feed) return { success: false, status: 'REVOKED' };
 
@@ -129,6 +138,7 @@ class FeedStore {
     newStatus: FeedCurationStatus,
     curatorAddress: string
   ): boolean {
+    this.loadFromDisk();
     const feed = this.feeds.get(slug);
     if (!feed) return false;
 
@@ -141,6 +151,7 @@ class FeedStore {
   }
 
   public recordPurchase(slug: string, pricePaidUsdc: number) {
+    this.loadFromDisk();
     const feed = this.feeds.get(slug);
     if (!feed) return;
     feed.totalCalls += 1;
@@ -150,6 +161,7 @@ class FeedStore {
   }
 
   public registerFeed(feed: IntelligenceFeed) {
+    this.loadFromDisk();
     this.feeds.set(feed.slug, { ...feed, totalCalls: 0, grossRevenueUsdc: 0.0 });
     this.persistToDisk();
   }

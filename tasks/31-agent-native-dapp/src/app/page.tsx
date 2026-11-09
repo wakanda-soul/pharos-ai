@@ -113,7 +113,10 @@ export default function Home() {
 
   const refreshFeeds = useCallback(async () => {
     try {
-      const res = await fetch('/api/publisher/feeds');
+      const res = await fetch(`/api/publisher/feeds?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
       const data = await res.json();
       if (data.feeds) {
         setFeeds(data.feeds);
@@ -420,10 +423,17 @@ export default function Home() {
             >
               <Menu className="w-5 h-5" />
             </button>
-            <div className="w-7 h-7 rounded-lg pharos-gradient-bg flex items-center justify-center text-white font-bold text-xs">
-              φ
-            </div>
-            <span className="font-bold text-gray-900 text-sm">Pharos Mesh</span>
+            <button
+              type="button"
+              onClick={() => setActiveTab('copilot')}
+              className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity"
+              title="Return to Pharos Intelligence Copilot (Home)"
+            >
+              <div className="w-7 h-7 rounded-lg pharos-gradient-bg flex items-center justify-center text-white font-bold text-xs">
+                φ
+              </div>
+              <span className="font-bold text-gray-900 text-sm">Pharos Mesh</span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
