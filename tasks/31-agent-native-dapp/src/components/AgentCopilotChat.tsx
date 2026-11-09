@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { AgentChatMessage } from '@/types/agent';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import {
   Cpu,
   Send,
@@ -285,8 +286,8 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
                 )}
 
                 {/* Message Body */}
-                <div className="whitespace-pre-wrap font-sans text-xs leading-relaxed space-y-2">
-                  {msg.text}
+                <div className="font-sans text-xs leading-relaxed">
+                  <MarkdownRenderer content={msg.text} isUser={isUser} />
                 </div>
 
                 {/* Tool Executions Badge */}
