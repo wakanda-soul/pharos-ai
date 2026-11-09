@@ -2,7 +2,22 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { AgentChatMessage } from '@/types/agent';
-import { Cpu, Send, ShieldAlert, CheckCircle, Zap, Terminal, CornerDownLeft, Sparkles, AlertOctagon } from 'lucide-react';
+import {
+  Cpu,
+  Send,
+  ShieldAlert,
+  CheckCircle,
+  Zap,
+  Terminal,
+  CornerDownLeft,
+  Sparkles,
+  AlertOctagon,
+  RotateCcw,
+  ExternalLink,
+  ChevronDown,
+  ChevronRight,
+  ShieldCheck,
+} from 'lucide-react';
 
 interface AgentCopilotChatProps {
   walletAddress: string | null;
@@ -21,14 +36,14 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
   oauthAccessToken,
   onOpenPrivyLogin,
 }) => {
-  const [messages, setMessages] = useState<AgentChatMessage[]>([
-    {
-      id: 'init_1',
-      sender: 'agent',
-      text: `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nConnected MCP Gateways:\n• ⚡ **Pharos Chain MCP**: \`https://mcp.pharos.xyz/mcp\` (Live Streamable HTTP RPC telemetry)\n• 📚 **Pharos Docs MCP**: \`https://docs.pharos.xyz/index.md?ask=...\` (Official developer documentation RAG)\n\nI autonomously query the verified marketplace mesh and execute 0.001 USDC micro-payments on your behalf using your embedded agent wallet.\n\n*Notice: I am strictly an on-chain data researcher & documentation assistant. I do not generate programming scripts or arbitrary execution code.*`,
-      timestamp: new Date().toISOString(),
-    },
-  ]);
+  const INITIAL_MESSAGE: AgentChatMessage = {
+    id: 'init_1',
+    sender: 'agent',
+    text: `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nConnected MCP Gateways:\n• ⚡ **Pharos Chain MCP**: \`https://mcp.pharos.xyz/mcp\` (Live Streamable HTTP RPC telemetry)\n• 📚 **Pharos Docs MCP**: \`https://docs.pharos.xyz/index.md?ask=...\` (Official developer documentation RAG)\n\nI autonomously query the verified marketplace mesh and execute 0.001 USDC micro-payments on your behalf using your embedded agent wallet.\n\n*Notice: I am strictly an on-chain data researcher & documentation assistant. I do not generate programming scripts or arbitrary execution code.*`,
+    timestamp: new Date().toISOString(),
+  };
+
+  const [messages, setMessages] = useState<AgentChatMessage[]>([INITIAL_MESSAGE]);
   const [inputPrompt, setInputPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -50,6 +65,16 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
     { label: '🛡️ Contract Risk', prompt: 'Run a honeypot and vulnerability scan on native USDC contract.' },
     { label: '⚠️ Python Script (Refusal Test)', prompt: 'Write me a python script to swap tokens automatically.' },
   ];
+
+  const handleResetChat = () => {
+    setMessages([
+      {
+        ...INITIAL_MESSAGE,
+        id: `init_${Date.now()}`,
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+  };
 
   const handleSendMessage = async (textToSend?: string) => {
     const prompt = (textToSend || inputPrompt).trim();
@@ -105,39 +130,44 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#e5e7eb] shadow-sm flex flex-col h-[650px] overflow-hidden">
+    <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm flex flex-col h-[720px] overflow-hidden">
       {/* Copilot Header */}
-      <div className="p-4 border-b border-[#e5e7eb] bg-[#f9fafb] flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#5c41ff] flex items-center justify-center text-white shadow-sm">
-            <Cpu className="w-4 h-4" />
+      <div className="p-4 border-b border-[#e2e8f0] bg-gradient-to-r from-[#f8faff] to-white flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl pharos-gradient-bg flex items-center justify-center text-white shadow-xs">
+            <Cpu className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold text-gray-900 tracking-tight">
+              <h3 className="text-sm font-bold text-gray-900 tracking-tight">
                 Sandboxed AI Copilot
               </h3>
-              <span className="text-[10px] bg-purple-50 text-purple-700 border border-purple-200 px-1.5 py-0.5 rounded font-mono">
-                Gemini 3-Layer Shield
+              <span className="text-[10px] bg-purple-50 text-purple-700 border border-purple-200/80 px-2 py-0.5 rounded-full font-mono font-medium flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                gemini-3.8-flash-low
+              </span>
+              <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-mono hidden sm:inline">
+                bwrap isolated
               </span>
             </div>
-            <div className="flex items-center gap-2 mt-0.5">
+
+            <div className="flex items-center gap-2 mt-1">
               <a
                 href="https://mcp.pharos.xyz/mcp"
                 target="_blank"
                 rel="noreferrer"
-                className="text-[10px] text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded hover:underline inline-flex items-center gap-1 font-mono"
+                className="text-[10px] text-emerald-700 bg-emerald-50/80 border border-emerald-200 px-2 py-0.5 rounded-md hover:bg-emerald-100 transition-colors inline-flex items-center gap-1 font-mono"
                 title="Hosted Streamable HTTP Chain MCP (https://mcp.pharos.xyz/mcp)"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Chain MCP: mcp.pharos.xyz/mcp
+                Chain MCP: mcp.pharos.xyz
               </a>
               <a
-                href="https://docs.pharos.xyz/tooling-and-infrastructure/mcp.md"
+                href="https://docs.pharos.xyz"
                 target="_blank"
                 rel="noreferrer"
-                className="text-[10px] text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded hover:underline inline-flex items-center gap-1 font-mono"
-                title="Official Developer Docs MCP (https://docs.pharos.xyz/index.md?ask=...)"
+                className="text-[10px] text-blue-700 bg-blue-50/80 border border-blue-200 px-2 py-0.5 rounded-md hover:bg-blue-100 transition-colors inline-flex items-center gap-1 font-mono"
+                title="Official Developer Docs MCP"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                 Docs MCP: docs.pharos.xyz
@@ -146,22 +176,34 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
           </div>
         </div>
 
-        {walletAddress ? (
-          <div className="text-xs text-gray-600 bg-white border border-[#e5e7eb] px-2.5 py-1 rounded-md font-mono">
-            Budget: <span className="text-[#0012b8] font-bold">{walletBalanceUsdc.toFixed(3)} USDC</span>
-          </div>
-        ) : (
+        {/* Right side controls */}
+        <div className="flex items-center gap-2">
           <button
-            onClick={onOpenPrivyLogin}
-            className="text-xs bg-[#5c41ff] hover:bg-[#4b32e0] text-white px-2.5 py-1 rounded-md font-medium transition-colors shadow-sm"
+            onClick={handleResetChat}
+            className="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors text-xs flex items-center gap-1"
+            title="Reset conversation"
           >
-            Connect with Privy
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span className="text-[11px] hidden sm:inline">Reset</span>
           </button>
-        )}
+
+          {walletAddress ? (
+            <div className="text-xs text-gray-600 bg-white border border-[#e2e8f0] px-3 py-1.5 rounded-xl font-mono shadow-2xs">
+              Budget: <span className="text-[#0012b8] font-bold">{walletBalanceUsdc.toFixed(3)} USDC</span>
+            </div>
+          ) : (
+            <button
+              onClick={onOpenPrivyLogin}
+              className="text-xs bg-[#5c41ff] hover:bg-[#4b32e0] text-white px-3 py-1.5 rounded-xl font-semibold transition-all shadow-xs"
+            >
+              Connect with Privy
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Preset Action Chips */}
-      <div className="px-4 py-2 border-b border-[#f2f4f5] bg-white flex items-center gap-1.5 overflow-x-auto text-[11px]">
+      <div className="px-4 py-2 border-b border-[#f1f5f9] bg-[#fafbfc] flex items-center gap-1.5 overflow-x-auto text-[11px]">
         <span className="text-gray-400 font-medium shrink-0 flex items-center gap-1">
           <Sparkles className="w-3 h-3 text-[#5c41ff]" /> Try:
         </span>
@@ -170,7 +212,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
             key={idx}
             onClick={() => handleSendMessage(p.prompt)}
             disabled={isLoading}
-            className="px-2.5 py-1 rounded-md bg-[#f2f4f5] hover:bg-[#e5e7eb] text-gray-700 transition-colors shrink-0 font-medium"
+            className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 hover:border-[#5c41ff]/40 hover:bg-purple-50/50 text-gray-700 transition-all shrink-0 font-medium shadow-2xs active:scale-98"
           >
             {p.label}
           </button>
@@ -178,7 +220,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
       </div>
 
       {/* Chat Messages Log */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs bg-[#fdfdfe]">
         {messages.map((msg) => {
           const isUser = msg.sender === 'user';
           const isGatekeeper = msg.sender === 'policy_gatekeeper';
@@ -187,50 +229,58 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
           return (
             <div
               key={msg.id}
-              className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
+              className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} space-y-1`}
             >
               <div
-                className={`max-w-[85%] rounded-xl p-3.5 leading-relaxed ${
+                className={`max-w-[88%] sm:max-w-[80%] rounded-2xl p-4 leading-relaxed shadow-xs ${
                   isUser
-                    ? 'bg-[#0012b8] text-white rounded-br-sm'
+                    ? 'pharos-gradient-bg text-white rounded-br-xs'
                     : isGatekeeper
-                    ? 'bg-amber-50 border border-amber-300 text-amber-900 rounded-bl-sm'
+                    ? 'bg-amber-50 border border-amber-300 text-amber-950 rounded-bl-xs'
                     : isRefusal
-                    ? 'bg-rose-50 border border-rose-200 text-rose-950 rounded-bl-sm'
-                    : 'bg-[#f2f4f5] text-gray-800 rounded-bl-sm'
+                    ? 'bg-rose-50/90 border border-rose-200 text-rose-950 rounded-bl-xs'
+                    : 'bg-white border border-[#e2e8f0] text-gray-900 rounded-bl-xs'
                 }`}
               >
                 {/* Refusal / Warning Badge */}
                 {isRefusal && (
-                  <div className="flex items-center gap-1.5 text-rose-700 font-semibold mb-2 pb-1.5 border-b border-rose-200 text-[11px]">
-                    <AlertOctagon className="w-3.5 h-3.5 shrink-0" />
+                  <div className="flex items-center gap-1.5 text-rose-700 font-semibold mb-2.5 pb-2 border-b border-rose-200/70 text-[11px]">
+                    <AlertOctagon className="w-4 h-4 shrink-0 text-rose-600" />
                     Security Guardrail Activated: Prohibited Action Refused
                   </div>
                 )}
 
                 {/* Message Body */}
-                <div className="whitespace-pre-wrap">{msg.text}</div>
+                <div className="whitespace-pre-wrap font-sans text-xs leading-relaxed space-y-2">
+                  {msg.text}
+                </div>
 
                 {/* Tool Executions Badge */}
                 {msg.toolCalls && msg.toolCalls.length > 0 && (
-                  <div className="mt-3 pt-2.5 border-t border-gray-300/50 space-y-2">
+                  <div className="mt-3 pt-2.5 border-t border-gray-200/80 space-y-2">
                     {msg.toolCalls.map((tc, idx) => (
                       <div
                         key={idx}
-                        className="bg-white/80 p-2 rounded border border-gray-200 font-mono text-[11px] text-gray-700"
+                        className="bg-[#f8faff] p-2.5 rounded-xl border border-blue-100 font-mono text-[11px] text-gray-700 shadow-2xs"
                       >
                         <div className="flex items-center justify-between text-[#0012b8] font-bold">
-                          <span>⚡ Tool: {tc.toolName}</span>
-                          {tc.costUsdc && (
-                            <span className="bg-emerald-100 text-emerald-800 px-1 rounded">
-                              -{tc.costUsdc} USDC
-                            </span>
-                          )}
+                          <span className="flex items-center gap-1.5">
+                            <Zap className="w-3.5 h-3.5 text-amber-500" />
+                            Tool: {tc.toolName}
+                          </span>
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-semibold">
+                            Settled 0.001 USDC
+                          </span>
                         </div>
-                        {tc.paymentReceipt && (
-                          <div className="text-[10px] text-gray-500 mt-1">
-                            Receipt: {tc.paymentReceipt} (Settled on Pharos)
-                          </div>
+                        {tc.output && (
+                          <details className="mt-2 text-[10px] bg-white p-2 rounded-lg border border-gray-200">
+                            <summary className="cursor-pointer text-gray-500 font-semibold hover:text-gray-900">
+                              View Raw Telemetry Payload
+                            </summary>
+                            <pre className="mt-1.5 overflow-x-auto text-gray-800 font-mono text-[10px] max-h-36 whitespace-pre-wrap">
+                              {JSON.stringify(tc.output, null, 2)}
+                            </pre>
+                          </details>
                         )}
                       </div>
                     ))}
@@ -239,7 +289,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
 
                 {/* Attached Intelligence Preview */}
                 {msg.attachedIntelligence && (
-                  <details className="mt-2.5 bg-[#0d1117] text-gray-200 rounded p-2 text-[10px] font-mono">
+                  <details className="mt-3 bg-[#0d1117] text-gray-200 rounded-xl p-3 text-[10px] font-mono border border-gray-800">
                     <summary className="cursor-pointer text-emerald-400 font-bold hover:underline">
                       Inspect Unlocked Data Packet (JSON)
                     </summary>
@@ -249,7 +299,8 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
                   </details>
                 )}
               </div>
-              <span className="text-[10px] text-gray-400 mt-1 px-1">
+
+              <span className="text-[10px] text-gray-400 px-1 font-mono">
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
@@ -257,16 +308,18 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
         })}
 
         {isLoading && (
-          <div className="flex items-center gap-2 text-xs text-gray-500 italic">
-            <span className="w-2 h-2 rounded-full bg-[#5c41ff] animate-ping" />
-            Copilot checking deterministic policy & broker tools...
+          <div className="flex items-center gap-2.5 text-xs text-gray-500 bg-[#f8faff] p-3 rounded-xl border border-blue-100 max-w-sm animate-pulse">
+            <span className="w-2.5 h-2.5 rounded-full bg-[#5c41ff] animate-ping" />
+            <span className="font-medium text-gray-700">
+              Copilot querying live mesh telemetry & Gemini 3.8 Flash...
+            </span>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
 
       {/* Input Bar */}
-      <div className="p-3 border-t border-[#e5e7eb] bg-white">
+      <div className="p-3.5 border-t border-[#e2e8f0] bg-white">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -274,21 +327,23 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
           }}
           className="flex items-center gap-2"
         >
-          <input
-            type="text"
-            value={inputPrompt}
-            onChange={(e) => setInputPrompt(e.target.value)}
-            placeholder="Ask Copilot to analyze feeds or query on-chain intelligence..."
-            disabled={isLoading}
-            className="flex-1 px-3 py-2 text-xs bg-[#f9fafb] border border-[#e5e7eb] rounded-md focus:outline-none focus:border-[#0012b8] focus:bg-white transition-colors"
-          />
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={inputPrompt}
+              onChange={(e) => setInputPrompt(e.target.value)}
+              placeholder="Ask Copilot to analyze feeds, query live whale telemetry, or check Docs MCP..."
+              disabled={isLoading}
+              className="w-full px-3.5 py-2.5 text-xs bg-[#f8faff] border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-[#0012b8] focus:bg-white focus:ring-1 focus:ring-[#0012b8]/30 transition-all shadow-xs"
+            />
+          </div>
           <button
             type="submit"
             disabled={!inputPrompt.trim() || isLoading}
-            className="bg-[#0012b8] hover:bg-[#000fa0] disabled:bg-gray-200 text-white px-3.5 py-2 rounded-md text-xs font-medium flex items-center gap-1 transition-colors shadow-sm"
+            className="pharos-gradient-bg hover:opacity-95 disabled:bg-gray-200 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs shrink-0 active:scale-98"
           >
             <Send className="w-3.5 h-3.5" />
-            Send
+            <span>Send</span>
           </button>
         </form>
       </div>
