@@ -23,6 +23,7 @@ CORE CAPABILITIES:
 2. ON-CHAIN TELEMETRY: You evaluate DEX solvency (Harbor Protocol), whale transactions, price swing volatility, and contract bytecode risks.
 3. DATA BROKERAGE: You help users discover and purchase x402 paywalled intelligence feeds (0.001 USDC base price) settled atomically via session keys and Privy.
 4. DEVELOPER TOOLS: You guide users on RPC configuration (https://rpc.pharos.xyz), Chain MCP methods (eth_blockNumber, eth_getBalance, eth_call, eth_getCode), and network parameters.
+5. DOCUMENTATION STRUCTURE & SITEMAP: When asked about Pharos documentation structure, sections, or what is in the docs (e.g. "какие разделы есть в доках фарос"), provide a structured, detailed breakdown of all 7 sections (Introduction, Getting Started, Node & Validator Guide, Tooling & Infrastructure, Developer Guide, API & SDK, Resources) using Markdown headers and bullet points.
 
 SAFETY & OPERATING GUIDELINES:
 1. Do NOT generate malicious exploits, drainer bots, reentrancy attacks, or private key stealing scripts.
@@ -224,6 +225,11 @@ SAFETY & OPERATING GUIDELINES:
       lower.includes('деплой') ||
       lower.includes('rpc') ||
       lower.includes('sitemap') ||
+      lower.includes('раздел') || // разделы, разделов, разделі
+      lower.includes('структур') ||
+      lower.includes('содержан') ||
+      lower.includes('оглавлен') ||
+      lower.includes('навигац') ||
       lower.includes('функци') || // функции, функцию
       lower.includes('function') ||
       lower.includes('abi') ||
@@ -390,10 +396,17 @@ SAFETY & OPERATING GUIDELINES:
 
     const isGeneralDocsQuery =
       lower.includes('в доках') ||
+      lower.includes('по докам') ||
       lower.includes('доки') ||
       lower.includes('документац') ||
       lower.includes('docs') ||
       lower.includes('докс') ||
+      lower.includes('раздел') || // разделы, разделов, разделі
+      lower.includes('структур') ||
+      lower.includes('содержан') ||
+      lower.includes('оглавлен') ||
+      lower.includes('sitemap') ||
+      lower.includes('навигац') ||
       lower.includes('foundry') ||
       lower.includes('деплой') ||
       lower.includes('deploy');

@@ -6,4 +6,4 @@
 | **Task 05** | Real-time On-Chain Invoice Reconciliation | Prepared for submission | Validated against test suite |
 | **Task 06** | Harbor DEX Pool Arbitrage & Liquidity Telemetry | Prepared for submission | Multi-token tests verified |
 | **Task 30** | Honeypot & Reentrancy Risk Disassembler | Prepared for submission | Full test coverage |
-| **Task 31** | Agent-Native dApp (x402 Mesh, Privy & Copilot) | In Development & Polishing | Active live server port 3001 (`a9ffe1f`) |
+| **Task 31** | Agent-Native dApp (x402 Mesh, Privy & Copilot) | In Development & Polishing | Active live server port 3001 (Docs MCP RAG sitemap & Copilot sandbox verified) |
