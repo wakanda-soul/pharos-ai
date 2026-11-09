@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Navbar } from '@/components/Navbar';
+import { Sidebar } from '@/components/Sidebar';
 import { HeroBanner } from '@/components/HeroBanner';
 import { MarketplaceCatalog } from '@/components/MarketplaceCatalog';
 import { AgentCopilotChat } from '@/components/AgentCopilotChat';
@@ -12,12 +12,12 @@ import { SandboxSettingsModal } from '@/components/SandboxSettingsModal';
 import { PrivyLoginModal } from '@/components/PrivyLoginModal';
 import { IntelligenceFeed } from '@/types/feed';
 import { CURATED_FEEDS_INITIAL } from '@/lib/pharos-intelligence';
-import { PHAROS_CONSTANTS, pharosPublicClient, ERC20_ABI } from '@/lib/pharos-chain';
+import { PHAROS_CONSTANTS, pharosPublicClient, ERC20_ABI, ensurePharosNetwork } from '@/lib/pharos-chain';
 import { usePharosAuth } from '@/components/PrivyClientProvider';
 import { formatUnits, formatEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { X402_EIP712_DOMAIN, X402_PAYMENT_VOUCHER_TYPES } from '@/types/x402';
-import { Database, Cpu, Settings, Shield, ExternalLink, Code2 } from 'lucide-react';
+import { Database, Cpu, Settings, Shield, ExternalLink, Code2, Menu, X, PlusCircle, Wallet } from 'lucide-react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'copilot' | 'marketplace' | 'publisher' | 'curator'>(
@@ -35,6 +35,7 @@ export default function Home() {
   const [oauthAccessToken, setOauthAccessToken] = useState<string>('');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [lastPurchaseResult, setLastPurchaseResult] = useState<Record<string, unknown> | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Privy hook integration
   const {
@@ -153,6 +154,16 @@ export default function Home() {
     setWalletBalanceUsdc(updated);
   };
 
+  const handleDeductSessionBalance = (amountUsdc: number) => {
+    if (activeWalletAddress && typeof window !== 'undefined') {
+      const key = `pharos_session_allowance_${activeWalletAddress.toLowerCase()}`;
+      const prevAllowance = parseFloat(localStorage.getItem(key) || '0');
+      const updatedAllowance = Math.max(0, Number((prevAllowance - amountUsdc).toFixed(4)));
+      localStorage.setItem(key, updatedAllowance.toString());
+    }
+    setWalletBalanceUsdc((prev) => Math.max(0, Number((prev - amountUsdc).toFixed(4))));
+  };
+
   const handleSaveGeminiKey = (key: string) => {
     setGeminiApiKey(key);
     if (typeof window !== 'undefined') {
@@ -175,10 +186,20 @@ export default function Home() {
     }
 
     const feed = feeds.find((f) => f.slug === feedSlug);
-    if (!feed) return;
+    if (!feed) {
+      alert(`Feed "${feedSlug}" not found in marketplace registry.`);
+      return;
+    }
+
+    if (activeBalanceUsdc < (feed.pricePerCallUsdc || 0.001)) {
+      alert(
+        `Insufficient USDC balance. Required: ${feed.pricePerCallUsdc || 0.001} USDC, Available: ${activeBalanceUsdc.toFixed(3)} USDC. Please top up your agent wallet.`
+      );
+      setIsDepositOpen(true);
+      return;
+    }
 
     setIsPurchasing(true);
-    setLastPurchaseResult(null);
 
     try {
       const voucherNonce = Date.now();
@@ -210,6 +231,7 @@ export default function Home() {
       } else if (typeof window !== 'undefined' && (window as any).ethereum && walletProvider === 'metamask') {
         // 2. If connected via MetaMask, request real EIP-712 cryptographic signature
         try {
+          await ensurePharosNetwork((window as any).ethereum);
           const msgParams = JSON.stringify({
             domain: X402_EIP712_DOMAIN,
             message: {
@@ -293,156 +315,231 @@ export default function Home() {
     }
   };
 
+  const handleDisconnectWallet = () => {
+    if (isPrivyConfigured && isPrivyAuth) {
+      privyLogout();
+    }
+    setWalletAddress(null);
+    setWalletBalanceUsdc(0);
+    setWalletBalancePros(0);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('pharos_agent_wallet_address');
+      localStorage.removeItem('pharos_agent_session_pk');
+      localStorage.removeItem('pharos_agent_provider');
+    }
+  };
+
   return (
-    <div className="flex flex-col min-h-screen bg-[#f2f4f5]">
-      {/* Navigation Bar */}
-      <Navbar
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        walletAddress={activeWalletAddress}
-        walletBalanceUsdc={activeBalanceUsdc}
-        isCurator={isCurator}
-        onOpenDeposit={() => {
-          if (!activeWalletAddress) {
-            handleOpenPrivyLogin();
-          } else {
-            setIsDepositOpen(true);
-          }
-        }}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenPrivyLogin={handleOpenPrivyLogin}
-        onDisconnectWallet={() => {
-          if (isPrivyConfigured && isPrivyAuth) {
-            privyLogout();
-          }
-          setWalletAddress(null);
-          setWalletBalanceUsdc(0);
-          setWalletBalancePros(0);
-          if (typeof window !== 'undefined') {
-            localStorage.removeItem('pharos_agent_wallet_address');
-            localStorage.removeItem('pharos_agent_session_pk');
-            localStorage.removeItem('pharos_agent_provider');
-          }
-        }}
-      />
+    <div className="flex h-screen w-screen overflow-hidden bg-[#f8faff]">
+      {/* Desktop Left Sidebar Navigation */}
+      <div className="hidden lg:flex">
+        <Sidebar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          walletAddress={activeWalletAddress}
+          walletBalanceUsdc={activeBalanceUsdc}
+          walletBalancePros={walletBalancePros}
+          isCurator={isCurator}
+          onOpenDeposit={() => {
+            if (!activeWalletAddress) {
+              handleOpenPrivyLogin();
+            } else {
+              setIsDepositOpen(true);
+            }
+          }}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenPrivyLogin={handleOpenPrivyLogin}
+          onDisconnectWallet={handleDisconnectWallet}
+          totalFeedsCount={feeds.length}
+        />
+      </div>
 
-      {/* Hero Banner */}
-      <HeroBanner />
-
-      {/* Main Tab Content */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
-        {activeTab === 'marketplace' && (
-          <MarketplaceCatalog
-            feeds={feeds}
-            onBuyFeed={handleBuyFeed}
-            isPurchasing={isPurchasing}
-            lastPurchaseResult={lastPurchaseResult}
-            onClearPurchaseResult={() => setLastPurchaseResult(null)}
+      {/* Mobile Sidebar Overlay Drawer */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          <div
+            className="fixed inset-0 bg-black/50 backdrop-blur-xs"
+            onClick={() => setIsMobileMenuOpen(false)}
           />
-        )}
-
-        {activeTab === 'copilot' && (
-          <AgentCopilotChat
-            walletAddress={activeWalletAddress}
-            walletBalanceUsdc={activeBalanceUsdc}
-            onRefreshBalance={() => {
-              if (activeWalletAddress) {
-                if (isPrivyConfigured && isPrivyAuth) {
-                  privyRefreshBalances();
-                } else {
-                  refreshLiveBalances(activeWalletAddress);
-                }
-              }
-            }}
-            geminiApiKey={geminiApiKey}
-            oauthAccessToken={oauthAccessToken}
-            onOpenPrivyLogin={handleOpenPrivyLogin}
-          />
-        )}
-
-        {activeTab === 'publisher' && (
-          <PublisherDashboard
-            feeds={feeds}
-            walletAddress={activeWalletAddress}
-            onRefreshFeeds={refreshFeeds}
-            onConnectWallet={handleOpenPrivyLogin}
-          />
-        )}
-
-        {activeTab === 'curator' && (
-          <CuratorWhitelistDesk
-            feeds={feeds}
-            isCurator={isCurator}
-            walletAddress={activeWalletAddress}
-            onRefreshFeeds={refreshFeeds}
-            onConnectWallet={handleOpenPrivyLogin}
-          />
-        )}
-      </main>
-
-      {/* Elevated Footer */}
-      <footer className="bg-white/80 backdrop-blur-md border-t border-[#e2e8f0] py-8 mt-16 text-xs text-gray-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-6 h-6 rounded-lg pharos-gradient-bg flex items-center justify-center text-white font-bold text-xs shadow-2xs">
-                φ
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-900 tracking-tight">Pharos x402 Mesh</span>
-                <span>·</span>
-                <span className="text-gray-500 font-mono text-[11px]">Chain ID 1672 (Pacific Mainnet)</span>
-              </div>
+          <div className="relative z-10 w-72 bg-white h-full shadow-2xl flex flex-col">
+            <div className="p-3 border-b border-[#e2e8f0] flex items-center justify-between">
+              <span className="font-bold text-gray-900 text-sm">Navigation</span>
+              <button
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="p-1 rounded-lg text-gray-500 hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-
-            <div className="flex flex-wrap items-center gap-3 text-[11px]">
-              <a
-                href="https://mcp.pharos.xyz/mcp"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-mono"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                Chain MCP <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-
-              <span className="text-gray-300">•</span>
-
-              <a
-                href="https://docs.pharos.xyz"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 font-mono"
-              >
-                Docs MCP <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-
-              <span className="text-gray-300">•</span>
-
-              <a
-                href="https://pharosscan.xyz"
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 text-[#0012b8] hover:text-[#5c41ff] font-mono"
-              >
-                PharosScan <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-
-              <span className="text-gray-300">•</span>
-
-              <span className="text-gray-400 font-mono">
-                Registry: <code className="bg-[#f1f5f9] px-1.5 py-0.5 rounded text-gray-700 font-bold">0x1672...4021</code>
-              </span>
-
-              <span className="text-gray-300">•</span>
-
-              <span className="text-gray-400 font-mono">
-                Curator: <code className="bg-[#f1f5f9] px-1.5 py-0.5 rounded text-emerald-800 font-bold">{PHAROS_CONSTANTS.curatorHandle}</code>
-              </span>
+            <div className="flex-1 overflow-y-auto">
+              <Sidebar
+                activeTab={activeTab}
+                setActiveTab={(tab) => {
+                  setActiveTab(tab);
+                  setIsMobileMenuOpen(false);
+                }}
+                walletAddress={activeWalletAddress}
+                walletBalanceUsdc={activeBalanceUsdc}
+                walletBalancePros={walletBalancePros}
+                isCurator={isCurator}
+                onOpenDeposit={() => {
+                  setIsMobileMenuOpen(false);
+                  if (!activeWalletAddress) {
+                    handleOpenPrivyLogin();
+                  } else {
+                    setIsDepositOpen(true);
+                  }
+                }}
+                onOpenSettings={() => {
+                  setIsMobileMenuOpen(false);
+                  setIsSettingsOpen(true);
+                }}
+                onOpenPrivyLogin={() => {
+                  setIsMobileMenuOpen(false);
+                  handleOpenPrivyLogin();
+                }}
+                onDisconnectWallet={() => {
+                  setIsMobileMenuOpen(false);
+                  handleDisconnectWallet();
+                }}
+                totalFeedsCount={feeds.length}
+              />
             </div>
           </div>
         </div>
-      </footer>
+      )}
+
+      {/* Main Screen Content Area */}
+      <div className="flex-1 h-screen flex flex-col overflow-hidden bg-[#f8faff]">
+        {/* Mobile Header Bar */}
+        <header className="lg:hidden flex items-center justify-between p-3.5 bg-white border-b border-[#e2e8f0]">
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="p-1.5 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+            <div className="w-7 h-7 rounded-lg pharos-gradient-bg flex items-center justify-center text-white font-bold text-xs">
+              φ
+            </div>
+            <span className="font-bold text-gray-900 text-sm">Pharos Mesh</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {activeWalletAddress ? (
+              <button
+                onClick={() => setIsDepositOpen(true)}
+                className="flex items-center gap-1.5 bg-[#f8faff] border border-[#e2e8f0] px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-[#0012b8]"
+              >
+                <span>${activeBalanceUsdc.toFixed(3)}</span>
+                <PlusCircle className="w-3.5 h-3.5 text-[#0012b8]" />
+              </button>
+            ) : (
+              <button
+                onClick={handleOpenPrivyLogin}
+                className="text-xs pharos-gradient-bg text-white px-2.5 py-1 rounded-lg font-semibold"
+              >
+                Connect
+              </button>
+            )}
+          </div>
+        </header>
+
+        {/* Tab 1: AI Copilot — FULL HEIGHT SCREEN FROM TOP TO BOTTOM */}
+        {activeTab === 'copilot' && (
+          <div className="flex-1 h-full flex flex-col overflow-hidden p-2 sm:p-4">
+            <AgentCopilotChat
+              walletAddress={activeWalletAddress}
+              walletBalanceUsdc={activeBalanceUsdc}
+              onRefreshBalance={() => {
+                if (activeWalletAddress) {
+                  if (isPrivyConfigured && isPrivyAuth) {
+                    privyRefreshBalances();
+                  } else {
+                    refreshLiveBalances(activeWalletAddress);
+                  }
+                }
+              }}
+              onDeductBalance={handleDeductSessionBalance}
+              geminiApiKey={geminiApiKey}
+              oauthAccessToken={oauthAccessToken}
+              onOpenPrivyLogin={handleOpenPrivyLogin}
+            />
+          </div>
+        )}
+
+        {/* Tab 2: Data Catalog */}
+        {activeTab === 'marketplace' && (
+          <div className="flex-1 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+            <HeroBanner />
+            <MarketplaceCatalog
+              feeds={feeds}
+              onBuyFeed={handleBuyFeed}
+              isPurchasing={isPurchasing}
+              lastPurchaseResult={lastPurchaseResult}
+              onClearPurchaseResult={() => setLastPurchaseResult(null)}
+            />
+
+            {/* Elevated Footer */}
+            <footer className="bg-white/80 backdrop-blur-md border border-[#e2e8f0] rounded-2xl p-6 text-xs text-gray-500 shadow-2xs">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-gray-900 tracking-tight">Pharos x402 Mesh</span>
+                  <span>·</span>
+                  <span className="text-gray-500 font-mono text-[11px]">Chain ID 1672 (Pacific Mainnet)</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-3 text-[11px] font-mono">
+                  <span className="text-gray-400">Registry: <code className="bg-[#f1f5f9] px-1.5 py-0.5 rounded text-gray-700 font-bold">0x1672...4021</code></span>
+                  <span>•</span>
+                  <span className="text-gray-400">Curator: <code className="bg-[#f1f5f9] px-1.5 py-0.5 rounded text-emerald-800 font-bold">{PHAROS_CONSTANTS.curatorHandle}</code></span>
+                </div>
+              </div>
+            </footer>
+          </div>
+        )}
+
+        {/* Tab 3: Publisher Hub */}
+        {activeTab === 'publisher' && (
+          <div className="flex-1 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+            <PublisherDashboard
+              feeds={feeds}
+              walletAddress={activeWalletAddress}
+              onRefreshFeeds={refreshFeeds}
+              onConnectWallet={handleOpenPrivyLogin}
+            />
+
+            {/* Footer */}
+            <footer className="bg-white/80 backdrop-blur-md border border-[#e2e8f0] rounded-2xl p-6 text-xs text-gray-500 shadow-2xs">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <span className="font-bold text-gray-900 tracking-tight">Pharos x402 Marketplace Publisher Hub</span>
+                <span className="text-gray-400 font-mono text-[11px]">Verified Registry on Pharos Mainnet</span>
+              </div>
+            </footer>
+          </div>
+        )}
+
+        {/* Tab 4: Curator Desk */}
+        {activeTab === 'curator' && (
+          <div className="flex-1 h-full overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+            <CuratorWhitelistDesk
+              feeds={feeds}
+              isCurator={isCurator}
+              walletAddress={activeWalletAddress}
+              onRefreshFeeds={refreshFeeds}
+              onConnectWallet={handleOpenPrivyLogin}
+            />
+
+            {/* Footer */}
+            <footer className="bg-white/80 backdrop-blur-md border border-[#e2e8f0] rounded-2xl p-6 text-xs text-gray-500 shadow-2xs">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                <span className="font-bold text-gray-900 tracking-tight">Curator Whitelist & Governance Gateway</span>
+                <span className="text-gray-400 font-mono text-[11px]">Authorized Curator: {PHAROS_CONSTANTS.curatorHandle}</span>
+              </div>
+            </footer>
+          </div>
+        )}
+      </div>
 
       {/* Wallet Funding Modal */}
       <AgentWalletModal
