@@ -3,29 +3,79 @@
 @tailwind utilities;
 
 :root {
-  --background: #f2f4f5;
-  --foreground: #111827;
+  --background: #f4f6f8;
+  --foreground: #0f172a;
+  --pharos-blue: #0012b8;
+  --pharos-purple: #5c41ff;
+  --pharos-cyan: #06b6d4;
+  --surface-white: #ffffff;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Custom scrollbar matching port.pharos.xyz */
+/* Custom scrollbars matching port.pharos.xyz */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #f2f4f5;
+  background: rgba(241, 245, 249, 0.7);
 }
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
+  background: #cbd5e1;
+  border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #94a3b8;
+}
+
+/* Modern Web3 Visual Utilities */
+@layer utilities {
+  .pharos-gradient-text {
+    background: linear-gradient(135deg, #0012b8 0%, #5c41ff 50%, #2563eb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .pharos-gradient-bg {
+    background: linear-gradient(135deg, #0012b8 0%, #5c41ff 100%);
+  }
+
+  .pharos-mesh-glow {
+    box-shadow: 0 0 30px -5px rgba(92, 65, 255, 0.15);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+  }
+
+  .dark-glass-card {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(51, 65, 85, 0.6);
+  }
+}
+
+/* Keyframes */
+@keyframes subtle-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+.animate-subtle-float {
+  animation: subtle-float 4s ease-in-out infinite;
 }
