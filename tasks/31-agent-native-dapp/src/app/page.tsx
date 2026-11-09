@@ -360,24 +360,66 @@ export default function Home() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-white border-t border-[#e5e7eb] py-6 mt-12 text-xs text-gray-500">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-gray-900">Pharos x402 Mesh</span>
-            <span>·</span>
-            <a
-              href="https://pharosscan.xyz"
-              target="_blank"
-              rel="noreferrer"
-              className="text-[#0012b8] hover:underline flex items-center gap-1"
-            >
-              Pharos Mainnet (Chain ID 1672) <ExternalLink className="w-3 h-3" />
-            </a>
-          </div>
-          <div className="flex items-center gap-4 text-[11px]">
-            <span>Registry: <code className="bg-[#f2f4f5] px-1.5 py-0.5 rounded text-gray-700">0x1672...4021</code></span>
-            <span>Curator: <code className="bg-[#f2f4f5] px-1.5 py-0.5 rounded text-gray-700">wakanda-soul</code></span>
+      {/* Elevated Footer */}
+      <footer className="bg-white/80 backdrop-blur-md border-t border-[#e2e8f0] py-8 mt-16 text-xs text-gray-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="w-6 h-6 rounded-lg pharos-gradient-bg flex items-center justify-center text-white font-bold text-xs shadow-2xs">
+                φ
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-gray-900 tracking-tight">Pharos x402 Mesh</span>
+                <span>·</span>
+                <span className="text-gray-500 font-mono text-[11px]">Chain ID 1672 (Pacific Mainnet)</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-[11px]">
+              <a
+                href="https://mcp.pharos.xyz/mcp"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-emerald-700 hover:text-emerald-900 font-mono"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                Chain MCP <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+
+              <span className="text-gray-300">•</span>
+
+              <a
+                href="https://docs.pharos.xyz"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-blue-700 hover:text-blue-900 font-mono"
+              >
+                Docs MCP <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+
+              <span className="text-gray-300">•</span>
+
+              <a
+                href="https://pharosscan.xyz"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[#0012b8] hover:text-[#5c41ff] font-mono"
+              >
+                PharosScan <ExternalLink className="w-2.5 h-2.5" />
+              </a>
+
+              <span className="text-gray-300">•</span>
+
+              <span className="text-gray-400 font-mono">
+                Registry: <code className="bg-[#f1f5f9] px-1.5 py-0.5 rounded text-gray-700 font-bold">0x1672...4021</code>
+              </span>
+
+              <span className="text-gray-300">•</span>
+
+              <span className="text-gray-400 font-mono">
+                Curator: <code className="bg-[#f1f5f9] px-1.5 py-0.5 rounded text-emerald-800 font-bold">{PHAROS_CONSTANTS.curatorHandle}</code>
+              </span>
+            </div>
           </div>
         </div>
       </footer>
