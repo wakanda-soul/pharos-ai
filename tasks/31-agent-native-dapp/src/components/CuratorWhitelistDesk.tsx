@@ -83,9 +83,9 @@ export const CuratorWhitelistDesk: React.FC<CuratorWhitelistDeskProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#e5e7eb] p-6 shadow-sm space-y-6">
+    <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-7 shadow-xs space-y-6">
       {/* Header */}
-      <div className="border-b border-[#e5e7eb] pb-4">
+      <div className="border-b border-[#e2e8f0] pb-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-bold text-gray-900 tracking-tight flex items-center gap-2">

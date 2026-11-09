@@ -55,6 +55,9 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
   // Filter: ONLY display feeds owned by the current active wallet
   const normalizedUser = walletAddress.toLowerCase();
   const myFeeds = feeds.filter((f) => f.publisherAddress.toLowerCase() === normalizedUser);
+  const totalRevenue = myFeeds.reduce((acc, f) => acc + f.grossRevenueUsdc, 0);
+  const totalCalls = myFeeds.reduce((acc, f) => acc + f.totalCalls, 0);
+  const activeCount = myFeeds.filter((f) => f.curationStatus === 'ACTIVE').length;
 
   const handleUpdatePrice = async (slug: string) => {
     setIsUpdating(true);
@@ -148,29 +151,29 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#e5e7eb] p-6 shadow-sm space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e5e7eb] pb-4">
+    <div className="bg-white rounded-2xl border border-[#e2e8f0] p-6 sm:p-7 shadow-xs space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#e2e8f0] pb-5">
         <div>
           <h2 className="text-lg font-bold text-gray-900 tracking-tight flex items-center gap-2">
             <Settings className="w-5 h-5 text-[#0012b8]" />
             Publisher Hub & Endpoint Management
           </h2>
           <p className="text-xs text-gray-500 mt-1">
-            Managing endpoints owned by <code className="text-[#0012b8] font-mono">{walletAddress.slice(0, 8)}...{walletAddress.slice(-6)}</code>
+            Managing endpoints owned by <code className="text-[#0012b8] font-mono font-semibold">{walletAddress.slice(0, 8)}...{walletAddress.slice(-6)}</code>
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsRegisterOpen(!isRegisterOpen)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold bg-[#0012b8] hover:bg-[#000fa0] text-white transition-colors shadow-sm"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold pharos-gradient-bg hover:opacity-95 text-white transition-all shadow-xs active:scale-98"
           >
             <PlusCircle className="w-3.5 h-3.5" />
             <span>Register Endpoint</span>
           </button>
           <button
             onClick={onRefreshFeeds}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#f2f4f5] hover:bg-[#e5e7eb] text-gray-700 transition-colors border border-[#e5e7eb]"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium bg-[#f8faff] hover:bg-[#f1f5f9] text-gray-700 transition-colors border border-[#e2e8f0]"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Refresh</span>
@@ -178,8 +181,35 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
         </div>
       </div>
 
+      {/* Publisher Overview Metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="bg-[#f8faff] p-3.5 rounded-xl border border-blue-100/80">
+          <span className="text-[11px] text-gray-500 font-medium">Registered Endpoints</span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-xl font-bold text-gray-900 font-mono">{myFeeds.length}</span>
+            <span className="text-[10px] text-emerald-700 font-semibold font-mono">({activeCount} Active)</span>
+          </div>
+        </div>
+
+        <div className="bg-[#f8faff] p-3.5 rounded-xl border border-blue-100/80">
+          <span className="text-[11px] text-gray-500 font-medium">Total Micro-Revenue</span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-xl font-bold text-[#0012b8] font-mono">${totalRevenue.toFixed(3)}</span>
+            <span className="text-[10px] text-gray-400 font-mono">USDC (6 dec)</span>
+          </div>
+        </div>
+
+        <div className="bg-[#f8faff] p-3.5 rounded-xl border border-blue-100/80">
+          <span className="text-[11px] text-gray-500 font-medium">Settled Calls (Mesh)</span>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-xl font-bold text-gray-900 font-mono">{totalCalls}</span>
+            <span className="text-[10px] text-gray-400">Autonomous queries</span>
+          </div>
+        </div>
+      </div>
+
       {statusMessage && (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-900 font-medium">
+        <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl text-xs text-blue-900 font-medium animate-in fade-in duration-150">
           {statusMessage}
         </div>
       )}
