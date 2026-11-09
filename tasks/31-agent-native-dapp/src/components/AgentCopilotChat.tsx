@@ -47,6 +47,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
   const [inputPrompt, setInputPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -55,6 +56,11 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  // Keep input focused so user is never kicked out of the text field
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [isLoading]);
 
   const presetPrompts = [
     { label: '🔗 Check MCP Mesh', prompt: 'Check live status and links for https://mcp.pharos.xyz/mcp and Pharos Docs MCP' },
@@ -74,6 +80,9 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
         timestamp: new Date().toISOString(),
       },
     ]);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
   };
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -90,6 +99,11 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
     setMessages((prev) => [...prev, userMsg]);
     setInputPrompt('');
     setIsLoading(true);
+
+    // Keep focus in the input element immediately
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 10);
 
     try {
       const res = await fetch('/api/agent/copilot', {
@@ -126,6 +140,9 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
       ]);
     } finally {
       setIsLoading(false);
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 20);
     }
   };
 
@@ -138,16 +155,23 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
             <Cpu className="w-5 h-5" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               <h3 className="text-sm font-bold text-gray-900 tracking-tight">
-                Sandboxed AI Copilot
+                Pharos Intelligence Copilot
               </h3>
-              <span className="text-[10px] bg-purple-50 text-purple-700 border border-purple-200/80 px-2 py-0.5 rounded-full font-mono font-medium flex items-center gap-1">
+              <span
+                className="text-[10px] bg-purple-50 text-purple-700 border border-purple-200/80 px-2.5 py-0.5 rounded-full font-mono font-medium flex items-center gap-1.5 shadow-2xs"
+                title="Google Gemini 3.8 Flash low-latency inference engine"
+              >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                gemini-3.8-flash-low
+                Gemini 3.8 Flash
               </span>
-              <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded font-mono hidden sm:inline">
-                bwrap isolated
+              <span
+                className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 shadow-2xs"
+                title="Linux Bubblewrap (bwrap) unprivileged container isolation with strict RPC/MCP access policies"
+              >
+                <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                <span>Secure Sandbox</span>
               </span>
             </div>
 
@@ -210,9 +234,12 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
         {presetPrompts.map((p, idx) => (
           <button
             key={idx}
-            onClick={() => handleSendMessage(p.prompt)}
+            onClick={() => {
+              handleSendMessage(p.prompt);
+              inputRef.current?.focus();
+            }}
             disabled={isLoading}
-            className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 hover:border-[#5c41ff]/40 hover:bg-purple-50/50 text-gray-700 transition-all shrink-0 font-medium shadow-2xs active:scale-98"
+            className="px-2.5 py-1 rounded-lg bg-white border border-gray-200 hover:border-[#5c41ff]/40 hover:bg-purple-50/50 text-gray-700 transition-all shrink-0 font-medium shadow-2xs active:scale-98 disabled:opacity-50"
           >
             {p.label}
           </button>
@@ -323,17 +350,23 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleSendMessage();
+            if (!isLoading && inputPrompt.trim()) {
+              handleSendMessage();
+            }
           }}
           className="flex items-center gap-2"
         >
           <div className="relative flex-1">
             <input
+              ref={inputRef}
               type="text"
               value={inputPrompt}
               onChange={(e) => setInputPrompt(e.target.value)}
-              placeholder="Ask Copilot to analyze feeds, query live whale telemetry, or check Docs MCP..."
-              disabled={isLoading}
+              placeholder={
+                isLoading
+                  ? 'Copilot is synthesizing telemetry... (you can prepare next prompt)'
+                  : 'Ask Copilot to analyze feeds, query live whale telemetry, or check Docs MCP...'
+              }
               className="w-full px-3.5 py-2.5 text-xs bg-[#f8faff] border border-[#e2e8f0] rounded-xl focus:outline-none focus:border-[#0012b8] focus:bg-white focus:ring-1 focus:ring-[#0012b8]/30 transition-all shadow-xs"
             />
           </div>
@@ -342,8 +375,17 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
             disabled={!inputPrompt.trim() || isLoading}
             className="pharos-gradient-bg hover:opacity-95 disabled:bg-gray-200 disabled:opacity-50 text-white px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs shrink-0 active:scale-98"
           >
-            <Send className="w-3.5 h-3.5" />
-            <span>Send</span>
+            {isLoading ? (
+              <>
+                <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                <span>Thinking...</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-3.5 h-3.5" />
+                <span>Send</span>
+              </>
+            )}
           </button>
         </form>
       </div>

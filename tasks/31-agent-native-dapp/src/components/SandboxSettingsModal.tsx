@@ -60,13 +60,13 @@ export const SandboxSettingsModal: React.FC<SandboxSettingsModalProps> = ({
               Copilot Sandbox Settings
             </h3>
             <span className="text-xs text-gray-500 font-mono">
-              Antigravity Bubblewrap Engine · gemini-3.8-flash-low
+              Antigravity Sandbox Engine · Gemini 3.8 Flash
             </span>
           </div>
         </div>
 
         <p className="text-xs text-gray-600 leading-relaxed mb-4">
-          The Copilot runs inside an isolated Linux Bubblewrap sandbox on Pharos Mainnet. Preflight gathers live MCP telemetry, and LLM reasoning uses <code>gemini-3.8-flash-low</code>. You can optionally link your custom Gemini API key or OAuth Bearer token below.
+          The Copilot runs inside a secure Linux Bubblewrap sandbox on Pharos Mainnet. Preflight gathers live MCP telemetry, and LLM reasoning uses <code>Gemini 3.8 Flash</code>. You can optionally link your custom Gemini API key or OAuth Bearer token below.
         </p>
 
         {/* Gemini API Key */}
