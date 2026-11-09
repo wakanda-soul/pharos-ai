@@ -184,36 +184,36 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl border border-[#e5e7eb] max-w-sm w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl border border-[#e2e8f0] max-w-sm w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1 rounded-full transition-colors"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
 
         {loginStep === 'methods' && (
           <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-lg bg-[#5c41ff] flex items-center justify-center text-white font-bold shadow-sm">
-                P
+            <div className="flex items-center gap-2.5 mb-2.5">
+              <div className="w-9 h-9 rounded-xl pharos-gradient-bg flex items-center justify-center text-white font-bold text-sm shadow-2xs">
+                φ
               </div>
               <div>
                 <h3 className="text-base font-bold text-gray-900 tracking-tight">
                   Connect with Privy
                 </h3>
-                <p className="text-[11px] text-gray-500">
-                  Embedded Agent Wallet · Pharos Mainnet
+                <p className="text-[11px] text-gray-500 font-mono">
+                  Embedded Agent Wallet · Chain ID 1672
                 </p>
               </div>
             </div>
 
             <p className="text-xs text-gray-600 mb-4 leading-relaxed">
-              Authenticate to provision an embedded agent wallet and authorize real on-chain x402 data micropayments.
+              Authenticate to provision an embedded agent session wallet and authorize on-chain x402 data micropayments.
             </p>
 
             {errorMessage && (
-              <div className="mb-3 p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-start gap-1.5 leading-normal">
+              <div className="mb-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-800 flex items-start gap-1.5 leading-normal">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <span>{errorMessage}</span>
               </div>
@@ -224,7 +224,7 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
               <div className="space-y-2 mb-4">
                 <button
                   onClick={handleOfficialPrivyLogin}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold bg-[#5c41ff] hover:bg-[#4b32e0] text-white rounded-xl transition-all shadow-sm active:scale-[0.99]"
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold pharos-gradient-bg hover:opacity-95 text-white rounded-xl transition-all shadow-xs active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-white" />
@@ -236,16 +236,16 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
             ) : (
               /* If Privy App ID not configured yet, let user paste it or connect browser wallet */
               <div className="space-y-3 mb-4">
-                <form onSubmit={handleSavePrivyAppId} className="bg-purple-50/50 p-3 rounded-xl border border-purple-200/70">
+                <form onSubmit={handleSavePrivyAppId} className="bg-[#f8faff] p-3.5 rounded-xl border border-blue-100/80">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-semibold text-purple-900 flex items-center gap-1">
+                    <span className="text-[11px] font-semibold text-gray-800 flex items-center gap-1">
                       <KeyRound className="w-3.5 h-3.5 text-[#5c41ff]" /> Privy App ID:
                     </span>
                     <a
                       href="https://dashboard.privy.io"
                       target="_blank"
                       rel="noreferrer"
-                      className="text-[10px] text-[#5c41ff] hover:underline flex items-center gap-0.5"
+                      className="text-[10px] text-[#0012b8] hover:underline flex items-center gap-0.5 font-medium"
                     >
                       Get free ID <ExternalLink className="w-2.5 h-2.5" />
                     </a>
@@ -255,12 +255,12 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
                       type="text"
                       value={inputAppId}
                       onChange={(e) => setInputAppId(e.target.value)}
-                      placeholder="cl..."
-                      className="flex-1 px-2.5 py-1.5 text-xs bg-white border border-purple-200 rounded-lg focus:outline-none focus:border-[#5c41ff] font-mono"
+                      placeholder="cm..."
+                      className="flex-1 px-2.5 py-1.5 text-xs bg-white border border-[#e2e8f0] rounded-lg focus:outline-none focus:border-[#5c41ff] font-mono"
                     />
                     <button
                       type="submit"
-                      className="bg-[#5c41ff] hover:bg-[#4b32e0] text-white px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0"
+                      className="pharos-gradient-bg hover:opacity-95 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shrink-0 shadow-2xs"
                     >
                       Activate
                     </button>
@@ -281,7 +281,7 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
                 <button
                   onClick={handleConnectBrowserWallet}
                   disabled={isSubmitting}
-                  className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold bg-[#0012b8] hover:bg-[#000f96] text-white rounded-xl transition-all shadow-sm active:scale-[0.99]"
+                  className="w-full flex items-center justify-between px-3.5 py-2.5 text-xs font-semibold pharos-gradient-bg hover:opacity-95 text-white rounded-xl transition-all shadow-xs active:scale-[0.99]"
                 >
                   <div className="flex items-center gap-2">
                     <Wallet className="w-4 h-4 text-white" />
@@ -293,20 +293,20 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
                 <button
                   onClick={handleGenerateSessionWallet}
                   disabled={isSubmitting}
-                  className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium border border-gray-200 bg-[#f9fafb] hover:bg-gray-100 text-gray-700 rounded-xl transition-colors"
+                  className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-medium border border-[#e2e8f0] bg-white hover:bg-slate-50 text-gray-700 rounded-xl transition-colors shadow-2xs"
                 >
                   <div className="flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-[#5c41ff]" />
                     <span>Generate Local Session Key</span>
                   </div>
-                  <span className="text-[10px] bg-white px-1.5 py-0.5 rounded border border-gray-200 font-mono">
+                  <span className="text-[10px] bg-[#f1f5f9] px-1.5 py-0.5 rounded border border-[#e2e8f0] font-mono text-gray-600">
                     Zero-Config
                   </span>
                 </button>
               </div>
             )}
 
-            <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-[10px] text-gray-400">
+            <div className="mt-4 pt-3 border-t border-[#f1f5f9] flex items-center justify-between text-[10px] text-gray-400">
               <span className="flex items-center gap-1">
                 <Shield className="w-3 h-3 text-emerald-500" /> Real RPC: rpc.pharos.xyz
               </span>
@@ -338,24 +338,25 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
 
         {loginStep === 'created' && (
           <div className="py-6 flex flex-col items-center justify-center text-center space-y-3">
-            <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 shadow-2xs">
               <Check className="w-6 h-6 stroke-[3]" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-gray-900">Connected to Pharos Mainnet!</h4>
-              <div className="mt-2 bg-[#f2f4f5] px-2.5 py-1.5 rounded font-mono text-[11px] text-gray-800 break-all flex items-center justify-between gap-1">
+              <h4 className="text-sm font-bold text-gray-900 tracking-tight">Connected to Pharos Mainnet!</h4>
+              <div className="mt-3 bg-[#f8faff] border border-[#e2e8f0] px-3 py-2 rounded-xl font-mono text-[11px] text-gray-800 break-all flex items-center justify-between gap-1 shadow-2xs">
                 <span>{createdAddress}</span>
-                <button onClick={handleCopy} className="text-gray-500 hover:text-gray-900 shrink-0">
+                <button onClick={handleCopy} className="text-gray-500 hover:text-gray-900 shrink-0 p-1 rounded hover:bg-white transition-colors">
                   {copied ? <CheckCheck className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </div>
 
-              <div className="mt-3 flex items-center justify-center gap-4 text-xs font-mono">
+              <div className="mt-3.5 flex items-center justify-center gap-4 text-xs font-mono bg-[#f8faff] border border-[#e2e8f0] py-2 rounded-xl">
                 <div className="text-gray-600">
                   PROS: <span className="font-bold text-gray-900">{createdBalances.pros.toFixed(4)}</span>
                 </div>
+                <div className="text-gray-300">|</div>
                 <div className="text-gray-600">
-                  USDC: <span className="font-bold text-[#0012b8]">{createdBalances.usdc.toFixed(3)}</span>
+                  USDC: <span className="font-bold text-[#0012b8]">${createdBalances.usdc.toFixed(3)}</span>
                 </div>
               </div>
             </div>

@@ -42,46 +42,46 @@ export const SandboxSettingsModal: React.FC<SandboxSettingsModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-xl border border-[#e5e7eb] max-w-md w-full p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl border border-[#e2e8f0] max-w-md w-full p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-150">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
 
         <div className="flex items-center gap-2.5 mb-4">
-          <div className="w-9 h-9 rounded-md bg-[#5c41ff] flex items-center justify-center text-white">
+          <div className="w-9 h-9 rounded-xl pharos-gradient-bg flex items-center justify-center text-white shadow-2xs">
             <Cpu className="w-5 h-5" />
           </div>
           <div>
             <h3 className="text-base font-bold text-gray-900 tracking-tight">
               Copilot Sandbox Settings
             </h3>
-            <span className="text-xs text-gray-500">
-              Gemini 1.5 Integration & OAuth Configuration
+            <span className="text-xs text-gray-500 font-mono">
+              Antigravity Bubblewrap Engine · gemini-3.8-flash-low
             </span>
           </div>
         </div>
 
         <p className="text-xs text-gray-600 leading-relaxed mb-4">
-          The Copilot runs in <strong>Deterministic Sandbox Mode</strong> out of the box with zero external setup needed. You can optionally link your own Google Gemini API key or OAuth Bearer token below.
+          The Copilot runs inside an isolated Linux Bubblewrap sandbox on Pharos Mainnet. Preflight gathers live MCP telemetry, and LLM reasoning uses <code>gemini-3.8-flash-low</code>. You can optionally link your custom Gemini API key or OAuth Bearer token below.
         </p>
 
         {/* Gemini API Key */}
         <div className="mb-4">
           <label className="block text-xs font-semibold text-gray-700 mb-1">
-            Google Gemini API Key (Optional):
+            Google Gemini API Key (Optional override):
           </label>
           <div className="relative">
-            <Key className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+            <Key className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-3" />
             <input
               type="password"
               value={localApiKey}
               onChange={(e) => setLocalApiKey(e.target.value)}
               placeholder="AIzaSy..."
-              className="w-full pl-9 pr-3 py-1.5 text-xs bg-[#f9fafb] border border-[#e5e7eb] rounded-md font-mono focus:outline-none focus:border-[#5c41ff]"
+              className="w-full pl-9 pr-3 py-2 text-xs bg-[#f8faff] border border-[#e2e8f0] rounded-xl font-mono focus:outline-none focus:border-[#5c41ff] focus:ring-2 focus:ring-[#5c41ff]/10 transition-all"
             />
           </div>
         </div>
@@ -96,7 +96,7 @@ export const SandboxSettingsModal: React.FC<SandboxSettingsModalProps> = ({
             value={localOAuth}
             onChange={(e) => setLocalOAuth(e.target.value)}
             placeholder="ya29.a0AfH6SM..."
-            className="w-full px-3 py-1.5 text-xs bg-[#f9fafb] border border-[#e5e7eb] rounded-md font-mono focus:outline-none focus:border-[#5c41ff]"
+            className="w-full px-3 py-2 text-xs bg-[#f8faff] border border-[#e2e8f0] rounded-xl font-mono focus:outline-none focus:border-[#5c41ff] focus:ring-2 focus:ring-[#5c41ff]/10 transition-all"
           />
           <span className="text-[10px] text-gray-400 mt-1 block">
             Used for 1-click Google Workspace / Vertex authentication.
@@ -106,10 +106,10 @@ export const SandboxSettingsModal: React.FC<SandboxSettingsModalProps> = ({
         {/* Save button */}
         <button
           onClick={handleSave}
-          className={`w-full py-2.5 px-4 rounded-md text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+          className={`w-full py-2.5 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-xs active:scale-98 ${
             savedSuccess
               ? 'bg-emerald-600 text-white'
-              : 'bg-[#5c41ff] hover:bg-[#4930d6] text-white shadow-sm'
+              : 'pharos-gradient-bg hover:opacity-95 text-white'
           }`}
         >
           {savedSuccess ? (
@@ -121,7 +121,7 @@ export const SandboxSettingsModal: React.FC<SandboxSettingsModalProps> = ({
           )}
         </button>
 
-        <div className="mt-4 pt-3 border-t border-[#f2f4f5] text-[11px] text-gray-400 flex items-center gap-1.5 justify-center">
+        <div className="mt-4 pt-3 border-t border-[#f1f5f9] text-[11px] text-gray-400 flex items-center gap-1.5 justify-center">
           <Lock className="w-3.5 h-3.5 text-emerald-600" />
           Keys are stored locally in your browser memory and never persisted to external servers.
         </div>
