@@ -122,3 +122,53 @@ export const pharosPublicClient = createPublicClient({
   chain: pharosMainnet,
   transport: http(PHAROS_CONSTANTS.rpcUrl),
 });
+
+/**
+ * Ensures the connected EIP-1193 browser wallet (MetaMask, Rabby) is switched
+ * to Pharos Mainnet (Chain ID 1672 / 0x688). Automatically prompts to add the chain if missing.
+ */
+export async function ensurePharosNetwork(ethereum: any): Promise<boolean> {
+  if (!ethereum || typeof ethereum.request !== 'function') return false;
+  try {
+    const currentChain = await ethereum.request({ method: 'eth_chainId' });
+    if (
+      currentChain &&
+      currentChain.toLowerCase() === PHAROS_CONSTANTS.chainIdHex.toLowerCase()
+    ) {
+      return true;
+    }
+
+    try {
+      await ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: PHAROS_CONSTANTS.chainIdHex }],
+      });
+      return true;
+    } catch (switchError: any) {
+      if (
+        switchError.code === 4902 ||
+        switchError.message?.includes('4902') ||
+        switchError.message?.includes('Unrecognized chain') ||
+        switchError.message?.includes('wallet_addEthereumChain')
+      ) {
+        await ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [
+            {
+              chainId: PHAROS_CONSTANTS.chainIdHex,
+              chainName: PHAROS_CONSTANTS.chainName,
+              rpcUrls: [PHAROS_CONSTANTS.rpcUrl],
+              nativeCurrency: { name: 'PROS', symbol: 'PROS', decimals: 18 },
+              blockExplorerUrls: [PHAROS_CONSTANTS.explorerUrl],
+            },
+          ],
+        });
+        return true;
+      }
+      throw switchError;
+    }
+  } catch (err: any) {
+    console.warn('Failed to switch wallet network to Pharos Mainnet:', err);
+    throw err;
+  }
+}

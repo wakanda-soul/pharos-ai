@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { X, Shield, Mail, Sparkles, Check, ArrowRight, Wallet, ExternalLink, AlertCircle, Copy, CheckCheck, KeyRound } from 'lucide-react';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { formatUnits, formatEther } from 'viem';
-import { pharosPublicClient, PHAROS_CONSTANTS, ERC20_ABI } from '@/lib/pharos-chain';
+import { pharosPublicClient, PHAROS_CONSTANTS, ERC20_ABI, ensurePharosNetwork } from '@/lib/pharos-chain';
 import { usePharosAuth } from './PrivyClientProvider';
 
 interface PrivyLoginModalProps {
@@ -76,27 +76,7 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
       const userAddress = accounts[0] as `0x${string}`;
 
       // Verify and switch to Pharos Mainnet (Chain ID 1672 / 0x688)
-      try {
-        await ethereum.request({
-          method: 'wallet_switchEthereumChain',
-          params: [{ chainId: PHAROS_CONSTANTS.chainIdHex }],
-        });
-      } catch (switchError: any) {
-        if (switchError.code === 4902 || switchError.message?.includes('4902')) {
-          await ethereum.request({
-            method: 'wallet_addEthereumChain',
-            params: [
-              {
-                chainId: PHAROS_CONSTANTS.chainIdHex,
-                chainName: PHAROS_CONSTANTS.chainName,
-                rpcUrls: [PHAROS_CONSTANTS.rpcUrl],
-                nativeCurrency: { name: 'PROS', symbol: 'PROS', decimals: 18 },
-                blockExplorerUrls: [PHAROS_CONSTANTS.explorerUrl],
-              },
-            ],
-          });
-        }
-      }
+      await ensurePharosNetwork(ethereum);
 
       // Fetch real live on-chain balances from Pharos RPC
       const [prosRaw, usdcRaw] = await Promise.all([

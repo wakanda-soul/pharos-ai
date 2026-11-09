@@ -16,7 +16,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { encodeFunctionData, parseUnits } from 'viem';
-import { PHAROS_CONSTANTS, ERC20_ABI } from '@/lib/pharos-chain';
+import { PHAROS_CONSTANTS, ERC20_ABI, ensurePharosNetwork } from '@/lib/pharos-chain';
 
 interface AgentWalletModalProps {
   isOpen: boolean;
@@ -85,7 +85,11 @@ export const AgentWalletModal: React.FC<AgentWalletModalProps> = ({
       // Case 1: Browser wallet (MetaMask / Rabby / injected EIP-1193) is available
       if (typeof window !== 'undefined' && (window as any).ethereum && walletAddress) {
         const ethereum = (window as any).ethereum;
-        const accounts: string[] = await ethereum.request({ method: 'eth_accounts' });
+
+        // CRITICAL FIX: Ensure wallet is switched to Pharos Mainnet (Chain ID 1672 / 0x688) BEFORE requesting accounts or transactions!
+        await ensurePharosNetwork(ethereum);
+
+        const accounts: string[] = await ethereum.request({ method: 'eth_requestAccounts' });
 
         if (accounts && accounts.length > 0) {
           const sender = accounts[0] as `0x${string}`;
@@ -133,20 +137,13 @@ export const AgentWalletModal: React.FC<AgentWalletModalProps> = ({
       setTimeout(() => {
         setIsSuccess(false);
         onClose();
-      }, 1800);
+      }, 2000);
     } catch (txErr: any) {
-      console.warn('Deposit transaction cancelled or failed:', txErr?.message);
-      // If user rejected transaction, show message; otherwise still allow session allowance
-      if (txErr?.code === 4001 || txErr?.message?.includes('User rejected')) {
-        setErrorMessage('Transaction was rejected in your wallet.');
+      console.warn('Deposit transaction cancelled or failed:', txErr);
+      if (txErr?.code === 4001 || txErr?.message?.includes('User rejected') || txErr?.message?.includes('rejected')) {
+        setErrorMessage('Transaction or network switch to Pharos Mainnet was rejected in your wallet.');
       } else {
-        // Fallback: apply session key allowance directly
-        onDeposit(parsedAmount);
-        setIsSuccess(true);
-        setTimeout(() => {
-          setIsSuccess(false);
-          onClose();
-        }, 1500);
+        setErrorMessage(`Transaction failed: ${txErr?.message || String(txErr)}`);
       }
     } finally {
       setIsDepositing(false);
