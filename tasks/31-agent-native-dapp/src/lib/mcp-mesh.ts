@@ -226,6 +226,41 @@ export async function queryDocsMcp(question: string): Promise<DocsMcpResponse> {
 function getDocsKnowledgeFallback(query: string): string {
   const lower = query.toLowerCase();
 
+  if (
+    lower.includes('usdc') ||
+    lower.includes('юсдц') ||
+    (lower.includes('функци') && (lower.includes('контракт') || lower.includes('токен') || lower.includes('token'))) ||
+    lower.includes('erc-20') ||
+    lower.includes('erc20')
+  ) {
+    return `# Native USDC Contract Specification on Pharos Mainnet
+
+• **Contract Address**: \`0xc879c018db60520f4355c26ed1a6d572cdac1815\`
+• **Token Standard**: Official FiatToken (Circle ERC-20 / EIP-2612 / EIP-3009)
+• **Decimals**: \`6\` (Atomic Unit: 1 USDC = 1,000,000 units)
+• **Symbol**: \`USDC\`, Name: \`USD Coin\`
+
+### Standard ERC-20 Read/View Functions:
+• \`balanceOf(address account) view returns (uint256)\` — Возвращает баланс в атомных единицах (6 знаков).
+• \`allowance(address owner, address spender) view returns (uint256)\` — Доступный лимит для расходования.
+• \`totalSupply() view returns (uint256)\` — Текущая эмиссия токена в сети.
+• \`decimals() view returns (uint8)\` — Возвращает 6.
+• \`name() view returns (string)\` / \`symbol() view returns (string)\`
+
+### Transactional / Transfer Functions:
+• \`transfer(address to, uint256 value) returns (bool)\` — Прямой перевод токенов.
+• \`approve(address spender, uint256 value) returns (bool)\` — Выдача аппрува смарт-контракту.
+• \`transferFrom(address from, address to, uint256 value) returns (bool)\` — Перевод от имени доверенного адреса.
+
+### Gasless EIP-712 Signatures:
+• \`permit(address owner, address spender, uint256 value, uint256 deadline, uint8 v, bytes32 r, bytes32 s)\` (EIP-2612) — Безгазовый аппрув через подпись.
+• \`transferWithAuthorization(...)\` / \`receiveWithAuthorization(...)\` (EIP-3009) — Прямые переводы без расхода газа отправителем.
+
+### Cross-Chain Bridge (Circle CCTP):
+• \`depositForBurn(uint256 amount, uint32 destinationDomain, bytes32 mintRecipient, address burnToken)\` — Сжигание для межсетевого перевода через CCTP TokenMessenger.
+• \`receiveMessage(bytes message, bytes attestation)\` — Зачисление токенов на Pharos по аттестации Circle.`;
+  }
+
   if (lower.includes('deploy') || lower.includes('foundry') || lower.includes('contract')) {
     return `# Deploying Smart Contracts with Foundry on Pharos
 

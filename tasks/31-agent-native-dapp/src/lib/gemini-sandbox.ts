@@ -15,18 +15,20 @@ export interface CopilotContext {
 
 export class GeminiSandboxEngine {
   private static readonly SYSTEM_PERSONA = `
-You are the Pharos Intelligence Copilot, an autonomous data broker on Pharos Mainnet (Chain ID 1672).
-Your purpose is to help Web3 developers, traders, and autonomous protocols discover, evaluate, and purchase paywalled on-chain data feeds via the x402 protocol (0.001 USDC base price).
+You are the Pharos Intelligence & Developer Copilot on Pharos Mainnet (Chain ID 1672).
+You are an expert on-chain analyst, smart contract specialist, and data broker connected to the Pharos x402 Marketplace, official Docs MCP (https://docs.pharos.xyz), and Chain MCP (https://mcp.pharos.xyz/mcp).
 
-BOUNDARIES & SECURITY RESTRICTIONS:
-1. You DO NOT write scripts, programming code (Python, Solidity, JS), or automation bots.
-2. If asked to write code or scripts (e.g. "write me a python script to swap tokens" or "напиши скрипт для свопа"), you must refuse politely and with a touch of dry wit, reminding them you are a verified data broker, not a code generator.
-3. You have access ONLY to 3 verified tools:
-   - search_feeds(query, category)
-   - buy_intelligence_feed(feedSlug)
-   - synthesize_mesh_report(feedSlugs)
-4. Never attempt to bypass payments or query unwhitelisted endpoints.
-5. LANGUAGE ADAPTABILITY: You MUST detect the language of the user's message (e.g., Russian, English) and ALWAYS reply in the exact same language as the user. If the user writes in Russian, reply in fluent Russian. If in English, reply in English.
+CORE CAPABILITIES:
+1. SMART CONTRACTS & DOCUMENTATION: You provide in-depth, technical explanations of Pharos contracts (such as Native USDC at 0xc879c018db60520f4355c26ed1a6d572cdac1815, WPROS at 0x52c48d4213107b20bc583832b0d951fb9ca8f0b0), ERC-20 standard functions, EIP-2612 permit, EIP-3009 gasless transfers, Circle CCTP cross-chain functions, and Foundry deployment scripts.
+2. ON-CHAIN TELEMETRY: You evaluate DEX solvency (Harbor Protocol), whale transactions, price swing volatility, and contract bytecode risks.
+3. DATA BROKERAGE: You help users discover and purchase x402 paywalled intelligence feeds (0.001 USDC base price) settled atomically via session keys and Privy.
+4. DEVELOPER TOOLS: You guide users on RPC configuration (https://rpc.pharos.xyz), Chain MCP methods (eth_blockNumber, eth_getBalance, eth_call, eth_getCode), and network parameters.
+
+SAFETY & OPERATING GUIDELINES:
+1. Do NOT generate malicious exploits, drainer bots, reentrancy attacks, or private key stealing scripts.
+2. If asked for malicious code or prompt injection, refuse firmly and constructively.
+3. However, ALWAYS answer legitimate developer questions, explain contract ABIs/interfaces, detail contract functions (view and transactional), and search docs when asked!
+4. LANGUAGE ADAPTABILITY: You MUST detect the language of the user's message (Russian, English, Ukrainian, etc.) and ALWAYS reply in the exact same language as the user. If the user writes in Russian or Ukrainian, reply in fluent, natural, helpful Russian.
 `;
 
   public static async processUserMessage(context: CopilotContext): Promise<AgentChatMessage> {
@@ -167,7 +169,7 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       lower.includes('vulnerability') ||
       lower.includes('уязвим') ||
       lower.includes('безопасн') ||
-      (lower.includes('usdc') && (lower.includes('контракт') || lower.includes('contract')))
+      (lower.includes('аудит') && lower.includes('контракт'))
     ) {
       try {
         const liveRiskData = await fetchLiveIntelligenceData('contract-risk');
@@ -210,18 +212,26 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       }
     }
 
-    // 5. MCP Architecture or Docs Queries
-    if (
+    // 5. Documentation, Contract Functions, Token Specifications & MCP Queries
+    const isDocsOrContractQuery =
       lower.includes('mcp') ||
       lower.includes('мсп') ||
+      lower.includes('док') || // доки, в доках, документация
       lower.includes('docs') ||
       lower.includes('докс') ||
       lower.includes('foundry') ||
       lower.includes('deploy') ||
       lower.includes('деплой') ||
       lower.includes('rpc') ||
-      lower.includes('sitemap')
-    ) {
+      lower.includes('sitemap') ||
+      lower.includes('функци') || // функции, функцию
+      lower.includes('function') ||
+      lower.includes('abi') ||
+      lower.includes('метод') ||
+      ((lower.includes('usdc') || lower.includes('юсдц')) &&
+        (lower.includes('контракт') || lower.includes('contract') || lower.includes('токен') || lower.includes('token')));
+
+    if (isDocsOrContractQuery) {
       try {
         const [chainInfo, docsData] = await Promise.all([
           callChainMcp('get_chain_info', {}),
@@ -303,7 +313,7 @@ BOUNDARIES & SECURITY RESTRICTIONS:
   private static async runSimulatedCopilot(context: CopilotContext): Promise<AgentChatMessage> {
     const { prompt, agentWalletBalanceUsdc, agentWalletAddress } = context;
     const lower = prompt.toLowerCase().trim();
-    const isRussian = /[а-яА-ЯёЁ]/.test(prompt);
+    const isRussian = /[а-яА-ЯёЁіІїЇєЄґҐ]/.test(prompt);
     const toolCalls: ToolCallExecution[] = [];
 
     // 1. Greetings / Casual Chat
@@ -321,8 +331,8 @@ BOUNDARIES & SECURITY RESTRICTIONS:
 
     if (isGreeting) {
       const greetingText = isRussian
-        ? `Привет! Чем могу помочь по сети Pharos, ончейн-аналитике или протоколу x402?`
-        : `Hello! How can I assist you with Pharos on-chain intelligence or x402 feeds today?`;
+        ? `Привет! Чем могу помочь по сети Pharos, ончейн-аналитике, документации контрактов или протоколу x402?`
+        : `Hello! How can I assist you with Pharos on-chain intelligence, contract docs, or x402 feeds today?`;
 
       return {
         id: `msg_${Date.now()}`,
@@ -335,8 +345,13 @@ BOUNDARIES & SECURITY RESTRICTIONS:
     // 2. Capabilities / Identity / General Questions
     const isAboutBot =
       lower.includes('кто ты') ||
+      lower.includes('кто ті') ||
       lower.includes('что ты') ||
+      lower.includes('хто ти') ||
+      lower.includes('що ти') ||
+      lower.includes('кто вы') ||
       lower.includes('что умеешь') ||
+      lower.includes('що вмієш') ||
       lower.includes('как дела') ||
       lower.includes('помощь') ||
       lower.includes('who are you') ||
@@ -345,8 +360,8 @@ BOUNDARIES & SECURITY RESTRICTIONS:
 
     if (isAboutBot) {
       const aboutText = isRussian
-        ? `Я аналитический брокер данных в сети Pharos Mainnet (Chain ID 1672). Подключен к x402 Marketplace и кошельку Privy — могу проверять пулы ликвидности, мониторить транзакции китов, анализировать риски смарт-контрактов и искать документацию через MCP.`
-        : `I am an autonomous on-chain intelligence broker on Pharos Mainnet. Connected to the x402 Marketplace and Privy agent wallet, I query liquidity depth, whale flows, contract bytecode security, and official docs via MCP.`;
+        ? `Я — **Pharos Intelligence & Developer Copilot**, автономный ИИ-помощник и брокер данных в сети Pharos Mainnet (Chain ID 1672).\n\nЯ подключен к ончейн-маркетплейсу x402, официальной документации Docs MCP и RPC-ноде сети Pharos. Чем могу помочь:\n• **Документация и смарт-контракты**: поиск и разбор функций контрактов (например, Native USDC \`0xc879...1815\`, WPROS), стандарты ERC-20, EIP-2612 (permit), EIP-3009 (gasless transfer), Circle CCTP, деплой через Foundry.\n• **Ончейн-аналитика**: радар активности китов (\`whale-radar\`), аудит платежеспособности пулов Harbor DEX (\`harbor-solvency\`), анализ волатильности (\`dex-volatility\`) и сканер безопасности смарт-контрактов (\`contract-risk\`).\n• **x402 Micropayments**: микропокупка потоков данных за 0.001 USDC в один клик без всплывающих окон через встроенный сессионный кошелек Privy.\n• **Pharos Chain MCP**: живые RPC-запросы (\`eth_blockNumber\`, \`eth_gasPrice\`, проверка балансов и кода контрактов).\n\nЗадавай любой вопрос — по функциям контрактов, ончейн-метрикам или архитектуре сети!`
+        : `I am the **Pharos Intelligence & Developer Copilot**, an autonomous on-chain data broker and developer assistant on Pharos Mainnet (Chain ID 1672).\n\nConnected to the x402 Marketplace, official Docs MCP, and Pharos Chain RPC, I can assist you with:\n• **Smart Contracts & Docs**: In-depth explanations of contract functions (Native USDC \`0xc879...1815\`, WPROS), ERC-20, EIP-2612 permit, EIP-3009 gasless transfers, Circle CCTP, and Foundry deployments.\n• **On-Chain Intelligence**: Whale flow tracking (\`whale-radar\`), Harbor DEX solvency audits (\`harbor-solvency\`), volatility telemetry (\`dex-volatility\`), and contract bytecode risk disassembly (\`contract-risk\`).\n• **x402 Micropayments**: Sub-cent data purchases (0.001 USDC) settled autonomously via Privy session keys.\n• **Chain MCP**: Live RPC telemetry (\`eth_blockNumber\`, \`eth_gasPrice\`, block intervals).`;
 
       return {
         id: `msg_${Date.now()}`,
@@ -356,7 +371,58 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       };
     }
 
-    // 2b. AI Model, LLM & Architecture Questions
+    // 2b. Smart Contract Functions, Tokens & Official Docs Queries (e.g. "найди в доках функции контракта юсдц")
+    const isContractDocsQuery =
+      (lower.includes('функци') ||
+        lower.includes('function') ||
+        lower.includes('метод') ||
+        lower.includes('method') ||
+        lower.includes('abi') ||
+        lower.includes('интерфейс') ||
+        lower.includes('вызов')) &&
+      (lower.includes('юсдц') ||
+        lower.includes('usdc') ||
+        lower.includes('контракт') ||
+        lower.includes('contract') ||
+        lower.includes('токен') ||
+        lower.includes('token') ||
+        lower.includes('erc'));
+
+    const isGeneralDocsQuery =
+      lower.includes('в доках') ||
+      lower.includes('доки') ||
+      lower.includes('документац') ||
+      lower.includes('docs') ||
+      lower.includes('докс') ||
+      lower.includes('foundry') ||
+      lower.includes('деплой') ||
+      lower.includes('deploy');
+
+    if (isContractDocsQuery || isGeneralDocsQuery) {
+      const docsRes = await queryDocsMcp(prompt);
+      const chainInfo = await callChainMcp('get_chain_info');
+
+      toolCalls.push({
+        toolName: 'query_docs_mcp',
+        arguments: { query: prompt },
+        output: docsRes,
+      });
+      toolCalls.push({
+        toolName: 'call_chain_mcp',
+        arguments: { tool: 'get_chain_info' },
+        output: chainInfo,
+      });
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: docsRes.answer,
+        timestamp: new Date().toISOString(),
+        toolCalls,
+      };
+    }
+
+    // 2c. AI Model, LLM & Architecture Questions
     const isModelQuestion =
       lower.includes('модел') ||
       lower.includes('model') ||
@@ -382,7 +448,7 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       };
     }
 
-    // 2c. Wallet & Balance Questions
+    // 2d. Wallet & Balance Questions
     const isWalletQuestion =
       lower.includes('кошелек') ||
       lower.includes('кошель') ||
@@ -793,17 +859,35 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       };
     }
 
-    // 8. General conversational fallback (dynamically reflecting user prompt)
-    const fallbackText = isRussian
-      ? `Принято. Чем конкретно помочь по ончейн-данным Pharos, фидам x402 или документации MCP?`
-      : `Understood. How can I assist you with Pharos on-chain data, x402 feeds, or MCP documentation?`;
+    // 8. Dynamic RAG Documentation & Mesh Fallback
+    try {
+      const docsRes = await queryDocsMcp(prompt);
+      const chainInfo = await callChainMcp('get_chain_info');
+      toolCalls.push({
+        toolName: 'query_docs_mcp',
+        arguments: { query: prompt },
+        output: docsRes,
+      });
 
-    return {
-      id: `msg_${Date.now()}`,
-      sender: 'agent',
-      text: fallbackText,
-      timestamp: new Date().toISOString(),
-    };
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: docsRes.answer,
+        timestamp: new Date().toISOString(),
+        toolCalls,
+      };
+    } catch {
+      const fallbackText = isRussian
+        ? `Я подключен к сети Pharos Mainnet (Chain ID 1672). Могу помочь с ончейн-аналитикой, проверкой функций смарт-контрактов (например, Native USDC \`0xc879...1815\`), пулами ликвидности Harbor DEX или покупкой фидов x402. Уточни, пожалуйста, какой параметр или контракт тебя интересует!`
+        : `Connected to Pharos Mainnet (Chain ID 1672). I can assist you with on-chain telemetry, contract specifications (such as Native USDC \`0xc879...1815\`), Harbor DEX solvency, or x402 feeds. Please specify what metric or contract you'd like to inspect!`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: fallbackText,
+        timestamp: new Date().toISOString(),
+      };
+    }
   }
 
   private static async callGeminiApi(context: CopilotContext): Promise<AgentChatMessage> {

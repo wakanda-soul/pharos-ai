@@ -160,10 +160,12 @@ export class AntigravitySandboxRunner {
           clearTimeout(timer);
           this.releaseSlot();
 
-          if (code === 0) {
+          if (code === 0 && stdoutData.trim()) {
             resolve(stdoutData.trim());
           } else {
-            const errMsg = stderrData.trim() || `Process exited with code ${code}`;
+            const errMsg =
+              stderrData.trim() ||
+              `Process exited with code ${code}${!stdoutData.trim() ? ' and empty output' : ''}`;
             reject(new Error(errMsg));
           }
         }
