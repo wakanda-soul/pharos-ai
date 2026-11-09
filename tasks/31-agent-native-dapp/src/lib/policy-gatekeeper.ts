@@ -47,8 +47,8 @@ export class PolicyGatekeeper {
 
     // Check for file downloads, installations, or shell execution attempts
     const executionPatterns = [
-      /(install|download|wget|curl|pip install|npm install|apt-get|execute command|run shell)/i,
-      /(скачай|установи|загрузи файл|выполни команду|терминал|bash|sh скрипт)/i,
+      /(wget |curl -O|pip install |npm install |apt-get |execute (system )?command|run (shell|bash|terminal|command)|rm -rf|\/bin\/sh|\/bin\/bash)/i,
+      /(скачай (на сервер|файл в систему)|установи (пакет|библиотеку|утилиту на сервер)|выполни команду|запусти (шелл|терминал|bash|скрипт в системе))/i,
     ];
 
     for (const pat of executionPatterns) {
