@@ -78,9 +78,15 @@ export default function Home() {
       ]);
 
       const prosBal = parseFloat(formatEther(prosRaw));
-      const usdcBal = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
+      const onChainUsdcBal = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
+
+      // Retrieve persistent session allowance if any exists
+      const sessionAllowance = typeof window !== 'undefined'
+        ? parseFloat(localStorage.getItem(`pharos_session_allowance_${address.toLowerCase()}`) || '0')
+        : 0;
+
       setWalletBalancePros(prosBal);
-      setWalletBalanceUsdc(usdcBal);
+      setWalletBalanceUsdc(Number((onChainUsdcBal + sessionAllowance).toFixed(4)));
     } catch (err) {
       console.warn('Failed to query live balances on Pharos Mainnet:', err);
     }
@@ -137,6 +143,12 @@ export default function Home() {
   };
 
   const handleDeposit = (amountUsdc: number) => {
+    if (activeWalletAddress && typeof window !== 'undefined') {
+      const key = `pharos_session_allowance_${activeWalletAddress.toLowerCase()}`;
+      const prevAllowance = parseFloat(localStorage.getItem(key) || '0');
+      const newAllowance = Number((prevAllowance + amountUsdc).toFixed(4));
+      localStorage.setItem(key, newAllowance.toString());
+    }
     const updated = Number((walletBalanceUsdc + amountUsdc).toFixed(4));
     setWalletBalanceUsdc(updated);
   };
@@ -256,6 +268,14 @@ export default function Home() {
       if (res.ok) {
         setLastPurchaseResult(data);
         await refreshFeeds();
+        if (activeWalletAddress && typeof window !== 'undefined') {
+          const key = `pharos_session_allowance_${activeWalletAddress.toLowerCase()}`;
+          const prevAllowance = parseFloat(localStorage.getItem(key) || '0');
+          if (prevAllowance > 0) {
+            const updatedAllowance = Math.max(0, Number((prevAllowance - (feed.pricePerCallUsdc || 0.001)).toFixed(4)));
+            localStorage.setItem(key, updatedAllowance.toString());
+          }
+        }
         if (activeWalletAddress) {
           if (isPrivyConfigured && isPrivyAuth) {
             await privyRefreshBalances();
@@ -430,6 +450,10 @@ export default function Home() {
         onClose={() => setIsDepositOpen(false)}
         walletAddress={activeWalletAddress}
         currentBalanceUsdc={activeBalanceUsdc}
+        currentBalancePros={walletBalancePros}
+        onRefreshBalances={() => {
+          if (activeWalletAddress) refreshLiveBalances(activeWalletAddress);
+        }}
         onDeposit={handleDeposit}
       />
 
