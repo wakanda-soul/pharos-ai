@@ -23,6 +23,7 @@ interface AgentCopilotChatProps {
   walletAddress: string | null;
   walletBalanceUsdc: number;
   onRefreshBalance: () => void;
+  onDeductBalance?: (amountUsdc: number) => void;
   geminiApiKey?: string;
   oauthAccessToken?: string;
   onOpenPrivyLogin?: () => void;
@@ -32,6 +33,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
   walletAddress,
   walletBalanceUsdc,
   onRefreshBalance,
+  onDeductBalance,
   geminiApiKey,
   oauthAccessToken,
   onOpenPrivyLogin,
@@ -121,10 +123,15 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
       const data = await res.json();
       if (data.message) {
         setMessages((prev) => [...prev, data.message]);
-        // If a buy tool call was performed, refresh user balance
-        if (data.message.toolCalls?.some((t: { toolName: string }) => t.toolName === 'buy_intelligence_feed')) {
-          onRefreshBalance();
+        // If a buy tool call was performed, deduct from session budget and refresh user balance
+        const buyCalls = data.message.toolCalls?.filter((t: { toolName: string }) => t.toolName === 'buy_intelligence_feed');
+        if (buyCalls && buyCalls.length > 0) {
+          const totalCost = buyCalls.reduce((acc: number, c: any) => acc + (c.arguments?.costUsdc || 0.001), 0);
+          if (onDeductBalance) {
+            onDeductBalance(totalCost);
+          }
         }
+        onRefreshBalance();
       } else {
         throw new Error(data.error || 'Failed to receive copilot response');
       }
@@ -147,7 +154,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-[#e2e8f0] shadow-sm flex flex-col h-[720px] overflow-hidden">
+    <div className="bg-white border border-[#e2e8f0] rounded-2xl shadow-xs flex flex-col h-full flex-1 overflow-hidden">
       {/* Copilot Header */}
       <div className="p-4 border-b border-[#e2e8f0] bg-gradient-to-r from-[#f8faff] to-white flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -285,32 +292,48 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
                 {/* Tool Executions Badge */}
                 {msg.toolCalls && msg.toolCalls.length > 0 && (
                   <div className="mt-3 pt-2.5 border-t border-gray-200/80 space-y-2">
-                    {msg.toolCalls.map((tc, idx) => (
-                      <div
-                        key={idx}
-                        className="bg-[#f8faff] p-2.5 rounded-xl border border-blue-100 font-mono text-[11px] text-gray-700 shadow-2xs"
-                      >
-                        <div className="flex items-center justify-between text-[#0012b8] font-bold">
-                          <span className="flex items-center gap-1.5">
-                            <Zap className="w-3.5 h-3.5 text-amber-500" />
-                            Tool: {tc.toolName}
-                          </span>
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-semibold">
-                            Settled 0.001 USDC
-                          </span>
+                    {msg.toolCalls.map((tc, idx) => {
+                      const isPaid = tc.toolName === 'buy_intelligence_feed';
+                      const costText = isPaid
+                        ? 'x402 Micropayment · 0.001 USDC'
+                        : tc.toolName === 'search_feeds'
+                        ? 'Free · Catalog Mesh'
+                        : 'Free · Telemetry MCP';
+
+                      return (
+                        <div
+                          key={idx}
+                          className="bg-[#f8faff] p-2.5 rounded-xl border border-blue-100 font-mono text-[11px] text-gray-700 shadow-2xs"
+                        >
+                          <div className="flex items-center justify-between text-[#0012b8] font-bold">
+                            <span className="flex items-center gap-1.5">
+                              <Zap className="w-3.5 h-3.5 text-amber-500" />
+                              Tool: {tc.toolName}
+                            </span>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                                isPaid
+                                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300/80'
+                                  : 'bg-blue-100 text-blue-800 border border-blue-200'
+                              }`}
+                            >
+                              {costText}
+                            </span>
+                          </div>
+                          {tc.output && (
+                            <details className="mt-2 text-[10px] bg-white p-2 rounded-lg border border-gray-200">
+                              <summary className="cursor-pointer text-gray-500 font-semibold hover:text-gray-900 flex items-center justify-between">
+                                <span>Inspect Technical Telemetry Payload</span>
+                                <span className="text-[9px] text-gray-400 font-sans font-normal">(Verified on-chain data)</span>
+                              </summary>
+                              <pre className="mt-1.5 overflow-x-auto text-gray-800 font-mono text-[10px] max-h-36 whitespace-pre-wrap">
+                                {JSON.stringify(tc.output, null, 2)}
+                              </pre>
+                            </details>
+                          )}
                         </div>
-                        {tc.output && (
-                          <details className="mt-2 text-[10px] bg-white p-2 rounded-lg border border-gray-200">
-                            <summary className="cursor-pointer text-gray-500 font-semibold hover:text-gray-900">
-                              View Raw Telemetry Payload
-                            </summary>
-                            <pre className="mt-1.5 overflow-x-auto text-gray-800 font-mono text-[10px] max-h-36 whitespace-pre-wrap">
-                              {JSON.stringify(tc.output, null, 2)}
-                            </pre>
-                          </details>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 

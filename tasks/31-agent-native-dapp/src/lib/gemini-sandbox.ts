@@ -245,14 +245,32 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       }
     }
 
-    // 6. Search / Catalog Query
+    // 6. Search / Catalog Query (ONLY if not requesting a specific feed!)
+    const isSpecificFeed =
+      lower.includes('whale') ||
+      lower.includes('кит') ||
+      lower.includes('крупн') ||
+      lower.includes('трансфер') ||
+      lower.includes('harbor') ||
+      lower.includes('харбор') ||
+      lower.includes('solvency') ||
+      lower.includes('платежеспособн') ||
+      lower.includes('risk') ||
+      lower.includes('риск') ||
+      lower.includes('honeypot') ||
+      lower.includes('ханипот') ||
+      lower.includes('volat') ||
+      lower.includes('волатильн');
+
     if (
-      lower.includes('catalog') ||
-      lower.includes('каталог') ||
-      lower.includes('feeds') ||
-      lower.includes('фиды') ||
-      lower.includes('список') ||
-      lower.includes('list')
+      !isSpecificFeed &&
+      (lower.includes('catalog') ||
+        lower.includes('каталог') ||
+        lower.includes('все фиды') ||
+        lower.includes('список фидов') ||
+        lower.includes('какие фиды') ||
+        lower.includes('список доступных') ||
+        lower.includes('list feeds'))
     ) {
       const allFeeds = feedStore.getAllFeeds();
       toolCalls.push({
@@ -389,17 +407,63 @@ BOUNDARIES & SECURITY RESTRICTIONS:
       };
     }
 
-    // 3. Search / Catalog / List Feeds
+    const isWhale =
+      lower.includes('whale') ||
+      lower.includes('кит') ||
+      lower.includes('крупн') ||
+      lower.includes('перевод') ||
+      lower.includes('transfer');
+
+    const isSolvency =
+      lower.includes('solvency') ||
+      lower.includes('harbor') ||
+      lower.includes('платежеспособн') ||
+      lower.includes('ликвидн') ||
+      lower.includes('резерв') ||
+      lower.includes('глубин') ||
+      lower.includes('pool') ||
+      lower.includes('пул');
+
+    const isRisk =
+      lower.includes('risk') ||
+      lower.includes('риск') ||
+      lower.includes('honeypot') ||
+      lower.includes('ханипот') ||
+      lower.includes('скан') ||
+      lower.includes('scan') ||
+      lower.includes('уязвим') ||
+      (lower.includes('usdc') && (lower.includes('контракт') || lower.includes('contract')));
+
+    const isVolat =
+      lower.includes('volat') ||
+      lower.includes('волатильн') ||
+      lower.includes('swing') ||
+      lower.includes('арбитраж') ||
+      lower.includes('arbitrage') ||
+      lower.includes('колебан');
+
+    const isBuyIntent =
+      lower.includes('купи') ||
+      lower.includes('buy') ||
+      lower.includes('закажи') ||
+      lower.includes('purchase') ||
+      lower.includes('оплати') ||
+      lower.includes('возьми');
+
+    // 3. Search / Catalog / List Feeds (strictly when not requesting a specific feed!)
     const isSearch =
-      lower.includes('search') ||
-      lower.includes('list') ||
-      lower.includes('what feeds') ||
-      lower.includes('catalog') ||
-      lower.includes('фид') ||
-      lower.includes('каталог') ||
-      lower.includes('список') ||
-      lower.includes('покажи') ||
-      lower.includes('какие данные');
+      !isWhale &&
+      !isSolvency &&
+      !isRisk &&
+      !isVolat &&
+      !isBuyIntent &&
+      (lower.includes('search') ||
+        lower.includes('catalog') ||
+        lower.includes('каталог') ||
+        lower.includes('список фидов') ||
+        lower.includes('все фиды') ||
+        lower.includes('какие фиды') ||
+        lower.includes('покажи все'));
 
     if (isSearch) {
       const allFeeds = feedStore.getAllFeeds();
@@ -580,44 +644,7 @@ BOUNDARIES & SECURITY RESTRICTIONS:
     }
 
     // 4. Intent Classification for Specific Intelligence Feeds
-    const isWhale =
-      lower.includes('whale') ||
-      lower.includes('кит') ||
-      lower.includes('крупн') ||
-      lower.includes('перевод') ||
-      lower.includes('transfer');
-
-    const isSolvency =
-      lower.includes('solvency') ||
-      lower.includes('harbor') ||
-      lower.includes('платежеспособн') ||
-      lower.includes('ликвидн') ||
-      lower.includes('резерв') ||
-      lower.includes('глубин') ||
-      lower.includes('pool') ||
-      lower.includes('пул');
-
-    const isRisk =
-      lower.includes('risk') ||
-      lower.includes('риск') ||
-      lower.includes('honeypot') ||
-      lower.includes('ханипот') ||
-      lower.includes('ловушк') ||
-      lower.includes('vulnerabilit') ||
-      lower.includes('уязвим') ||
-      lower.includes('scan') ||
-      lower.includes('скан') ||
-      lower.includes('usdc') ||
-      lower.includes('контракт') ||
-      lower.includes('безопасн');
-
-    const isVolatility =
-      lower.includes('volatilit') ||
-      lower.includes('волатильн') ||
-      lower.includes('спред') ||
-      lower.includes('spread');
-
-    if (isWhale || isSolvency || isRisk || isVolatility || lower.includes('buy') || lower.includes('check') || lower.includes('audit') || lower.includes('купи') || lower.includes('провер')) {
+    if (isWhale || isSolvency || isRisk || isVolat || isBuyIntent || lower.includes('check') || lower.includes('audit') || lower.includes('провер')) {
       const targetSlug = isWhale
         ? 'whale-radar'
         : isSolvency
