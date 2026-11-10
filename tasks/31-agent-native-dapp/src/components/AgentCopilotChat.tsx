@@ -109,13 +109,14 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
     }, 10);
 
     try {
-      // Extract recent conversation history so the LLM has true multi-turn context
+      // Keep ephemeral in-memory context ultra-compact (last 3 messages, max 250 chars each)
+      // Filters out initial greeting so no context is wasted, while follow-ups still work
       const historyPayload = messages
-        .filter((m) => (m.sender === 'user' || m.sender === 'agent') && m.text)
-        .slice(-12)
+        .filter((m) => (m.sender === 'user' || m.sender === 'agent') && m.text && m.id !== 'init_1')
+        .slice(-3)
         .map((m) => ({
           sender: m.sender,
-          text: m.text,
+          text: m.text.length > 250 ? `${m.text.slice(0, 250)}...` : m.text,
         }));
 
       const res = await fetch('/api/agent/copilot', {

@@ -92,13 +92,13 @@ export class AntigravitySandboxRunner {
     let historySection = '';
     if (conversationHistory && conversationHistory.length > 0) {
       const formattedTurns = conversationHistory
-        .slice(-10)
+        .slice(-3)
         .map((m) => {
           const role = m.sender === 'user' ? 'Пользователь' : 'Ассистент';
           return `${role}: ${m.text.trim()}`;
         })
         .join('\n\n');
-      historySection = `\n\n[ИСТОРИЯ ДИАЛОГА]:\n${formattedTurns}`;
+      historySection = `\n\n[ИСТОРИЯ ТЕКУЩЕЙ СЕССИИ]:\n${formattedTurns}`;
     }
 
     const compositePrompt = systemPersona
