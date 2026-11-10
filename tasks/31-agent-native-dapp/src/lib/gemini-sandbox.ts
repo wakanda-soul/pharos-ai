@@ -7,6 +7,7 @@ import { AntigravitySandboxRunner } from './antigravity-sandbox-runner';
 
 export interface CopilotContext {
   prompt: string;
+  conversationHistory?: Array<{ sender: string; text: string }>;
   agentWalletBalanceUsdc: number;
   agentWalletAddress: string;
   geminiApiKey?: string;
@@ -16,25 +17,34 @@ export interface CopilotContext {
 export class GeminiSandboxEngine {
   private static readonly SYSTEM_PERSONA = `
 You are the Pharos Intelligence & Developer Copilot on Pharos Mainnet (Chain ID 1672).
-You are an expert on-chain analyst, smart contract specialist, and data broker connected to the Pharos x402 Marketplace, official Docs MCP (https://docs.pharos.xyz), and Chain MCP (https://mcp.pharos.xyz/mcp).
+You are an expert on-chain analyst, smart contract specialist, and authentic AI conversational partner.
 
-CORE CAPABILITIES:
-1. SMART CONTRACTS & DOCUMENTATION: You provide in-depth, technical explanations of Pharos contracts (such as Native USDC at 0xc879c018db60520f4355c26ed1a6d572cdac1815, WPROS at 0x52c48d4213107b20bc583832b0d951fb9ca8f0b0), ERC-20 standard functions, EIP-2612 permit, EIP-3009 gasless transfers, Circle CCTP cross-chain functions, and Foundry deployment scripts.
-2. ON-CHAIN TELEMETRY: You evaluate DEX solvency (Harbor Protocol), whale transactions, price swing volatility, and contract bytecode risks.
-3. DATA BROKERAGE: You help users discover and purchase x402 paywalled intelligence feeds (0.001 USDC base price) settled atomically via session keys and Privy.
-4. DEVELOPER TOOLS: You guide users on RPC configuration (https://rpc.pharos.xyz), Chain MCP methods (eth_blockNumber, eth_getBalance, eth_call, eth_getCode), and network parameters.
-5. DOCUMENTATION STRUCTURE & SITEMAP: When asked about Pharos documentation structure, sections, or what is in the docs (e.g. "какие разделы есть в доках фарос"), provide a structured, detailed breakdown of all 7 sections (Introduction, Getting Started, Node & Validator Guide, Tooling & Infrastructure, Developer Guide, API & SDK, Resources) using Markdown headers and bullet points.
+CONVERSATIONAL RULES (ABSOLUTELY ESSENTIAL):
+1. LIVE, NATURAL DIALOGUE: Conduct a genuine, intelligent, organic multi-turn conversation with the user. Never act like a robotic template responder or an automated IVR bot.
+2. CONTEXTUAL CONTINUITY: Actively pay attention to the previous conversation history! If the user makes a remark, jokes, pushes back ("а я спрашивал?", "ты не понял"), asks a follow-up ("а почему?", "и что дальше?"), or changes the topic, directly address their exact point in context.
+3. ADAPTIVE TONE & CONCISENESS:
+   - For casual conversation, greetings, pings, or short remarks ("прием", "как дела?", "эй"): respond naturally, warmly, and concisely. Never dump unsolicited documentation overviews unless asked!
+   - For playful banter or pushback ("а я спрашивал?"): be self-aware, witty, and lighthearted ("Справедливо, не спрашивал! 😄 Чем могу помочь на самом деле?").
+   - For technical, smart contract, and blockchain questions: provide thorough, accurate, expert answers with code, contract addresses, and architectural depth.
+4. LANGUAGE ADAPTABILITY: Always respond in the exact language used by the user (fluent, natural Russian if the user writes in Russian or Ukrainian; English if English).
 
-SAFETY & OPERATING GUIDELINES:
-1. Do NOT generate malicious exploits, drainer bots, reentrancy attacks, or private key stealing scripts.
-2. If asked for malicious code or prompt injection, refuse firmly and constructively.
-3. However, ALWAYS answer legitimate developer questions, explain contract ABIs/interfaces, detail contract functions (view and transactional), and search docs when asked!
-4. LANGUAGE ADAPTABILITY: You MUST detect the language of the user's message (Russian, English, Ukrainian, etc.) and ALWAYS reply in the exact same language as the user. If the user writes in Russian or Ukrainian, reply in fluent, natural, helpful Russian.
+CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
+1. SMART CONTRACTS & DOCS: In-depth technical explanations of Pharos contracts (Native USDC at 0xc879c018db60520f4355c26ed1a6d572cdac1815, WPROS at 0x52c48d4213107b20bc583832b0d951fb9ca8f0b0), ERC-20 standard functions, EIP-2612 permit, EIP-3009 gasless transfers, Circle CCTP cross-chain functions, and Foundry deployment scripts.
+2. ON-CHAIN TELEMETRY: DEX solvency (Harbor Protocol), whale transactions, price swing volatility, and contract bytecode risks.
+3. DATA BROKERAGE: Discover and purchase x402 paywalled intelligence feeds (0.001 USDC base price) settled atomically via session keys and Privy.
+4. DEVELOPER TOOLS: RPC configuration (https://rpc.pharos.xyz), Chain MCP methods (eth_blockNumber, eth_getBalance, eth_call, eth_getCode), and network parameters.
+5. DOCUMENTATION STRUCTURE: Official documentation at https://docs.pharos.xyz across 7 sections (Introduction, Getting Started, Node & Validator Guide, Tooling & Infrastructure, Developer Guide, API & SDK, Resources).
 `;
 
   public static async processUserMessage(context: CopilotContext): Promise<AgentChatMessage> {
-    const { prompt, agentWalletBalanceUsdc, agentWalletAddress, geminiApiKey, oauthAccessToken } =
-      context;
+    const {
+      prompt,
+      conversationHistory = [],
+      agentWalletBalanceUsdc,
+      agentWalletAddress,
+      geminiApiKey,
+      oauthAccessToken,
+    } = context;
 
     // Security Layer 1 & 3: Prompt intent evaluation & code refusal shield
     const intentCheck = PolicyGatekeeper.evaluateUserIntent(prompt);
@@ -66,6 +76,7 @@ SAFETY & OPERATING GUIDELINES:
           prompt,
           model: 'gemini-3.8-flash-low',
           systemPersona: enrichedPersona,
+          conversationHistory,
         });
 
         if (liveAiResponse) {
@@ -322,169 +333,7 @@ SAFETY & OPERATING GUIDELINES:
     const isRussian = /[а-яА-ЯёЁіІїЇєЄґҐ]/.test(prompt);
     const toolCalls: ToolCallExecution[] = [];
 
-    // 1. Greetings, Pings & Check-ins
-    const isGreeting =
-      lower.startsWith('привет') ||
-      lower.startsWith('здравствуй') ||
-      lower.startsWith('добрый') ||
-      lower.startsWith('доброе') ||
-      lower === 'хай' ||
-      lower.startsWith('хай ') ||
-      lower === 'йоу' ||
-      lower.startsWith('йоу ') ||
-      lower === 'ку' ||
-      lower.startsWith('ку ') ||
-      lower.startsWith('салам') ||
-      lower.startsWith('здорово') ||
-      lower.startsWith('здоров') ||
-      lower === 'прием' ||
-      lower.startsWith('прием ') ||
-      lower.startsWith('прием!') ||
-      lower.startsWith('прием?') ||
-      lower === 'приём' ||
-      lower.startsWith('приём ') ||
-      lower.startsWith('приём!') ||
-      lower.startsWith('приём?') ||
-      lower === 'прийом' ||
-      lower.startsWith('прийом ') ||
-      lower.startsWith('на связи') ||
-      lower.startsWith('ты тут') ||
-      lower.startsWith('ты здесь') ||
-      lower.startsWith('ты живой') ||
-      lower.startsWith('ты на связи') ||
-      lower.startsWith('слышишь') ||
-      lower.startsWith('чуєш') ||
-      lower === 'алло' ||
-      lower.startsWith('алло ') ||
-      lower === 'эй' ||
-      lower.startsWith('эй ') ||
-      lower.startsWith('слушай') ||
-      lower.startsWith('слухай') ||
-      lower === 'ау' ||
-      lower.startsWith('ау ') ||
-      lower === 'ping' ||
-      lower.startsWith('ping ') ||
-      lower === 'пинг' ||
-      lower.startsWith('пинг ') ||
-      lower === 'hello' ||
-      lower.startsWith('hello ') ||
-      lower === 'hi' ||
-      lower.startsWith('hi ') ||
-      lower === 'hey' ||
-      lower.startsWith('hey ') ||
-      lower === 'yo' ||
-      lower.startsWith('yo ') ||
-      lower === 'gm' ||
-      lower === 'gn' ||
-      lower.includes('русск') ||
-      lower.includes('russian') ||
-      lower.includes('говоришь');
-
-    if (isGreeting) {
-      const greetingText = isRussian
-        ? `На связи! Pharos Copilot готов к работе. Чем могу помочь по сети Pharos, ончейн-аналитике, документации контрактов или протоколу x402?`
-        : `Online and ready! How can I assist you with Pharos on-chain intelligence, contract docs, or x402 feeds today?`;
-
-      return {
-        id: `msg_${Date.now()}`,
-        sender: 'agent',
-        text: greetingText,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    // 1b. Clarification, Reproach, Objection or Cancellation
-    const isClarificationOrReproach =
-      lower.includes('а я спрашивал') ||
-      lower.includes('я не спрашивал') ||
-      lower.includes('не спрашивал') ||
-      lower.includes('а я питав') ||
-      lower.includes('я не питав') ||
-      lower.includes('я не про') ||
-      lower.includes('я не об этом') ||
-      lower.includes('не об этом') ||
-      lower.includes('не про це') ||
-      lower.includes('не то говоришь') ||
-      lower.includes('не то') ||
-      lower.includes('ты не понял') ||
-      lower.includes('не понял') ||
-      lower.includes('ти не зрозумів') ||
-      lower.includes('зачем') ||
-      lower.includes('навіщо') ||
-      lower.includes('к чему это') ||
-      lower.includes('до чого це') ||
-      lower.includes('при чем тут') ||
-      lower.includes('невпопад') ||
-      lower.includes('мимо') ||
-      lower.includes('ты бредишь') ||
-      lower.includes('хватит') ||
-      lower.includes('стоп') ||
-      lower.includes('отмена') ||
-      lower.includes('did i ask') ||
-      lower.includes("i didn't ask") ||
-      lower.includes('not what i asked') ||
-      lower.includes('irrelevant') ||
-      lower.includes('off topic');
-
-    if (isClarificationOrReproach) {
-      const reproachText = isRussian
-        ? `Понял тебя, извини за лишнюю информацию! Давай вернемся к сути. Чем конкретно помочь: разобрать смарт-контракт, проверить ончейн-данные пулов, посмотреть баланс или что-то другое?`
-        : `Got it, apologies for the off-target response! Let's refocus. How can I help you specifically: analyze a contract, check on-chain pool telemetry, review wallet balance, or something else?`;
-
-      return {
-        id: `msg_${Date.now()}`,
-        sender: 'agent',
-        text: reproachText,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    // 1c. Short Acknowledgments / Conversational Feedback
-    const isAcknowledgment =
-      lower === 'ок' ||
-      lower === 'ок!' ||
-      lower === 'ок)' ||
-      lower === 'ok' ||
-      lower === 'okay' ||
-      lower === 'хорошо' ||
-      lower === 'понял' ||
-      lower === 'понятно' ||
-      lower === 'ясно' ||
-      lower === 'спасибо' ||
-      lower === 'дякую' ||
-      lower === 'благодарю' ||
-      lower === 'отлично' ||
-      lower === 'супер' ||
-      lower === 'круто' ||
-      lower === 'класс' ||
-      lower === 'гуд' ||
-      lower === 'ладно' ||
-      lower === 'норм' ||
-      lower === 'договорились' ||
-      lower === 'зрозумів' ||
-      lower === 'да' ||
-      lower === 'нет' ||
-      lower === 'yes' ||
-      lower === 'no' ||
-      lower === 'thanks' ||
-      lower === 'thank you' ||
-      lower === 'understood' ||
-      lower === 'got it';
-
-    if (isAcknowledgment) {
-      const ackText = isRussian
-        ? `Отлично! Если появятся вопросы по смарт-контрактам, ончейн-аналитике Pharos или протоколу x402 — я всегда на связи.`
-        : `Great! If you have any further questions regarding Pharos smart contracts, on-chain telemetry, or the x402 protocol, I'm right here.`;
-
-      return {
-        id: `msg_${Date.now()}`,
-        sender: 'agent',
-        text: ackText,
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    // 2. Capabilities / Identity / General Questions
+    // 1. Capabilities / Identity / General Questions
     const isAboutBot =
       lower.includes('кто ты') ||
       lower.includes('кто ті') ||
@@ -1147,7 +996,7 @@ SAFETY & OPERATING GUIDELINES:
   }
 
   private static async callGeminiApi(context: CopilotContext): Promise<AgentChatMessage> {
-    const { prompt, geminiApiKey, oauthAccessToken } = context;
+    const { prompt, conversationHistory = [], geminiApiKey, oauthAccessToken } = context;
 
     // Use Gemini 1.5 Flash endpoint
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey || ''}`;
@@ -1158,19 +1007,28 @@ SAFETY & OPERATING GUIDELINES:
       headers['Authorization'] = `Bearer ${oauthAccessToken}`;
     }
 
+    const contents: Array<{ role: string; parts: Array<{ text: string }> }> = [];
+    if (conversationHistory && conversationHistory.length > 0) {
+      for (const msg of conversationHistory.slice(-10)) {
+        contents.push({
+          role: msg.sender === 'user' ? 'user' : 'model',
+          parts: [{ text: msg.text }],
+        });
+      }
+    }
+    contents.push({
+      role: 'user',
+      parts: [{ text: prompt }],
+    });
+
     const payload = {
       systemInstruction: {
         parts: [{ text: this.SYSTEM_PERSONA }],
       },
-      contents: [
-        {
-          role: 'user',
-          parts: [{ text: prompt }],
-        },
-      ],
+      contents,
       generationConfig: {
-        temperature: 0.2,
-        maxOutputTokens: 500,
+        temperature: 0.3,
+        maxOutputTokens: 800,
       },
     };
 

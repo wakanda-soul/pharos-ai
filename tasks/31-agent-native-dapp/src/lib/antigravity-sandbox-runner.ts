@@ -5,6 +5,7 @@ export interface AntigravityExecutionOptions {
   prompt: string;
   model?: string;
   systemPersona?: string;
+  conversationHistory?: Array<{ sender: string; text: string }>;
   timeoutMs?: number;
 }
 
@@ -12,7 +13,7 @@ export class AntigravitySandboxRunner {
   private static readonly RUNNER_PATH = '/usr/local/bin/project-gemini-runner';
   private static readonly DEFAULT_MODEL = 'gemini-3.8-flash-low';
   private static readonly MAX_CONCURRENT_SLOTS = 4;
-  private static readonly DEFAULT_TIMEOUT_MS = 22000;
+  private static readonly DEFAULT_TIMEOUT_MS = 40000;
 
   private static activeSlots = 0;
   private static readonly waitQueue: Array<() => void> = [];
@@ -79,6 +80,7 @@ export class AntigravitySandboxRunner {
       prompt,
       model = this.DEFAULT_MODEL,
       systemPersona = '',
+      conversationHistory = [],
       timeoutMs = this.DEFAULT_TIMEOUT_MS,
     } = options;
 
@@ -87,9 +89,21 @@ export class AntigravitySandboxRunner {
       return 'Prompt is empty or contains only invalid characters.';
     }
 
+    let historySection = '';
+    if (conversationHistory && conversationHistory.length > 0) {
+      const formattedTurns = conversationHistory
+        .slice(-10)
+        .map((m) => {
+          const role = m.sender === 'user' ? 'Пользователь' : 'Ассистент';
+          return `${role}: ${m.text.trim()}`;
+        })
+        .join('\n\n');
+      historySection = `\n\n[ИСТОРИЯ ДИАЛОГА]:\n${formattedTurns}`;
+    }
+
     const compositePrompt = systemPersona
-      ? `${systemPersona}\n\n[USER INSTRUCTION]:\n${sanitized}\n\n[COPILOT RESPONSE]:`
-      : sanitized;
+      ? `${systemPersona}${historySection}\n\n[НОВОЕ СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ]:\n${sanitized}\n\n[ТВОЙ ОТВЕТ (ВЕДИ ЕСТЕСТВЕННЫЙ ДИАЛОГ С УЧЕТОМ КОНТЕКСТА ИСТОРИИ)]:\n`
+      : `${historySection}\n\n[НОВОЕ СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ]:\n${sanitized}\n\n[ТВОЙ ОТВЕТ]:\n`;
 
     await this.acquireSlot();
 

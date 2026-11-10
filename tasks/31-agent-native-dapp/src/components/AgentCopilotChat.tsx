@@ -109,11 +109,21 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
     }, 10);
 
     try {
+      // Extract recent conversation history so the LLM has true multi-turn context
+      const historyPayload = messages
+        .filter((m) => (m.sender === 'user' || m.sender === 'agent') && m.text)
+        .slice(-12)
+        .map((m) => ({
+          sender: m.sender,
+          text: m.text,
+        }));
+
       const res = await fetch('/api/agent/copilot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
+          conversationHistory: historyPayload,
           agentWalletAddress: walletAddress,
           agentWalletBalanceUsdc: walletBalanceUsdc,
           geminiApiKey,

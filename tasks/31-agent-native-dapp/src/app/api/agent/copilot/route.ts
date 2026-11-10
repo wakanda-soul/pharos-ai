@@ -6,6 +6,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       prompt,
+      conversationHistory = [],
       agentWalletAddress = '0xAgentEmbeddedWallet00000000000000000001',
       agentWalletBalanceUsdc = 0.5,
       geminiApiKey,
@@ -18,6 +19,7 @@ export async function POST(req: NextRequest) {
 
     const message = await GeminiSandboxEngine.processUserMessage({
       prompt,
+      conversationHistory,
       agentWalletAddress,
       agentWalletBalanceUsdc,
       geminiApiKey: geminiApiKey || process.env.GEMINI_API_KEY,
