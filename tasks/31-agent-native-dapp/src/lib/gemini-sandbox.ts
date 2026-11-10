@@ -322,28 +322,164 @@ SAFETY & OPERATING GUIDELINES:
     const isRussian = /[а-яА-ЯёЁіІїЇєЄґҐ]/.test(prompt);
     const toolCalls: ToolCallExecution[] = [];
 
-    // 1. Greetings / Casual Chat
+    // 1. Greetings, Pings & Check-ins
     const isGreeting =
       lower.startsWith('привет') ||
       lower.startsWith('здравствуй') ||
       lower.startsWith('добрый') ||
-      lower.startsWith('хай') ||
+      lower.startsWith('доброе') ||
+      lower === 'хай' ||
+      lower.startsWith('хай ') ||
+      lower === 'йоу' ||
+      lower.startsWith('йоу ') ||
+      lower === 'ку' ||
+      lower.startsWith('ку ') ||
+      lower.startsWith('салам') ||
+      lower.startsWith('здорово') ||
+      lower.startsWith('здоров') ||
+      lower === 'прием' ||
+      lower.startsWith('прием ') ||
+      lower.startsWith('прием!') ||
+      lower.startsWith('прием?') ||
+      lower === 'приём' ||
+      lower.startsWith('приём ') ||
+      lower.startsWith('приём!') ||
+      lower.startsWith('приём?') ||
+      lower === 'прийом' ||
+      lower.startsWith('прийом ') ||
+      lower.startsWith('на связи') ||
+      lower.startsWith('ты тут') ||
+      lower.startsWith('ты здесь') ||
+      lower.startsWith('ты живой') ||
+      lower.startsWith('ты на связи') ||
+      lower.startsWith('слышишь') ||
+      lower.startsWith('чуєш') ||
+      lower === 'алло' ||
+      lower.startsWith('алло ') ||
+      lower === 'эй' ||
+      lower.startsWith('эй ') ||
+      lower.startsWith('слушай') ||
+      lower.startsWith('слухай') ||
+      lower === 'ау' ||
+      lower.startsWith('ау ') ||
+      lower === 'ping' ||
+      lower.startsWith('ping ') ||
+      lower === 'пинг' ||
+      lower.startsWith('пинг ') ||
       lower === 'hello' ||
+      lower.startsWith('hello ') ||
       lower === 'hi' ||
+      lower.startsWith('hi ') ||
       lower === 'hey' ||
+      lower.startsWith('hey ') ||
+      lower === 'yo' ||
+      lower.startsWith('yo ') ||
+      lower === 'gm' ||
+      lower === 'gn' ||
       lower.includes('русск') ||
       lower.includes('russian') ||
       lower.includes('говоришь');
 
     if (isGreeting) {
       const greetingText = isRussian
-        ? `Привет! Чем могу помочь по сети Pharos, ончейн-аналитике, документации контрактов или протоколу x402?`
-        : `Hello! How can I assist you with Pharos on-chain intelligence, contract docs, or x402 feeds today?`;
+        ? `На связи! Pharos Copilot готов к работе. Чем могу помочь по сети Pharos, ончейн-аналитике, документации контрактов или протоколу x402?`
+        : `Online and ready! How can I assist you with Pharos on-chain intelligence, contract docs, or x402 feeds today?`;
 
       return {
         id: `msg_${Date.now()}`,
         sender: 'agent',
         text: greetingText,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // 1b. Clarification, Reproach, Objection or Cancellation
+    const isClarificationOrReproach =
+      lower.includes('а я спрашивал') ||
+      lower.includes('я не спрашивал') ||
+      lower.includes('не спрашивал') ||
+      lower.includes('а я питав') ||
+      lower.includes('я не питав') ||
+      lower.includes('я не про') ||
+      lower.includes('я не об этом') ||
+      lower.includes('не об этом') ||
+      lower.includes('не про це') ||
+      lower.includes('не то говоришь') ||
+      lower.includes('не то') ||
+      lower.includes('ты не понял') ||
+      lower.includes('не понял') ||
+      lower.includes('ти не зрозумів') ||
+      lower.includes('зачем') ||
+      lower.includes('навіщо') ||
+      lower.includes('к чему это') ||
+      lower.includes('до чого це') ||
+      lower.includes('при чем тут') ||
+      lower.includes('невпопад') ||
+      lower.includes('мимо') ||
+      lower.includes('ты бредишь') ||
+      lower.includes('хватит') ||
+      lower.includes('стоп') ||
+      lower.includes('отмена') ||
+      lower.includes('did i ask') ||
+      lower.includes("i didn't ask") ||
+      lower.includes('not what i asked') ||
+      lower.includes('irrelevant') ||
+      lower.includes('off topic');
+
+    if (isClarificationOrReproach) {
+      const reproachText = isRussian
+        ? `Понял тебя, извини за лишнюю информацию! Давай вернемся к сути. Чем конкретно помочь: разобрать смарт-контракт, проверить ончейн-данные пулов, посмотреть баланс или что-то другое?`
+        : `Got it, apologies for the off-target response! Let's refocus. How can I help you specifically: analyze a contract, check on-chain pool telemetry, review wallet balance, or something else?`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: reproachText,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // 1c. Short Acknowledgments / Conversational Feedback
+    const isAcknowledgment =
+      lower === 'ок' ||
+      lower === 'ок!' ||
+      lower === 'ок)' ||
+      lower === 'ok' ||
+      lower === 'okay' ||
+      lower === 'хорошо' ||
+      lower === 'понял' ||
+      lower === 'понятно' ||
+      lower === 'ясно' ||
+      lower === 'спасибо' ||
+      lower === 'дякую' ||
+      lower === 'благодарю' ||
+      lower === 'отлично' ||
+      lower === 'супер' ||
+      lower === 'круто' ||
+      lower === 'класс' ||
+      lower === 'гуд' ||
+      lower === 'ладно' ||
+      lower === 'норм' ||
+      lower === 'договорились' ||
+      lower === 'зрозумів' ||
+      lower === 'да' ||
+      lower === 'нет' ||
+      lower === 'yes' ||
+      lower === 'no' ||
+      lower === 'thanks' ||
+      lower === 'thank you' ||
+      lower === 'understood' ||
+      lower === 'got it';
+
+    if (isAcknowledgment) {
+      const ackText = isRussian
+        ? `Отлично! Если появятся вопросы по смарт-контрактам, ончейн-аналитике Pharos или протоколу x402 — я всегда на связи.`
+        : `Great! If you have any further questions regarding Pharos smart contracts, on-chain telemetry, or the x402 protocol, I'm right here.`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: ackText,
         timestamp: new Date().toISOString(),
       };
     }
@@ -937,31 +1073,77 @@ SAFETY & OPERATING GUIDELINES:
       };
     }
 
-    // 8. Dynamic RAG Documentation & Mesh Fallback
-    try {
-      const docsRes = await queryDocsMcp(prompt);
-      const chainInfo = await callChainMcp('get_chain_info');
-      toolCalls.push({
-        toolName: 'query_docs_mcp',
-        arguments: { query: prompt },
-        output: docsRes,
-      });
+    // 8. Dynamic RAG Documentation & Technical Queries
+    const isTechnicalOrDocsSearch =
+      lower.includes('док') ||
+      lower.includes('docs') ||
+      lower.includes('инструкц') ||
+      lower.includes('руководств') ||
+      lower.includes('раздел') ||
+      lower.includes('foundry') ||
+      lower.includes('фаундри') ||
+      lower.includes('деплой') ||
+      lower.includes('deploy') ||
+      lower.includes('контракт') ||
+      lower.includes('contract') ||
+      lower.includes('abi') ||
+      lower.includes('функци') ||
+      lower.includes('метод') ||
+      lower.includes('rpc') ||
+      lower.includes('faucet') ||
+      lower.includes('кран') ||
+      lower.includes('параметр') ||
+      lower.includes('chain id') ||
+      lower.includes('как ') ||
+      lower.includes('how ') ||
+      lower.includes('где ') ||
+      lower.includes('where ') ||
+      lower.includes('что такое') ||
+      lower.includes('what is') ||
+      lower.includes('поясни') ||
+      lower.includes('объясни') ||
+      lower.includes('напиши') ||
+      lower.includes('код') ||
+      lower.includes('code');
 
-      return {
-        id: `msg_${Date.now()}`,
-        sender: 'agent',
-        text: docsRes.answer,
-        timestamp: new Date().toISOString(),
-        toolCalls,
-      };
-    } catch {
-      return {
-        id: `msg_${Date.now()}`,
-        sender: 'agent',
-        text: getDocsKnowledgeFallback(prompt),
-        timestamp: new Date().toISOString(),
-      };
+    if (isTechnicalOrDocsSearch) {
+      try {
+        const docsRes = await queryDocsMcp(prompt);
+        const chainInfo = await callChainMcp('get_chain_info');
+        toolCalls.push({
+          toolName: 'query_docs_mcp',
+          arguments: { query: prompt },
+          output: docsRes,
+        });
+
+        return {
+          id: `msg_${Date.now()}`,
+          sender: 'agent',
+          text: docsRes.answer,
+          timestamp: new Date().toISOString(),
+          toolCalls,
+        };
+      } catch {
+        return {
+          id: `msg_${Date.now()}`,
+          sender: 'agent',
+          text: getDocsKnowledgeFallback(prompt),
+          timestamp: new Date().toISOString(),
+        };
+      }
     }
+
+    // 9. Conversational Fallback for General / Unmatched Inquiries (NO false tool calls!)
+    const generalFallbackText = isRussian
+      ? `Я специализированный ончейн-ассистент и брокер данных сети **Pharos Mainnet (Chain ID 1672)**.\n\nЧем я могу помочь:\n• **Смарт-контракты и документация**: разбор функций нативного USDC (\`0xc879...1815\`), WPROS, стандарты ERC-20, EIP-2612 permit, EIP-3009 gasless transfers, деплой через Foundry.\n• **Ончейн-аналитика**: радар активности китов (\`whale-radar\`), аудит платежеспособности пулов Harbor DEX (\`harbor-solvency\`), анализ волатильности (\`dex-volatility\`) и сканер безопасности смарт-контрактов (\`contract-risk\`).\n• **x402 Micropayments**: мгновенная покупка потоков данных за 0.001 USDC через встроенный сессионный кошелек Privy.\n• **Pharos Chain MCP**: живые RPC-запросы (\`eth_blockNumber\`, \`eth_gasPrice\`, балансы и код контрактов).\n\nЗадай вопрос по ончейн-данным или коду контрактов — я оперативно отвечу!`
+      : `I am the **Pharos Intelligence & Developer Copilot** on **Pharos Mainnet (Chain ID 1672)**.\n\nHere is how I can assist you:\n• **Smart Contracts & Docs**: In-depth explanations of Native USDC (\`0xc879...1815\`), WPROS, ERC-20 standards, EIP-2612 permit, EIP-3009 gasless transfers, and Foundry deployments.\n• **On-Chain Intelligence**: Whale flows (\`whale-radar\`), Harbor DEX solvency audits (\`harbor-solvency\`), volatility telemetry (\`dex-volatility\`), and contract risk analysis (\`contract-risk\`).\n• **x402 Micropayments**: Instant data purchases at 0.001 USDC per call via Privy session keys.\n• **Chain MCP**: Live RPC telemetry (\`eth_blockNumber\`, \`eth_gasPrice\`, contract code).\n\nFeel free to ask any question about Pharos on-chain data, contracts, or architecture!`;
+
+    return {
+      id: `msg_${Date.now()}`,
+      sender: 'agent',
+      text: generalFallbackText,
+      timestamp: new Date().toISOString(),
+    };
   }
 
   private static async callGeminiApi(context: CopilotContext): Promise<AgentChatMessage> {

@@ -261,7 +261,21 @@ export async function queryDocsMcp(question: string): Promise<DocsMcpResponse> {
 
     if (res.ok) {
       const markdown = await res.text();
-      if (markdown && !markdown.includes('500: Internal Server Error') && !markdown.includes('<!DOCTYPE html>')) {
+      const lowerMd = markdown.toLowerCase();
+      const isUnhelpfulAnswer =
+        lowerMd.includes("couldn't answer") ||
+        lowerMd.includes('could not answer') ||
+        lowerMd.includes('no answer found') ||
+        lowerMd.includes('no results') ||
+        lowerMd.includes('not found') ||
+        markdown.trim().length < 25;
+
+      if (
+        markdown &&
+        !markdown.includes('500: Internal Server Error') &&
+        !markdown.includes('<!DOCTYPE html>') &&
+        !isUnhelpfulAnswer
+      ) {
         // Extract sources if formatted in markdown
         const sources: Array<{ title: string; url: string }> = [
           { title: 'Pharos Official Developer Documentation', url: 'https://docs.pharos.xyz' },

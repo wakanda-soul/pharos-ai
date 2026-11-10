@@ -12,7 +12,7 @@ export class AntigravitySandboxRunner {
   private static readonly RUNNER_PATH = '/usr/local/bin/project-gemini-runner';
   private static readonly DEFAULT_MODEL = 'gemini-3.8-flash-low';
   private static readonly MAX_CONCURRENT_SLOTS = 4;
-  private static readonly DEFAULT_TIMEOUT_MS = 55000;
+  private static readonly DEFAULT_TIMEOUT_MS = 22000;
 
   private static activeSlots = 0;
   private static readonly waitQueue: Array<() => void> = [];
@@ -105,6 +105,11 @@ export class AntigravitySandboxRunner {
         {
           detached: true,
           stdio: ['ignore', 'pipe', 'pipe'],
+          env: {
+            ...process.env,
+            PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
+            HOME: process.env.HOME || '/root',
+          },
         }
       );
 
@@ -126,6 +131,23 @@ export class AntigravitySandboxRunner {
             // Ignore
           }
         }, 1000);
+      };
+
+      const finalizeSettlement = (code: number | null) => {
+        if (!isSettled) {
+          isSettled = true;
+          clearTimeout(timer);
+          this.releaseSlot();
+
+          if (code === 0 && stdoutData.trim()) {
+            resolve(stdoutData.trim());
+          } else {
+            const errMsg =
+              stderrData.trim() ||
+              `Process exited with code ${code}${!stdoutData.trim() ? ' and empty output' : ''}`;
+            reject(new Error(errMsg));
+          }
+        }
       };
 
       const timer = setTimeout(() => {
@@ -155,20 +177,14 @@ export class AntigravitySandboxRunner {
       });
 
       child.on('close', (code) => {
-        if (!isSettled) {
-          isSettled = true;
-          clearTimeout(timer);
-          this.releaseSlot();
+        finalizeSettlement(code);
+      });
 
-          if (code === 0 && stdoutData.trim()) {
-            resolve(stdoutData.trim());
-          } else {
-            const errMsg =
-              stderrData.trim() ||
-              `Process exited with code ${code}${!stdoutData.trim() ? ' and empty output' : ''}`;
-            reject(new Error(errMsg));
-          }
-        }
+      child.on('exit', (code) => {
+        // If stdio stream descriptors remain open from descendants, settle safely after brief drain
+        setTimeout(() => {
+          finalizeSettlement(code);
+        }, 300);
       });
     });
   }
