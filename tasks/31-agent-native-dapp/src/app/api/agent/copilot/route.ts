@@ -4,6 +4,7 @@ import { GeminiSandboxEngine } from '@/lib/gemini-sandbox';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    console.log('[COPILOT_ROUTE_REQUEST]', new Date().toISOString(), 'prompt:', body?.prompt);
     const {
       prompt,
       conversationHistory = [],
@@ -26,6 +27,7 @@ export async function POST(req: NextRequest) {
       oauthAccessToken,
     });
 
+    console.log('[COPILOT_ROUTE_RESPONSE]', new Date().toISOString(), 'text:', message?.text);
     return NextResponse.json({ message });
   } catch (error) {
     console.error('Copilot processing error, generating resilient response:', error);
