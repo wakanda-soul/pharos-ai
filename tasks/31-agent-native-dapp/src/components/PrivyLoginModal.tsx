@@ -90,15 +90,25 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
       ]);
 
       const prosBal = parseFloat(formatEther(prosRaw));
-      const usdcBal = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
+      const onChainUsdc = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
+
+      const addrKey = userAddress.toLowerCase();
+      let sessionDeposit = 0;
+      let sessionSpent = 0;
+      if (typeof window !== 'undefined') {
+        sessionDeposit = parseFloat(localStorage.getItem(`pharos_session_deposit_${addrKey}`) || '0');
+        sessionSpent = parseFloat(localStorage.getItem(`pharos_session_spent_${addrKey}`) || '0');
+      }
+      const baselineUsdc = Math.max(onChainUsdc, 0.010);
+      const effectiveUsdc = Math.max(0, Number((baselineUsdc + sessionDeposit - sessionSpent).toFixed(4)));
 
       setCreatedAddress(userAddress);
-      setCreatedBalances({ usdc: usdcBal, pros: prosBal });
+      setCreatedBalances({ usdc: effectiveUsdc, pros: prosBal });
       setLoginStep('created');
 
       setTimeout(() => {
         setIsSubmitting(false);
-        onLoginSuccess(userAddress, usdcBal, prosBal, 'metamask');
+        onLoginSuccess(userAddress, effectiveUsdc, prosBal, 'metamask');
         onClose();
         setLoginStep('methods');
       }, 1200);
@@ -135,15 +145,25 @@ export const PrivyLoginModal: React.FC<PrivyLoginModalProps> = ({
       ]);
 
       const prosBal = parseFloat(formatEther(prosRaw));
-      const usdcBal = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
+      const onChainUsdc = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
+
+      const addrKey = account.address.toLowerCase();
+      let sessionDeposit = 0;
+      let sessionSpent = 0;
+      if (typeof window !== 'undefined') {
+        sessionDeposit = parseFloat(localStorage.getItem(`pharos_session_deposit_${addrKey}`) || '0');
+        sessionSpent = parseFloat(localStorage.getItem(`pharos_session_spent_${addrKey}`) || '0');
+      }
+      const baselineUsdc = Math.max(onChainUsdc, 0.010);
+      const effectiveUsdc = Math.max(0, Number((baselineUsdc + sessionDeposit - sessionSpent).toFixed(4)));
 
       setCreatedAddress(account.address);
-      setCreatedBalances({ usdc: usdcBal, pros: prosBal });
+      setCreatedBalances({ usdc: effectiveUsdc, pros: prosBal });
       setLoginStep('created');
 
       setTimeout(() => {
         setIsSubmitting(false);
-        onLoginSuccess(account.address, usdcBal, prosBal, 'session_key');
+        onLoginSuccess(account.address, effectiveUsdc, prosBal, 'session_key');
         onClose();
         setLoginStep('methods');
       }, 1200);

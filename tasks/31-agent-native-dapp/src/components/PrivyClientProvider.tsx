@@ -18,6 +18,7 @@ interface PharosAuthContextType {
   logout: () => void;
   refreshBalances: () => Promise<void>;
   deductBalance: (amountUsdc: number) => void;
+  depositBalance: (amountUsdc: number) => void;
 }
 
 const PharosAuthContext = createContext<PharosAuthContextType>({
@@ -33,6 +34,7 @@ const PharosAuthContext = createContext<PharosAuthContextType>({
   logout: () => {},
   refreshBalances: async () => {},
   deductBalance: () => {},
+  depositBalance: () => {},
 });
 
 export const usePharosAuth = () => useContext(PharosAuthContext);
@@ -81,21 +83,20 @@ function ActivePrivyAuthConsumer({
       const onChainPros = parseFloat(formatEther(prosRaw));
       const onChainUsdc = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
 
-      const allowanceKey = `pharos_session_allowance_${walletAddress.toLowerCase()}`;
-      let sessionAllowance = 0;
+      const addrKey = walletAddress.toLowerCase();
+      let sessionDeposit = 0;
+      let sessionSpent = 0;
       if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem(allowanceKey);
-        if (stored !== null) {
-          sessionAllowance = parseFloat(stored) || 0;
-        } else {
-          // Initialize 0.010 USDC welcome session allowance for micro-payments test drive
-          sessionAllowance = 0.010;
-          localStorage.setItem(allowanceKey, '0.010');
-        }
+        sessionDeposit = parseFloat(localStorage.getItem(`pharos_session_deposit_${addrKey}`) || '0');
+        sessionSpent = parseFloat(localStorage.getItem(`pharos_session_spent_${addrKey}`) || '0');
       }
 
+      // Base balance: real on-chain Native USDC or a 0.010 USDC baseline for zero-balance test drive
+      const baselineUsdc = Math.max(onChainUsdc, 0.010);
+      const effectiveUsdc = Math.max(0, Number((baselineUsdc + sessionDeposit - sessionSpent).toFixed(4)));
+
       setWalletBalancePros(onChainPros);
-      setWalletBalanceUsdc(Number((onChainUsdc + sessionAllowance).toFixed(4)));
+      setWalletBalanceUsdc(effectiveUsdc);
     } catch (err) {
       console.warn('Failed to fetch Privy wallet balances on Pharos Mainnet:', err);
     }
@@ -103,13 +104,26 @@ function ActivePrivyAuthConsumer({
 
   const deductBalance = (amountUsdc: number) => {
     if (!walletAddress) return;
+    const addrKey = walletAddress.toLowerCase();
+    const spentKey = `pharos_session_spent_${addrKey}`;
     if (typeof window !== 'undefined') {
-      const allowanceKey = `pharos_session_allowance_${walletAddress.toLowerCase()}`;
-      const prev = parseFloat(localStorage.getItem(allowanceKey) || '0');
-      const updated = Math.max(0, Number((prev - amountUsdc).toFixed(4)));
-      localStorage.setItem(allowanceKey, updated.toString());
+      const prevSpent = parseFloat(localStorage.getItem(spentKey) || '0');
+      const updatedSpent = Number((prevSpent + amountUsdc).toFixed(4));
+      localStorage.setItem(spentKey, updatedSpent.toString());
     }
     setWalletBalanceUsdc((prev) => Math.max(0, Number((prev - amountUsdc).toFixed(4))));
+  };
+
+  const depositBalance = (amountUsdc: number) => {
+    if (!walletAddress) return;
+    const addrKey = walletAddress.toLowerCase();
+    const depositKey = `pharos_session_deposit_${addrKey}`;
+    if (typeof window !== 'undefined') {
+      const prevDeposit = parseFloat(localStorage.getItem(depositKey) || '0');
+      const updatedDeposit = Number((prevDeposit + amountUsdc).toFixed(4));
+      localStorage.setItem(depositKey, updatedDeposit.toString());
+    }
+    setWalletBalanceUsdc((prev) => Number((prev + amountUsdc).toFixed(4)));
   };
 
   useEffect(() => {
@@ -136,6 +150,7 @@ function ActivePrivyAuthConsumer({
         logout,
         refreshBalances,
         deductBalance,
+        depositBalance,
       }}
     >
       {children}
@@ -171,20 +186,19 @@ function UnconfiguredPrivyProvider({
       const onChainPros = parseFloat(formatEther(prosRaw));
       const onChainUsdc = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
 
-      const allowanceKey = `pharos_session_allowance_${walletAddress.toLowerCase()}`;
-      let sessionAllowance = 0;
+      const addrKey = walletAddress.toLowerCase();
+      let sessionDeposit = 0;
+      let sessionSpent = 0;
       if (typeof window !== 'undefined') {
-        const stored = localStorage.getItem(allowanceKey);
-        if (stored !== null) {
-          sessionAllowance = parseFloat(stored) || 0;
-        } else {
-          sessionAllowance = 0.010;
-          localStorage.setItem(allowanceKey, '0.010');
-        }
+        sessionDeposit = parseFloat(localStorage.getItem(`pharos_session_deposit_${addrKey}`) || '0');
+        sessionSpent = parseFloat(localStorage.getItem(`pharos_session_spent_${addrKey}`) || '0');
       }
 
+      const baselineUsdc = Math.max(onChainUsdc, 0.010);
+      const effectiveUsdc = Math.max(0, Number((baselineUsdc + sessionDeposit - sessionSpent).toFixed(4)));
+
       setWalletBalancePros(onChainPros);
-      setWalletBalanceUsdc(Number((onChainUsdc + sessionAllowance).toFixed(4)));
+      setWalletBalanceUsdc(effectiveUsdc);
     } catch (err) {
       console.warn('Failed to query balances on Pharos Mainnet:', err);
     }
@@ -192,13 +206,26 @@ function UnconfiguredPrivyProvider({
 
   const deductBalance = (amountUsdc: number) => {
     if (!walletAddress) return;
+    const addrKey = walletAddress.toLowerCase();
+    const spentKey = `pharos_session_spent_${addrKey}`;
     if (typeof window !== 'undefined') {
-      const allowanceKey = `pharos_session_allowance_${walletAddress.toLowerCase()}`;
-      const prev = parseFloat(localStorage.getItem(allowanceKey) || '0');
-      const updated = Math.max(0, Number((prev - amountUsdc).toFixed(4)));
-      localStorage.setItem(allowanceKey, updated.toString());
+      const prevSpent = parseFloat(localStorage.getItem(spentKey) || '0');
+      const updatedSpent = Number((prevSpent + amountUsdc).toFixed(4));
+      localStorage.setItem(spentKey, updatedSpent.toString());
     }
     setWalletBalanceUsdc((prev) => Math.max(0, Number((prev - amountUsdc).toFixed(4))));
+  };
+
+  const depositBalance = (amountUsdc: number) => {
+    if (!walletAddress) return;
+    const addrKey = walletAddress.toLowerCase();
+    const depositKey = `pharos_session_deposit_${addrKey}`;
+    if (typeof window !== 'undefined') {
+      const prevDeposit = parseFloat(localStorage.getItem(depositKey) || '0');
+      const updatedDeposit = Number((prevDeposit + amountUsdc).toFixed(4));
+      localStorage.setItem(depositKey, updatedDeposit.toString());
+    }
+    setWalletBalanceUsdc((prev) => Number((prev + amountUsdc).toFixed(4)));
   };
 
   return (
@@ -220,6 +247,7 @@ function UnconfiguredPrivyProvider({
         },
         refreshBalances,
         deductBalance,
+        depositBalance,
       }}
     >
       {children}

@@ -138,8 +138,11 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
         // If a buy tool call was performed, deduct from session budget and refresh user balance
         const buyCalls = data.message.toolCalls?.filter((t: { toolName: string }) => t.toolName === 'buy_intelligence_feed');
         if (buyCalls && buyCalls.length > 0) {
-          const totalCost = buyCalls.reduce((acc: number, c: any) => acc + (c.arguments?.costUsdc || 0.001), 0);
-          if (onDeductBalance) {
+          const totalCost = buyCalls.reduce((acc: number, c: any) => {
+            const cost = typeof c.arguments?.costUsdc === 'number' ? c.arguments.costUsdc : parseFloat(c.arguments?.costUsdc || '0.001');
+            return acc + (isNaN(cost) ? 0.001 : cost);
+          }, 0);
+          if (onDeductBalance && totalCost > 0) {
             onDeductBalance(totalCost);
           }
         }
