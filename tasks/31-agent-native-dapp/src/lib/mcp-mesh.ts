@@ -314,21 +314,24 @@ export function getDocsKnowledgeFallback(query: string): string {
 
   // 1. Documentation structure, sitemap, sections, and table of contents
   const isSitemapOrSections =
-    lower.includes('раздел') || // разделы, разделов, в разделах, разделі (укр)
-    lower.includes('sitemap') ||
-    lower.includes('llms') ||
-    lower.includes('структур') || // структура, структуры
-    lower.includes('содержан') || // содержание
-    lower.includes('оглавлен') || // оглавление
-    lower.includes('навигац') || // навигация
-    lower.includes('что есть в доках') ||
-    lower.includes('что входит') ||
-    lower.includes('какие есть') ||
-    (lower.includes('какие') && (lower.includes('док') || lower.includes('docs'))) ||
-    lower.includes('обзор док') ||
-    lower === 'доки' ||
-    lower === 'документация' ||
-    lower === 'docs';
+    !lower.includes('депло') &&
+    !lower.includes('deploy') &&
+    !lower.includes('развер') &&
+    (lower.includes('раздел') || // разделы, разделов, в разделах, разделі (укр)
+      lower.includes('sitemap') ||
+      lower.includes('llms') ||
+      lower.includes('структур') || // структура, структуры
+      lower.includes('содержан') || // содержание
+      lower.includes('оглавлен') || // оглавление
+      lower.includes('навигац') || // навигация
+      lower.includes('что есть в доках') ||
+      lower.includes('что входит') ||
+      lower.includes('какие есть') ||
+      (lower.includes('какие') && (lower.includes('док') || lower.includes('docs'))) ||
+      lower.includes('обзор док') ||
+      lower === 'доки' ||
+      lower === 'документация' ||
+      lower === 'docs');
 
   if (isSitemapOrSections) {
     const isRussian = /[а-яА-ЯёЁіІїЇєЄґҐ]/.test(query);
@@ -455,7 +458,53 @@ The official **Pharos** documentation index is organized into 7 core modules:
   }
 
   // 3. Deployment & Foundry
-  if (lower.includes('deploy') || lower.includes('foundry') || lower.includes('contract')) {
+  if (
+    lower.includes('deploy') ||
+    lower.includes('депло') ||
+    lower.includes('развер') ||
+    lower.includes('розгорн') ||
+    lower.includes('foundry') ||
+    lower.includes('фаундри') ||
+    lower.includes('forge') ||
+    lower.includes('hardhat') ||
+    lower.includes('хардхет') ||
+    (lower.includes('контракт') && (lower.includes('как') || lower.includes('создать') || lower.includes('запустить') || lower.includes('написать') || lower.includes('депло'))) ||
+    (lower.includes('contract') && (lower.includes('how') || lower.includes('create') || lower.includes('write') || lower.includes('deploy')))
+  ) {
+    const isRussian = /[а-яА-ЯёЁіІїЇєЄґҐ]/.test(query);
+    if (isRussian) {
+      return `# Развёртывание смарт-контрактов с помощью Foundry на Pharos
+
+Согласно официальной документации [docs.pharos.xyz/developer-guide/foundry.md](https://docs.pharos.xyz/developer-guide/foundry.md), сеть Pharos на 100% EVM-совместима.
+
+### Шаг 1. Настройка переменных окружения:
+\`\`\`bash
+# Для Pacific Mainnet (Chain ID 1672):
+export RPC=https://rpc.pharos.xyz
+# Для Atlantic Testnet (Chain ID 688689):
+# export RPC=https://atlantic.dplabs-internal.com
+
+export PRIVATE_KEY=0xВашПриватныйКлюч
+\`\`\`
+
+### Шаг 2. Сборка и тестирование:
+\`\`\`bash
+forge build
+forge test
+\`\`\`
+
+### Шаг 3. Деплой контракта в сеть:
+\`\`\`bash
+forge script script/Deploy.s.sol:Deploy \\
+  --rpc-url $RPC \\
+  --private-key $PRIVATE_KEY \\
+  --broadcast
+\`\`\`
+
+### Шаг 4. Проверка и верификация:
+После деплоя контракт сразу доступен в эксплорере [PharosScan](https://pharosscan.xyz). Базовая комиссия сети составляет всего ~0.1-0.5 Gwei (оплата в PROS) с автоматическим возвратом неиспользованного газа.`;
+    }
+
     return `# Deploying Smart Contracts with Foundry on Pharos
 
 1. **Configure Environment Variables**:

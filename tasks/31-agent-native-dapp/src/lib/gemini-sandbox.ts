@@ -228,23 +228,32 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
     const isDocsOrContractQuery =
       lower.includes('mcp') ||
       lower.includes('мсп') ||
-      lower.includes('док') || // доки, в доках, документация
-      lower.includes('docs') ||
-      lower.includes('докс') ||
+      lower.includes('док') || // доки, в доках, документация, документы
+      lower.includes('doc') || // docs, documentation
       lower.includes('foundry') ||
+      lower.includes('фаундри') ||
+      lower.includes('forge') ||
+      lower.includes('hardhat') ||
       lower.includes('deploy') ||
-      lower.includes('деплой') ||
+      lower.includes('депло') || // деплой, деплоить, деплоя, задеплоить
+      lower.includes('развер') || // развернуть, развертывание
+      lower.includes('розгорн') ||
       lower.includes('rpc') ||
+      lower.includes('faucet') ||
+      lower.includes('кран') ||
       lower.includes('sitemap') ||
       lower.includes('раздел') || // разделы, разделов, разделі
       lower.includes('структур') ||
       lower.includes('содержан') ||
       lower.includes('оглавлен') ||
       lower.includes('навигац') ||
+      lower.includes('инструкц') ||
+      lower.includes('руководств') ||
       lower.includes('функци') || // функции, функцию
       lower.includes('function') ||
       lower.includes('abi') ||
       lower.includes('метод') ||
+      ((lower.includes('контракт') || lower.includes('contract')) && (lower.includes('как') || lower.includes('how') || lower.includes('создать') || lower.includes('написать'))) ||
       ((lower.includes('usdc') || lower.includes('юсдц')) &&
         (lower.includes('контракт') || lower.includes('contract') || lower.includes('токен') || lower.includes('token')));
 
@@ -453,12 +462,8 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
         lower.includes('erc'));
 
     const isGeneralDocsQuery =
-      lower.includes('в доках') ||
-      lower.includes('по докам') ||
-      lower.includes('доки') ||
-      lower.includes('документац') ||
-      lower.includes('docs') ||
-      lower.includes('докс') ||
+      lower.includes('док') || // covers док, доки, в доках, по докам, документы, документация, документах
+      lower.includes('doc') || // covers docs, documentation
       lower.includes('раздел') || // разделы, разделов, разделі
       lower.includes('структур') ||
       lower.includes('содержан') ||
@@ -466,8 +471,22 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
       lower.includes('sitemap') ||
       lower.includes('навигац') ||
       lower.includes('foundry') ||
-      lower.includes('деплой') ||
-      lower.includes('deploy');
+      lower.includes('фаундри') ||
+      lower.includes('forge') ||
+      lower.includes('hardhat') ||
+      lower.includes('хардхет') ||
+      lower.includes('депло') || // covers деплой, деплоить, деплоя, деплою, задеплоить, деплоймент
+      lower.includes('deploy') ||
+      lower.includes('развер') || // covers развернуть, развертывание, развертывать
+      lower.includes('розгорн') ||
+      lower.includes('инструкц') ||
+      lower.includes('руководств') ||
+      lower.includes('мануал') ||
+      lower.includes('туториал') ||
+      lower.includes('tutorial') ||
+      lower.includes('faucet') ||
+      lower.includes('кран') ||
+      ((lower.includes('контракт') || lower.includes('contract')) && (lower.includes('как') || lower.includes('how') || lower.includes('создать') || lower.includes('написать') || lower.includes('сборк') || lower.includes('build')));
 
     if (isContractDocsQuery || isGeneralDocsQuery) {
       const docsRes = await queryDocsMcp(prompt);
@@ -718,11 +737,16 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
     const isDocsMcpQuery =
       lower.includes('docs') ||
       lower.includes('докс') ||
-      lower.includes('документац') ||
+      lower.includes('док') ||
+      lower.includes('doc') ||
       lower.includes('deploy') ||
-      lower.includes('деплой') ||
+      lower.includes('депло') ||
+      lower.includes('развер') ||
+      lower.includes('розгорн') ||
       lower.includes('foundry') ||
       lower.includes('фаундри') ||
+      lower.includes('forge') ||
+      lower.includes('hardhat') ||
       lower.includes('инструкци') ||
       lower.includes('руководств') ||
       lower.includes('faucet') ||
@@ -959,8 +983,39 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
       };
     }
 
-    // 5. Questions about Pharos, Architecture, or Chain
-    if (lower.includes('pharos') || lower.includes('фарос') || lower.includes('l1') || lower.includes('aea') || lower.includes('блокчейн')) {
+    // 5. Questions about Pharos Architecture, AEA, or Chain Overview (strictly overview inquiries!)
+    const isChainOverviewQuestion =
+      (lower.includes('что такое фарос') ||
+        lower.includes('what is pharos') ||
+        lower.includes('расскажи про фарос') ||
+        lower.includes('о сети фарос') ||
+        lower.includes('о проекте фарос') ||
+        lower.includes('about pharos') ||
+        lower.includes('tell me about pharos') ||
+        lower.includes('архитектур') ||
+        lower.includes('architecture') ||
+        lower.includes('aea') ||
+        lower.includes('l1-base') ||
+        lower.includes('l1-core') ||
+        lower.includes('l1-extension')) &&
+      !lower.includes('депло') &&
+      !lower.includes('deploy') &&
+      !lower.includes('развер') &&
+      !lower.includes('контракт') &&
+      !lower.includes('contract') &&
+      !lower.includes('токен') &&
+      !lower.includes('token') &&
+      !lower.includes('rpc') &&
+      !lower.includes('док') &&
+      !lower.includes('doc') &&
+      !lower.includes('кран') &&
+      !lower.includes('faucet') &&
+      !lower.includes('газ') &&
+      !lower.includes('gas') &&
+      !lower.includes('комисси') &&
+      !lower.includes('fee');
+
+    if (isChainOverviewQuestion) {
       return {
         id: `msg_${Date.now()}`,
         sender: 'agent',
@@ -998,14 +1053,18 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
     // 8. Dynamic RAG Documentation & Technical Queries
     const isTechnicalOrDocsSearch =
       lower.includes('док') ||
-      lower.includes('docs') ||
+      lower.includes('doc') ||
       lower.includes('инструкц') ||
       lower.includes('руководств') ||
       lower.includes('раздел') ||
       lower.includes('foundry') ||
       lower.includes('фаундри') ||
-      lower.includes('деплой') ||
+      lower.includes('forge') ||
+      lower.includes('hardhat') ||
+      lower.includes('депло') ||
       lower.includes('deploy') ||
+      lower.includes('развер') ||
+      lower.includes('розгорн') ||
       lower.includes('контракт') ||
       lower.includes('contract') ||
       lower.includes('abi') ||
