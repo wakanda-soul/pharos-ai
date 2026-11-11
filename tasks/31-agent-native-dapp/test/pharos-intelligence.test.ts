@@ -36,6 +36,6 @@ describe('Pharos Mainnet Live RPC Intelligence Providers', () => {
   it('should dispatch all 4 feeds through unified dispatcher', async () => {
     const whaleData = await fetchLiveIntelligenceData('whale-radar');
     expect(whaleData.chain).toContain('1672');
-    expect(whaleData.feed).toBe('Whale Movement Radar');
+    expect((whaleData as any).feed).toBe('Whale Movement Radar');
   });
 });
