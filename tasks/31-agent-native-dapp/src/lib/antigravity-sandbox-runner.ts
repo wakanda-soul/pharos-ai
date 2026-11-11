@@ -11,19 +11,23 @@ export interface AntigravityExecutionOptions {
 
 export class AntigravitySandboxRunner {
   private static readonly RUNNER_PATH = '/usr/local/bin/project-gemini-runner';
+  private static readonly AGY_PATH = '/usr/local/bin/agy';
   private static readonly DEFAULT_MODEL = 'gemini-3.8-flash-low';
   private static readonly MAX_CONCURRENT_SLOTS = 4;
-  private static readonly DEFAULT_TIMEOUT_MS = 40000;
+  private static readonly DEFAULT_TIMEOUT_MS = 60000;
 
   private static activeSlots = 0;
   private static readonly waitQueue: Array<() => void> = [];
 
   /**
-   * Check if the Linux Bubblewrap sandbox runner is available in this environment.
+   * Check if the Linux Bubblewrap sandbox runner or direct agy CLI is available.
    */
   public static isAvailable(): boolean {
     try {
-      return fs.existsSync(this.RUNNER_PATH) && typeof spawn === 'function';
+      return (
+        (fs.existsSync(this.RUNNER_PATH) || fs.existsSync(this.AGY_PATH)) &&
+        typeof spawn === 'function'
+      );
     } catch {
       return false;
     }
@@ -107,35 +111,62 @@ export class AntigravitySandboxRunner {
 
     await this.acquireSlot();
 
+    try {
+      // First attempt: Secure Bubblewrap container runner
+      if (fs.existsSync(this.RUNNER_PATH)) {
+        try {
+          return await this.spawnProcess(
+            this.RUNNER_PATH,
+            ['--model', model, '--prompt', compositePrompt],
+            timeoutMs
+          );
+        } catch (runnerErr) {
+          console.warn('Bubblewrap runner failed, attempting direct agy CLI fallback:', runnerErr);
+        }
+      }
+
+      // Second attempt: Direct agy CLI execution
+      if (fs.existsSync(this.AGY_PATH)) {
+        return await this.spawnProcess(
+          this.AGY_PATH,
+          ['--model', model, '--effort', 'low', '-p', compositePrompt],
+          timeoutMs
+        );
+      }
+
+      throw new Error(`Neither runner (${this.RUNNER_PATH}) nor CLI (${this.AGY_PATH}) is available`);
+    } finally {
+      this.releaseSlot();
+    }
+  }
+
+  /**
+   * Spawns a child process and waits for standard output to close cleanly.
+   */
+  private static spawnProcess(command: string, args: string[], timeoutMs: number): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       let stdoutData = '';
       let stderrData = '';
       let isSettled = false;
 
-      // Spawn in detached process group for reliable process-tree termination
-      const child = spawn(
-        this.RUNNER_PATH,
-        ['--model', model, '--prompt', compositePrompt],
-        {
-          detached: true,
-          stdio: ['ignore', 'pipe', 'pipe'],
-          env: {
-            ...process.env,
-            PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
-            HOME: process.env.HOME || '/root',
-          },
-        }
-      );
+      const child = spawn(command, args, {
+        detached: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
+          HOME: process.env.HOME || '/root',
+        },
+      });
 
       const pid = child.pid;
 
       const killProcessTree = () => {
         if (!pid) return;
         try {
-          // Negative PID kills the entire process group
           process.kill(-pid, 'SIGTERM');
         } catch {
-          // Ignore if already terminated
+          // Process might have terminated already
         }
 
         setTimeout(() => {
@@ -147,28 +178,10 @@ export class AntigravitySandboxRunner {
         }, 1000);
       };
 
-      const finalizeSettlement = (code: number | null) => {
-        if (!isSettled) {
-          isSettled = true;
-          clearTimeout(timer);
-          this.releaseSlot();
-
-          if (code === 0 && stdoutData.trim()) {
-            resolve(stdoutData.trim());
-          } else {
-            const errMsg =
-              stderrData.trim() ||
-              `Process exited with code ${code}${!stdoutData.trim() ? ' and empty output' : ''}`;
-            reject(new Error(errMsg));
-          }
-        }
-      };
-
       const timer = setTimeout(() => {
         if (!isSettled) {
           isSettled = true;
           killProcessTree();
-          this.releaseSlot();
           reject(new Error(`Antigravity execution timed out after ${timeoutMs}ms`));
         }
       }, timeoutMs);
@@ -185,20 +198,26 @@ export class AntigravitySandboxRunner {
         if (!isSettled) {
           isSettled = true;
           clearTimeout(timer);
-          this.releaseSlot();
           reject(err);
         }
       });
 
+      // Crucial: Only settle on 'close' when all stdio descriptors are fully closed and flushed.
+      // Do NOT listen to 'exit' with an arbitrary timer, as that rejects before stdout buffers drain.
       child.on('close', (code) => {
-        finalizeSettlement(code);
-      });
+        if (!isSettled) {
+          isSettled = true;
+          clearTimeout(timer);
 
-      child.on('exit', (code) => {
-        // If stdio stream descriptors remain open from descendants, settle safely after brief drain
-        setTimeout(() => {
-          finalizeSettlement(code);
-        }, 300);
+          if (code === 0 && stdoutData.trim()) {
+            resolve(stdoutData.trim());
+          } else {
+            const errMsg =
+              stderrData.trim() ||
+              `Process exited with code ${code}${!stdoutData.trim() ? ' and empty output' : ''}`;
+            reject(new Error(errMsg));
+          }
+        }
       });
     });
   }
