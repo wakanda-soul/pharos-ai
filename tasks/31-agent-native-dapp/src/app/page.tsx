@@ -46,6 +46,7 @@ export default function Home() {
     login: privyLogin,
     logout: privyLogout,
     refreshBalances: privyRefreshBalances,
+    deductBalance: privyDeductBalance,
   } = usePharosAuth();
 
   const activeWalletAddress = isPrivyConfigured && isPrivyAuth ? privyWalletAddress : walletAddress;
@@ -155,6 +156,9 @@ export default function Home() {
     }
     const updated = Number((walletBalanceUsdc + amountUsdc).toFixed(4));
     setWalletBalanceUsdc(updated);
+    if (isPrivyConfigured && isPrivyAuth) {
+      privyRefreshBalances();
+    }
   };
 
   const handleDeductSessionBalance = (amountUsdc: number) => {
@@ -164,7 +168,11 @@ export default function Home() {
       const updatedAllowance = Math.max(0, Number((prevAllowance - amountUsdc).toFixed(4)));
       localStorage.setItem(key, updatedAllowance.toString());
     }
-    setWalletBalanceUsdc((prev) => Math.max(0, Number((prev - amountUsdc).toFixed(4))));
+    if (isPrivyConfigured && isPrivyAuth) {
+      privyDeductBalance(amountUsdc);
+    } else {
+      setWalletBalanceUsdc((prev) => Math.max(0, Number((prev - amountUsdc).toFixed(4))));
+    }
   };
 
   const handleSaveGeminiKey = (key: string) => {
@@ -293,14 +301,7 @@ export default function Home() {
       if (res.ok) {
         setLastPurchaseResult(data);
         await refreshFeeds();
-        if (activeWalletAddress && typeof window !== 'undefined') {
-          const key = `pharos_session_allowance_${activeWalletAddress.toLowerCase()}`;
-          const prevAllowance = parseFloat(localStorage.getItem(key) || '0');
-          if (prevAllowance > 0) {
-            const updatedAllowance = Math.max(0, Number((prevAllowance - (feed.pricePerCallUsdc || 0.001)).toFixed(4)));
-            localStorage.setItem(key, updatedAllowance.toString());
-          }
-        }
+        handleDeductSessionBalance(feed.pricePerCallUsdc || 0.001);
         if (activeWalletAddress) {
           if (isPrivyConfigured && isPrivyAuth) {
             await privyRefreshBalances();

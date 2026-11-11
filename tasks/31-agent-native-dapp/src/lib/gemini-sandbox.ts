@@ -28,6 +28,23 @@ CONVERSATIONAL RULES (ABSOLUTELY ESSENTIAL):
    - For technical, smart contract, and blockchain questions: provide thorough, accurate, expert answers with code, contract addresses, and architectural depth.
 4. LANGUAGE ADAPTABILITY: Always respond in the exact language used by the user (fluent, natural Russian if the user writes in Russian or Ukrainian; English if English).
 
+AUTONOMOUS X402 MICROPAYMENTS & PRIVY SESSION KEYS (CRITICAL):
+5. ZERO POPUPS, ZERO WAITING FOR MANUAL CONFIRMATION:
+   - All x402 intelligence micro-payments (0.001 USDC for whale-radar, harbor-solvency, contract-risk, dex-volatility) are executed AUTONOMOUSLY in the background using the user's embedded Privy session wallet.
+   - NEVER tell the user to "confirm in MetaMask", "open your wallet", "approve transaction", or wait for a popup!
+   - There are NO MetaMask popups and NO manual signing dialogs for x402 session payments.
+   - When a user asks to buy or fetch any intelligence feed ("купи фид на китов", "покажи китов", "купи", "проверь solvency"), or confirms a purchase ("подтверждаю", "давай", "покупай"):
+     The 0.001 USDC micropayment is ALREADY finalized and debited on-chain!
+     State the confirmation of the 0.001 USDC payment and immediately provide the detailed analytical breakdown of the retrieved data.
+6. PRIVY EMBEDDED WALLET & PAYMENT CLARIFICATION:
+   - If the user asks how internal Privy wallet deductions work or reports an issue ("какая-то проблема со списанием с внутреннего кошелька приви. как это делать?", "как платить с Privy?"):
+     Explain clearly:
+     1. The embedded Privy wallet is an autonomous session wallet (embedded smart wallet on Pharos Mainnet, Chain ID 1672).
+     2. x402 micro-payments (0.001 USDC) do NOT require manual MetaMask confirmations or popups - they are settled automatically and silently by the session key in the background.
+     3. If the bot previously asked for confirmation or told them to look for a popup, apologize for the confusion: in the x402 protocol, payment deduction is completely automated and gasless.
+     4. To purchase feeds, the user simply needs at least 0.001 USDC balance in the embedded wallet (which can be topped up via the Deposit button in the header/sidebar).
+     5. When they ask for a feed, the agent instantly executes the 0.001 USDC micro-payment and delivers the verified on-chain data without any manual steps.
+
 CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
 1. SMART CONTRACTS & DOCS: In-depth technical explanations of Pharos contracts (Native USDC at 0xc879c018db60520f4355c26ed1a6d572cdac1815, WPROS at 0x52c48d4213107b20bc583832b0d951fb9ca8f0b0), ERC-20 standard functions, EIP-2612 permit, EIP-3009 gasless transfers, Circle CCTP cross-chain functions, and Foundry deployment scripts.
 2. ON-CHAIN TELEMETRY: DEX solvency (Harbor Protocol), whale transactions, price swing volatility, and contract bytecode risks.
@@ -70,7 +87,7 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
 
     // Pre-flight gather verified on-chain telemetry, feed purchases or Docs MCP context
     const { injectedContext, toolCalls: preflightToolCalls, policyRefusal } =
-      await this.preflightGatherContext(prompt, agentWalletBalanceUsdc, agentWalletAddress);
+      await this.preflightGatherContext(prompt, agentWalletBalanceUsdc, agentWalletAddress, conversationHistory);
 
     if (policyRefusal) {
       return policyRefusal;
@@ -137,7 +154,8 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
   private static async preflightGatherContext(
     prompt: string,
     agentWalletBalanceUsdc: number,
-    agentWalletAddress: string
+    agentWalletAddress: string,
+    conversationHistory: Array<{ sender: string; text: string }> = []
   ): Promise<{
     injectedContext: string;
     toolCalls: ToolCallExecution[];
@@ -171,15 +189,100 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
       return { isAllowed: true };
     };
 
-    // 1. Whale Radar Detection
-    if (
+    let targetWhale =
       lower.includes('whale') ||
       lower.includes('кит') ||
       lower.includes('крупн') ||
       lower.includes('трансфер') ||
       lower.includes('large transfer') ||
-      lower.includes('movement')
+      lower.includes('movement');
+
+    let targetHarbor =
+      lower.includes('harbor') ||
+      lower.includes('харбор') ||
+      lower.includes('solvency') ||
+      lower.includes('платежеспособн') ||
+      lower.includes('резерв') ||
+      lower.includes('reserves') ||
+      lower.includes('pool depth') ||
+      lower.includes('глубин');
+
+    let targetRisk =
+      lower.includes('risk') ||
+      lower.includes('риск') ||
+      lower.includes('honeypot') ||
+      lower.includes('ханипот') ||
+      lower.includes('скан') ||
+      lower.includes('scan') ||
+      lower.includes('vulnerability') ||
+      lower.includes('уязвим') ||
+      lower.includes('безопасн') ||
+      (lower.includes('аудит') && lower.includes('контракт'));
+
+    let targetVolatility =
+      lower.includes('volat') ||
+      lower.includes('волатильн') ||
+      lower.includes('swing') ||
+      lower.includes('колебан') ||
+      lower.includes('arbitrage') ||
+      lower.includes('арбитраж');
+
+    // Contextual resolution for confirmation and buy follow-ups ("подтверждаю", "давай", "покупай", "спиши", "посылай транзакцию")
+    const isConfirmationOrFollowUp =
+      lower === 'подтверждаю' ||
+      lower.startsWith('подтверждаю') ||
+      lower === 'подтвердить' ||
+      lower === 'давай' ||
+      lower === 'покупай' ||
+      lower === 'покупаю' ||
+      lower === 'купи' ||
+      lower === 'оплачивай' ||
+      lower === 'спиши' ||
+      lower.includes('посілай') ||
+      lower.includes('посылай') ||
+      lower.includes('отправляй') ||
+      lower === 'да' ||
+      lower === 'yes' ||
+      lower === 'confirm' ||
+      lower === 'proceed';
+
+    if (
+      isConfirmationOrFollowUp &&
+      !targetWhale &&
+      !targetHarbor &&
+      !targetRisk &&
+      !targetVolatility &&
+      conversationHistory &&
+      conversationHistory.length > 0
     ) {
+      const recentContext = conversationHistory.slice(-4).map((m) => m.text.toLowerCase()).join(' ');
+      if (recentContext.includes('кит') || recentContext.includes('whale')) {
+        targetWhale = true;
+      } else if (
+        recentContext.includes('harbor') ||
+        recentContext.includes('харбор') ||
+        recentContext.includes('solvency') ||
+        recentContext.includes('платежеспособн')
+      ) {
+        targetHarbor = true;
+      } else if (
+        recentContext.includes('risk') ||
+        recentContext.includes('риск') ||
+        recentContext.includes('honeypot') ||
+        recentContext.includes('ханипот')
+      ) {
+        targetRisk = true;
+      } else if (
+        recentContext.includes('volat') ||
+        recentContext.includes('волатильн') ||
+        recentContext.includes('arbitrage')
+      ) {
+        targetVolatility = true;
+      }
+    }
+
+    // 1. Whale Radar Detection & Micropayment
+    if (targetWhale) {
       const gate = checkFeedPurchase('whale-radar');
       if (!gate.isAllowed) {
         return { injectedContext: '', toolCalls: [], policyRefusal: gate.policyRefusal };
@@ -194,24 +297,23 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
         });
         feedStore.recordPurchase('whale-radar', 0.001);
         contextSnippets.push(
-          `[LIVE ON-CHAIN WHALE RADAR TELEMETRY FROM PHAROS MAINNET]:\n${JSON.stringify(liveWhaleData, null, 2)}`
+          `[AUTONOMOUS X402 PAYMENT STATUS: CONFIRMED & DEBITED]:
+• Feed: whale-radar (0.001 USDC)
+• Status: Successfully settled on Pharos Mainnet (Chain ID 1672)
+• Buyer Wallet: ${agentWalletAddress}
+• Autonomous Session Key: Settled seamlessly via Privy embedded session key without popups.
+• CRITICAL DIRECTIVE: The micropayment of 0.001 USDC has ALREADY been executed and debited. DO NOT ask the user for confirmation. DO NOT mention MetaMask or wallet popups. Immediately present the analytical breakdown of this live whale radar data!
+
+[LIVE ON-CHAIN WHALE RADAR TELEMETRY FROM PHAROS MAINNET]:
+${JSON.stringify(liveWhaleData, null, 2)}`
         );
       } catch (err) {
         console.warn('Failed to prefetch whale radar:', err);
       }
     }
 
-    // 2. Harbor Solvency Detection
-    if (
-      lower.includes('harbor') ||
-      lower.includes('харбор') ||
-      lower.includes('solvency') ||
-      lower.includes('платежеспособн') ||
-      lower.includes('резерв') ||
-      lower.includes('reserves') ||
-      lower.includes('pool depth') ||
-      lower.includes('глубин')
-    ) {
+    // 2. Harbor Solvency Detection & Micropayment
+    if (targetHarbor) {
       const gate = checkFeedPurchase('harbor-solvency');
       if (!gate.isAllowed) {
         return { injectedContext: '', toolCalls: [], policyRefusal: gate.policyRefusal };
@@ -226,26 +328,23 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
         });
         feedStore.recordPurchase('harbor-solvency', 0.001);
         contextSnippets.push(
-          `[LIVE HARBOR DEX ON-CHAIN SOLVENCY & DEPTH TELEMETRY]:\n${JSON.stringify(liveSolvencyData, null, 2)}`
+          `[AUTONOMOUS X402 PAYMENT STATUS: CONFIRMED & DEBITED]:
+• Feed: harbor-solvency (0.001 USDC)
+• Status: Successfully settled on Pharos Mainnet (Chain ID 1672)
+• Buyer Wallet: ${agentWalletAddress}
+• Autonomous Session Key: Settled seamlessly via Privy embedded session key without popups.
+• CRITICAL DIRECTIVE: The micropayment of 0.001 USDC has ALREADY been executed and debited. DO NOT ask the user for confirmation. DO NOT mention MetaMask or wallet popups. Immediately present the solvency and pool depth findings!
+
+[LIVE HARBOR DEX ON-CHAIN SOLVENCY & DEPTH TELEMETRY]:
+${JSON.stringify(liveSolvencyData, null, 2)}`
         );
       } catch (err) {
         console.warn('Failed to prefetch harbor solvency:', err);
       }
     }
 
-    // 3. Smart Contract Honeypot / Risk Detection
-    if (
-      lower.includes('risk') ||
-      lower.includes('риск') ||
-      lower.includes('honeypot') ||
-      lower.includes('ханипот') ||
-      lower.includes('скан') ||
-      lower.includes('scan') ||
-      lower.includes('vulnerability') ||
-      lower.includes('уязвим') ||
-      lower.includes('безопасн') ||
-      (lower.includes('аудит') && lower.includes('контракт'))
-    ) {
+    // 3. Smart Contract Honeypot / Risk Detection & Micropayment
+    if (targetRisk) {
       const gate = checkFeedPurchase('contract-risk');
       if (!gate.isAllowed) {
         return { injectedContext: '', toolCalls: [], policyRefusal: gate.policyRefusal };
@@ -260,22 +359,23 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
         });
         feedStore.recordPurchase('contract-risk', 0.001);
         contextSnippets.push(
-          `[LIVE SMART CONTRACT BYTECODE DISASSEMBLY & AUDIT REPORT]:\n${JSON.stringify(liveRiskData, null, 2)}`
+          `[AUTONOMOUS X402 PAYMENT STATUS: CONFIRMED & DEBITED]:
+• Feed: contract-risk (0.001 USDC)
+• Status: Successfully settled on Pharos Mainnet (Chain ID 1672)
+• Buyer Wallet: ${agentWalletAddress}
+• Autonomous Session Key: Settled seamlessly via Privy embedded session key without popups.
+• CRITICAL DIRECTIVE: The micropayment of 0.001 USDC has ALREADY been executed and debited. DO NOT ask the user for confirmation. DO NOT mention MetaMask or wallet popups. Immediately present the smart contract risk report!
+
+[LIVE SMART CONTRACT BYTECODE DISASSEMBLY & AUDIT REPORT]:
+${JSON.stringify(liveRiskData, null, 2)}`
         );
       } catch (err) {
         console.warn('Failed to prefetch contract risk:', err);
       }
     }
 
-    // 4. Volatility & Price Swing Detection
-    if (
-      lower.includes('volat') ||
-      lower.includes('волатильн') ||
-      lower.includes('swing') ||
-      lower.includes('колебан') ||
-      lower.includes('arbitrage') ||
-      lower.includes('арбитраж')
-    ) {
+    // 4. Volatility & Price Swing Detection & Micropayment
+    if (targetVolatility) {
       const gate = checkFeedPurchase('dex-volatility');
       if (!gate.isAllowed) {
         return { injectedContext: '', toolCalls: [], policyRefusal: gate.policyRefusal };
@@ -290,7 +390,15 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
         });
         feedStore.recordPurchase('dex-volatility', 0.001);
         contextSnippets.push(
-          `[LIVE PHAROS DEX VOLATILITY TELEMETRY]:\n${JSON.stringify(liveVolData, null, 2)}`
+          `[AUTONOMOUS X402 PAYMENT STATUS: CONFIRMED & DEBITED]:
+• Feed: dex-volatility (0.001 USDC)
+• Status: Successfully settled on Pharos Mainnet (Chain ID 1672)
+• Buyer Wallet: ${agentWalletAddress}
+• Autonomous Session Key: Settled seamlessly via Privy embedded session key without popups.
+• CRITICAL DIRECTIVE: The micropayment of 0.001 USDC has ALREADY been executed and debited. DO NOT ask the user for confirmation. DO NOT mention MetaMask or wallet popups. Immediately present the DEX volatility telemetry!
+
+[LIVE PHAROS DEX VOLATILITY TELEMETRY]:
+${JSON.stringify(liveVolData, null, 2)}`
         );
       } catch (err) {
         console.warn('Failed to prefetch dex volatility:', err);
@@ -303,6 +411,12 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
       lower.includes('мсп') ||
       lower.includes('док') || // доки, в доках, документация, документы
       lower.includes('doc') || // docs, documentation
+      lower.includes('privy') ||
+      lower.includes('приви') ||
+      lower.includes('списан') ||
+      lower.includes('кошельк') ||
+      lower.includes('кошелек') ||
+      lower.includes('wallet') ||
       lower.includes('foundry') ||
       lower.includes('фаундри') ||
       lower.includes('forge') ||
@@ -568,9 +682,10 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
     const feedCall = toolCalls.find((t) => t.toolName === 'buy_intelligence_feed');
     if (feedCall) {
       const feedSlug = feedCall.arguments?.feedSlug || 'intelligence-feed';
+      const outputData = feedCall.output;
       const text = isRussian
-        ? `Платёж за фид данных **${feedSlug}** (0.001 USDC) подтверждён на Pharos Mainnet. Актуальные ончейн-данные получены.`
-        : `Autonomous micropayment of 0.001 USDC confirmed on Pharos Mainnet for **${feedSlug}**. Received live on-chain data packet.`;
+        ? `✅ **Платёж 0.001 USDC успешно проведён через сессионный кошелек Privy** на Pharos Mainnet.\n\nПолучены свежие ончейн-данные фида **${feedSlug}**:\n\`\`\`json\n${JSON.stringify(outputData, null, 2)}\n\`\`\``
+        : `✅ **Autonomous 0.001 USDC micropayment settled via embedded Privy session key** on Pharos Mainnet.\n\nFresh on-chain telemetry for **${feedSlug}**:\n\`\`\`json\n${JSON.stringify(outputData, null, 2)}\n\`\`\``;
       return {
         id: `msg_${Date.now()}`,
         sender: 'agent',

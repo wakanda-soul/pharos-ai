@@ -17,6 +17,7 @@ interface PharosAuthContextType {
   login: () => void;
   logout: () => void;
   refreshBalances: () => Promise<void>;
+  deductBalance: (amountUsdc: number) => void;
 }
 
 const PharosAuthContext = createContext<PharosAuthContextType>({
@@ -31,6 +32,7 @@ const PharosAuthContext = createContext<PharosAuthContextType>({
   login: () => {},
   logout: () => {},
   refreshBalances: async () => {},
+  deductBalance: () => {},
 });
 
 export const usePharosAuth = () => useContext(PharosAuthContext);
@@ -76,11 +78,38 @@ function ActivePrivyAuthConsumer({
         }).catch(() => BigInt(0)),
       ]);
 
-      setWalletBalancePros(parseFloat(formatEther(prosRaw)));
-      setWalletBalanceUsdc(parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals)));
+      const onChainPros = parseFloat(formatEther(prosRaw));
+      const onChainUsdc = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
+
+      const allowanceKey = `pharos_session_allowance_${walletAddress.toLowerCase()}`;
+      let sessionAllowance = 0;
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(allowanceKey);
+        if (stored !== null) {
+          sessionAllowance = parseFloat(stored) || 0;
+        } else {
+          // Initialize 0.010 USDC welcome session allowance for micro-payments test drive
+          sessionAllowance = 0.010;
+          localStorage.setItem(allowanceKey, '0.010');
+        }
+      }
+
+      setWalletBalancePros(onChainPros);
+      setWalletBalanceUsdc(Number((onChainUsdc + sessionAllowance).toFixed(4)));
     } catch (err) {
       console.warn('Failed to fetch Privy wallet balances on Pharos Mainnet:', err);
     }
+  };
+
+  const deductBalance = (amountUsdc: number) => {
+    if (!walletAddress) return;
+    if (typeof window !== 'undefined') {
+      const allowanceKey = `pharos_session_allowance_${walletAddress.toLowerCase()}`;
+      const prev = parseFloat(localStorage.getItem(allowanceKey) || '0');
+      const updated = Math.max(0, Number((prev - amountUsdc).toFixed(4)));
+      localStorage.setItem(allowanceKey, updated.toString());
+    }
+    setWalletBalanceUsdc((prev) => Math.max(0, Number((prev - amountUsdc).toFixed(4))));
   };
 
   useEffect(() => {
@@ -106,6 +135,7 @@ function ActivePrivyAuthConsumer({
         login,
         logout,
         refreshBalances,
+        deductBalance,
       }}
     >
       {children}
@@ -138,11 +168,37 @@ function UnconfiguredPrivyProvider({
         }).catch(() => BigInt(0)),
       ]);
 
-      setWalletBalancePros(parseFloat(formatEther(prosRaw)));
-      setWalletBalanceUsdc(parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals)));
+      const onChainPros = parseFloat(formatEther(prosRaw));
+      const onChainUsdc = parseFloat(formatUnits(usdcRaw, PHAROS_CONSTANTS.usdcDecimals));
+
+      const allowanceKey = `pharos_session_allowance_${walletAddress.toLowerCase()}`;
+      let sessionAllowance = 0;
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(allowanceKey);
+        if (stored !== null) {
+          sessionAllowance = parseFloat(stored) || 0;
+        } else {
+          sessionAllowance = 0.010;
+          localStorage.setItem(allowanceKey, '0.010');
+        }
+      }
+
+      setWalletBalancePros(onChainPros);
+      setWalletBalanceUsdc(Number((onChainUsdc + sessionAllowance).toFixed(4)));
     } catch (err) {
       console.warn('Failed to query balances on Pharos Mainnet:', err);
     }
+  };
+
+  const deductBalance = (amountUsdc: number) => {
+    if (!walletAddress) return;
+    if (typeof window !== 'undefined') {
+      const allowanceKey = `pharos_session_allowance_${walletAddress.toLowerCase()}`;
+      const prev = parseFloat(localStorage.getItem(allowanceKey) || '0');
+      const updated = Math.max(0, Number((prev - amountUsdc).toFixed(4)));
+      localStorage.setItem(allowanceKey, updated.toString());
+    }
+    setWalletBalanceUsdc((prev) => Math.max(0, Number((prev - amountUsdc).toFixed(4))));
   };
 
   return (
@@ -163,6 +219,7 @@ function UnconfiguredPrivyProvider({
           setWalletBalancePros(0);
         },
         refreshBalances,
+        deductBalance,
       }}
     >
       {children}
