@@ -333,7 +333,81 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
     const isRussian = /[а-яА-ЯёЁіІїЇєЄґҐ]/.test(prompt);
     const toolCalls: ToolCallExecution[] = [];
 
-    // 1. Capabilities / Identity / General Questions
+    // 1. Natural Conversational Dialogue (Greetings, User Identity, Casual Chit-Chat)
+    const isGreeting =
+      lower.startsWith('привет') ||
+      lower.includes('приветству') ||
+      lower.includes('здравствуй') ||
+      lower.includes('салют') ||
+      lower.includes('добрый день') ||
+      lower.includes('доброе утро') ||
+      lower.includes('добрый вечер') ||
+      lower === 'хай' ||
+      lower.startsWith('хай ') ||
+      lower === 'алло' ||
+      lower.startsWith('алло ') ||
+      lower === 'hi' ||
+      lower.startsWith('hi ') ||
+      lower === 'hello' ||
+      lower.startsWith('hello ') ||
+      lower === 'hey' ||
+      lower.startsWith('hey ');
+
+    if (isGreeting) {
+      const greetingReply = isRussian
+        ? `Приветствую! 👋 Рад слышать. Чем сегодня занимаемся — смотрим смарт-контракты, ончейн-аналитику Pharos Mainnet или есть конкретный вопрос?`
+        : `Hello! 👋 Great to hear from you. How can I assist you with Pharos Mainnet smart contracts, feeds, or docs today?`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: greetingReply,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    const isAboutUser =
+      lower.includes('кто я') ||
+      lower.includes('хто я') ||
+      lower.includes('who am i') ||
+      lower.includes('ты меня знаешь') ||
+      lower.includes('ти мене знаєш');
+
+    if (isAboutUser) {
+      const aboutUserReply = isRussian
+        ? `Хороший вопрос! 😄 Для меня ты — пользователь и собеседник. Если подключишь кошелёк через Privy, смогу узнать твой ончейн-адрес в сети Pharos и подсказать баланс USDC/PROS. А пока мы просто общаемся — чем могу помочь?`
+        : `Good question! 😄 To me, you are my current user and pilot. If you connect your wallet via Privy, I can see your Pharos on-chain address and balances. Until then — how can I assist you?`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: aboutUserReply,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    const isHowAreYou =
+      lower.includes('как дела') ||
+      lower.includes('як справи') ||
+      lower.includes('как ты') ||
+      lower.includes('як ти') ||
+      lower.includes('how are you') ||
+      lower.includes('how are things');
+
+    if (isHowAreYou) {
+      const howAreYouReply = isRussian
+        ? `Всё отлично, сеть Pharos Mainnet активна, RPC отвечает без задержек! ⚡ Как твои успехи? Над чем сегодня работаем?`
+        : `Everything is running smoothly! Pharos Mainnet RPC and x402 feeds are operational. ⚡ How are things on your end?`;
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: howAreYouReply,
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // 1b. Capabilities / Identity of Copilot
     const isAboutBot =
       lower.includes('кто ты') ||
       lower.includes('кто ті') ||
@@ -343,7 +417,6 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
       lower.includes('кто вы') ||
       lower.includes('что умеешь') ||
       lower.includes('що вмієш') ||
-      lower.includes('как дела') ||
       lower.includes('помощь') ||
       lower.includes('who are you') ||
       lower.includes('what can you do') ||
