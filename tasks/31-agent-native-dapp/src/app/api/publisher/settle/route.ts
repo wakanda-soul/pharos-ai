@@ -5,7 +5,7 @@ import { isAddress } from 'viem';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { publisherAddress, slug } = body;
+    const { publisherAddress, slug, onChainTxHash } = body;
 
     if (!publisherAddress || !isAddress(publisherAddress)) {
       return NextResponse.json(
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const result = feedStore.settleFeedRevenue(publisherAddress, slug);
+    const result = feedStore.settleFeedRevenue(publisherAddress, slug, onChainTxHash);
 
     if (!result.success) {
       return NextResponse.json(
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
         settledAmountUsdc: result.settledAmount,
         destinationWallet: publisherAddress,
         network: 'Pharos Mainnet (Chain ID 1672)',
-        settlementTxHash: result.txHash,
+        settlementTxHash: result.onChainTxHash,
         settledFeeds: result.settledFeeds,
         settlementStandard: 'x402 Batch Promissory Vouchers (EIP-712)',
         timestamp: result.timestamp,

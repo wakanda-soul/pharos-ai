@@ -188,12 +188,13 @@ class FeedStore {
 
   public settleFeedRevenue(
     publisherAddress: string,
-    slug?: string
+    slug?: string,
+    onChainTxHash?: string
   ): {
     success: boolean;
     settledAmount: number;
     receiptId: string;
-    txHash: string;
+    onChainTxHash: string | null;
     settledFeeds: string[];
     timestamp: string;
     error?: string;
@@ -212,7 +213,7 @@ class FeedStore {
         success: false,
         settledAmount: 0,
         receiptId: '',
-        txHash: '',
+        onChainTxHash: null,
         settledFeeds: [],
         timestamp: '',
         error: slug ? `Feed '${slug}' is not owned by ${publisherAddress}` : 'No feeds found for this publisher address',
@@ -243,7 +244,7 @@ class FeedStore {
         success: false,
         settledAmount: 0,
         receiptId: '',
-        txHash: '',
+        onChainTxHash: null,
         settledFeeds: [],
         timestamp: '',
         error: 'No pending/unsettled micro-revenue available to settle at this time.',
@@ -254,13 +255,12 @@ class FeedStore {
 
     const timestamp = new Date().toISOString();
     const receiptId = `rcpt_settle_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const txHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
     return {
       success: true,
       settledAmount: Number(totalToSettle.toFixed(4)),
       receiptId,
-      txHash,
+      onChainTxHash: onChainTxHash || null,
       settledFeeds: settledSlugs,
       timestamp,
     };

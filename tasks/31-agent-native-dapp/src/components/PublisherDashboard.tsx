@@ -368,11 +368,30 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
               </span>
             </div>
             <div>
-              <span className="text-[10px] text-gray-400 block font-mono">Settlement Tx Hash</span>
-              <span className="font-mono text-[#0012b8] text-[11px] truncate block" title={lastSettlementReceipt.settlementTxHash}>
-                {lastSettlementReceipt.settlementTxHash.slice(0, 16)}...
+              <span className="text-[10px] text-gray-400 block font-mono">
+                {lastSettlementReceipt.settlementTxHash ? 'Pharos Mainnet Tx Hash' : 'EIP-712 Voucher Receipt'}
               </span>
+              {lastSettlementReceipt.settlementTxHash ? (
+                <a
+                  href={`https://pharosscan.xyz/tx/${lastSettlementReceipt.settlementTxHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="font-mono text-[#0012b8] hover:underline text-[11px] truncate flex items-center gap-1"
+                >
+                  <span>{lastSettlementReceipt.settlementTxHash.slice(0, 16)}...</span>
+                  <ExternalLink className="w-3 h-3 shrink-0" />
+                </a>
+              ) : (
+                <span className="font-mono text-gray-600 text-[11px] truncate block" title={lastSettlementReceipt.receiptId}>
+                  {lastSettlementReceipt.receiptId}
+                </span>
+              )}
             </div>
+          </div>
+          <div className="text-[11px] text-emerald-900 bg-emerald-100/70 px-3 py-2 rounded-lg font-medium flex items-center justify-between">
+            <span>
+              ℹ️ Standard: <strong>{lastSettlementReceipt.settlementStandard}</strong>. Micro-payments are reconciled in the state channel ledger.
+            </span>
           </div>
         </div>
       )}
