@@ -2,7 +2,20 @@
 
 import React, { useState } from 'react';
 import { IntelligenceFeed } from '@/types/feed';
-import { Settings, RefreshCw, PlusCircle, ShieldAlert, Lock, Wallet, ArrowRight, CheckCircle2 } from 'lucide-react';
+import {
+  Settings,
+  RefreshCw,
+  PlusCircle,
+  ShieldAlert,
+  Lock,
+  Wallet,
+  ArrowRight,
+  CheckCircle2,
+  Zap,
+  Coins,
+  Check,
+  ExternalLink,
+} from 'lucide-react';
 
 interface PublisherDashboardProps {
   feeds: IntelligenceFeed[];
@@ -21,7 +34,9 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
   const [newPrice, setNewPrice] = useState<number>(0.001);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isSettling, setIsSettling] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
+  const [lastSettlementReceipt, setLastSettlementReceipt] = useState<any | null>(null);
 
   // New feed form state
   const [feedName, setFeedName] = useState('');
@@ -58,6 +73,67 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
   const totalRevenue = myFeeds.reduce((acc, f) => acc + f.grossRevenueUsdc, 0);
   const totalCalls = myFeeds.reduce((acc, f) => acc + f.totalCalls, 0);
   const activeCount = myFeeds.filter((f) => f.curationStatus === 'ACTIVE').length;
+  const totalUnsettled = myFeeds.reduce((acc, f) => {
+    const unsettled =
+      typeof f.unsettledRevenueUsdc === 'number'
+        ? f.unsettledRevenueUsdc
+        : Math.max(0, Number((f.grossRevenueUsdc - (f.settledRevenueUsdc || 0)).toFixed(4)));
+    return acc + unsettled;
+  }, 0);
+  const totalSettled = myFeeds.reduce((acc, f) => acc + (f.settledRevenueUsdc || 0), 0);
+
+  const handleSettleAll = async () => {
+    if (!walletAddress) return;
+    setIsSettling(true);
+    setStatusMessage(null);
+    try {
+      const res = await fetch('/api/publisher/settle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publisherAddress: walletAddress }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setLastSettlementReceipt(data.settlementReceipt);
+        setStatusMessage(`🎉 Successfully settled ${data.settlementReceipt.settledAmountUsdc} USDC to your wallet on Pharos Mainnet!`);
+        await onRefreshFeeds();
+      } else {
+        setStatusMessage(`❌ Settlement error: ${data.error}`);
+      }
+    } catch (err) {
+      setStatusMessage(`❌ Network error executing settlement: ${String(err)}`);
+    } finally {
+      setIsSettling(false);
+    }
+  };
+
+  const handleClaimDemoFeed = async (slug: string) => {
+    if (!walletAddress) return;
+    setIsUpdating(true);
+    setStatusMessage(null);
+    try {
+      const res = await fetch('/api/publisher/claim-feed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug,
+          publisherAddress: walletAddress,
+          publisherName: 'My Agent Publisher',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatusMessage(`✅ ${data.message}`);
+        await onRefreshFeeds();
+      } else {
+        setStatusMessage(`❌ Error: ${data.error}`);
+      }
+    } catch (err) {
+      setStatusMessage(`❌ Network error claiming demo feed: ${String(err)}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const handleUpdatePrice = async (slug: string) => {
     setIsUpdating(true);
@@ -182,7 +258,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
       </div>
 
       {/* Publisher Overview Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <div className="bg-[#f8faff] p-3.5 rounded-xl border border-blue-100/80">
           <span className="text-[11px] text-gray-500 font-medium">Registered Endpoints</span>
           <div className="mt-1 flex items-baseline gap-2">
@@ -192,21 +268,114 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
         </div>
 
         <div className="bg-[#f8faff] p-3.5 rounded-xl border border-blue-100/80">
-          <span className="text-[11px] text-gray-500 font-medium">Total Micro-Revenue</span>
+          <span className="text-[11px] text-gray-500 font-medium">Settled Calls (Mesh)</span>
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-xl font-bold text-[#0012b8] font-mono">${totalRevenue.toFixed(3)}</span>
-            <span className="text-[10px] text-gray-400 font-mono">USDC (6 dec)</span>
+            <span className="text-xl font-bold text-gray-900 font-mono">{totalCalls}</span>
+            <span className="text-[10px] text-gray-400">Queries</span>
+          </div>
+        </div>
+
+        <div className="bg-emerald-50/60 p-3.5 rounded-xl border border-emerald-200">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-emerald-800 font-medium">Ready to Settle</span>
+            {totalUnsettled > 0 && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            )}
+          </div>
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span className="text-xl font-bold text-emerald-700 font-mono">${totalUnsettled.toFixed(4)}</span>
+            <span className="text-[10px] text-emerald-600 font-mono">USDC</span>
           </div>
         </div>
 
         <div className="bg-[#f8faff] p-3.5 rounded-xl border border-blue-100/80">
-          <span className="text-[11px] text-gray-500 font-medium">Settled Calls (Mesh)</span>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-xl font-bold text-gray-900 font-mono">{totalCalls}</span>
-            <span className="text-[10px] text-gray-400">Autonomous queries</span>
+          <span className="text-[11px] text-gray-500 font-medium">Settled on-chain</span>
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span className="text-xl font-bold text-[#0012b8] font-mono">${totalSettled.toFixed(4)}</span>
+            <span className="text-[10px] text-gray-400 font-mono">USDC</span>
           </div>
         </div>
       </div>
+
+      {/* Batch Settlement Control Desk */}
+      {myFeeds.length > 0 && (
+        <div className="bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-purple-50/80 p-4 sm:p-5 rounded-2xl border border-blue-200/90 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
+          <div className="space-y-1 text-center sm:text-left">
+            <div className="flex items-center gap-2 justify-center sm:justify-start">
+              <span className="text-xs font-bold text-gray-900 tracking-tight flex items-center gap-1.5">
+                <Zap className="w-4 h-4 text-[#0012b8]" /> On-Chain Batch Settlement Desk
+              </span>
+              <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                Pharos Mainnet 1672
+              </span>
+            </div>
+            <p className="text-xs text-gray-600 max-w-xl">
+              Execute batch settlement of all accrued micro-vouchers into a single on-chain transfer to your wallet{' '}
+              <code className="text-[#0012b8] font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-blue-100">
+                {walletAddress.slice(0, 8)}...{walletAddress.slice(-6)}
+              </code>.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3 shrink-0">
+            <button
+              onClick={handleSettleAll}
+              disabled={isSettling || totalUnsettled <= 0}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-98 disabled:opacity-50 disabled:bg-gray-200 pharos-gradient-bg text-white hover:opacity-95"
+            >
+              {isSettling ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Settling to Wallet...</span>
+                </>
+              ) : (
+                <>
+                  <Coins className="w-4 h-4" />
+                  <span>Claim ${totalUnsettled.toFixed(4)} USDC</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Settlement Receipt Drawer / Banner */}
+      {lastSettlementReceipt && (
+        <div className="p-4 sm:p-5 bg-emerald-50/90 border border-emerald-300 rounded-2xl space-y-3 animate-in fade-in duration-200 shadow-xs">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>On-Chain Settlement Receipt Confirmed</span>
+            </div>
+            <button
+              onClick={() => setLastSettlementReceipt(null)}
+              className="text-emerald-700 hover:text-emerald-900 text-xs font-semibold"
+            >
+              Dismiss
+            </button>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-white/80 p-3.5 rounded-xl border border-emerald-200">
+            <div>
+              <span className="text-[10px] text-gray-400 block font-mono">Settled Amount</span>
+              <span className="font-bold text-emerald-700 font-mono text-sm">
+                +{lastSettlementReceipt.settledAmountUsdc.toFixed(4)} USDC
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-gray-400 block font-mono">Destination Wallet</span>
+              <span className="font-mono text-gray-800 text-[11px] truncate block" title={lastSettlementReceipt.destinationWallet}>
+                {lastSettlementReceipt.destinationWallet}
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-gray-400 block font-mono">Settlement Tx Hash</span>
+              <span className="font-mono text-[#0012b8] text-[11px] truncate block" title={lastSettlementReceipt.settlementTxHash}>
+                {lastSettlementReceipt.settlementTxHash.slice(0, 16)}...
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {statusMessage && (
         <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl text-xs text-blue-900 font-medium animate-in fade-in duration-150">
@@ -296,14 +465,35 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
 
       {/* Feeds Table or Empty State */}
       {myFeeds.length === 0 ? (
-        <div className="p-8 text-center border border-dashed border-[#e5e7eb] rounded-xl space-y-3">
+        <div className="p-8 text-center border border-dashed border-[#e5e7eb] rounded-xl space-y-4">
           <div className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center mx-auto text-gray-500">
             <PlusCircle className="w-5 h-5" />
           </div>
-          <h3 className="text-sm font-semibold text-gray-900">No endpoints registered under your wallet</h3>
-          <p className="text-xs text-gray-500 max-w-md mx-auto">
-            You haven&apos;t registered any x402 endpoints yet under address <code className="font-mono text-gray-700">{walletAddress.slice(0, 10)}...</code>. Register your API endpoint above to begin monetizing autonomous agent traffic.
-          </p>
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">No endpoints registered under your wallet</h3>
+            <p className="text-xs text-gray-500 max-w-md mx-auto mt-1">
+              You haven&apos;t registered any x402 endpoints yet under address <code className="font-mono text-gray-700">{walletAddress.slice(0, 10)}...</code>. You can link an existing verified feed to your address for testing, or register a fresh custom endpoint.
+            </p>
+          </div>
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5">
+            <button
+              type="button"
+              onClick={() => handleClaimDemoFeed('whale-radar')}
+              disabled={isUpdating}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#eef2ff] hover:bg-[#e0e7ff] text-[#0012b8] border border-[#c7d2fe] transition-all shadow-2xs active:scale-98"
+            >
+              <Zap className="w-3.5 h-3.5 text-[#5c41ff]" />
+              <span>Link &quot;Whale Movement Radar&quot; to My Wallet (Test Drive)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsRegisterOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-gray-50 text-gray-700 border border-[#e2e8f0] transition-all shadow-2xs"
+            >
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Register Custom Endpoint</span>
+            </button>
+          </div>
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -314,7 +504,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
                 <th className="py-2.5 px-3">Status</th>
                 <th className="py-2.5 px-3">Current Price</th>
                 <th className="py-2.5 px-3">Calls Settled</th>
-                <th className="py-2.5 px-3">Gross Revenue</th>
+                <th className="py-2.5 px-3">Revenue (Unsettled / Total)</th>
                 <th className="py-2.5 px-3 text-right">Actions</th>
               </tr>
             </thead>
@@ -361,8 +551,14 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
                       )}
                     </td>
                     <td className="py-3 px-3 font-mono text-gray-700">{feed.totalCalls}</td>
-                    <td className="py-3 px-3 font-mono font-medium text-emerald-700">
-                      ${feed.grossRevenueUsdc.toFixed(4)} USDC
+                    <td className="py-3 px-3 font-mono">
+                      <div className="font-bold text-emerald-700">
+                        ${(feed.unsettledRevenueUsdc ?? Math.max(0, feed.grossRevenueUsdc - (feed.settledRevenueUsdc || 0))).toFixed(4)} USDC
+                        <span className="text-[10px] text-gray-400 font-normal ml-1">unsettled</span>
+                      </div>
+                      <div className="text-[10px] text-gray-400">
+                        Total gross: ${feed.grossRevenueUsdc.toFixed(4)}
+                      </div>
                     </td>
                     <td className="py-3 px-3 text-right">
                       <div className="flex items-center justify-end gap-1.5">

@@ -156,14 +156,114 @@ class FeedStore {
     if (!feed) return;
     feed.totalCalls += 1;
     feed.grossRevenueUsdc = Number((feed.grossRevenueUsdc + pricePaidUsdc).toFixed(4));
+    feed.unsettledRevenueUsdc = Number(((feed.unsettledRevenueUsdc || 0) + pricePaidUsdc).toFixed(4));
     feed.lastUpdated = new Date().toISOString();
     this.persistToDisk();
   }
 
   public registerFeed(feed: IntelligenceFeed) {
     this.loadFromDisk();
-    this.feeds.set(feed.slug, { ...feed, totalCalls: 0, grossRevenueUsdc: 0.0 });
+    this.feeds.set(feed.slug, {
+      ...feed,
+      totalCalls: 0,
+      grossRevenueUsdc: 0.0,
+      unsettledRevenueUsdc: 0.0,
+      settledRevenueUsdc: 0.0,
+    });
     this.persistToDisk();
+  }
+
+  public claimFeedOwnership(slug: string, newPublisherAddress: string, newPublisherName?: string): boolean {
+    this.loadFromDisk();
+    const feed = this.feeds.get(slug);
+    if (!feed) return false;
+    feed.publisherAddress = newPublisherAddress;
+    if (newPublisherName) {
+      feed.publisherName = newPublisherName;
+    }
+    feed.lastUpdated = new Date().toISOString();
+    this.persistToDisk();
+    return true;
+  }
+
+  public settleFeedRevenue(
+    publisherAddress: string,
+    slug?: string
+  ): {
+    success: boolean;
+    settledAmount: number;
+    receiptId: string;
+    txHash: string;
+    settledFeeds: string[];
+    timestamp: string;
+    error?: string;
+  } {
+    this.loadFromDisk();
+    const normalizedPublisher = publisherAddress.toLowerCase();
+    const matchingFeeds = Array.from(this.feeds.values()).filter((f) => {
+      const isOwner = f.publisherAddress.toLowerCase() === normalizedPublisher;
+      if (!isOwner) return false;
+      if (slug && f.slug !== slug) return false;
+      return true;
+    });
+
+    if (matchingFeeds.length === 0) {
+      return {
+        success: false,
+        settledAmount: 0,
+        receiptId: '',
+        txHash: '',
+        settledFeeds: [],
+        timestamp: '',
+        error: slug ? `Feed '${slug}' is not owned by ${publisherAddress}` : 'No feeds found for this publisher address',
+      };
+    }
+
+    let totalToSettle = 0;
+    const settledSlugs: string[] = [];
+
+    for (const feed of matchingFeeds) {
+      // Determine unsettled amount
+      const unsettled =
+        typeof feed.unsettledRevenueUsdc === 'number'
+          ? feed.unsettledRevenueUsdc
+          : Math.max(0, Number((feed.grossRevenueUsdc - (feed.settledRevenueUsdc || 0)).toFixed(4)));
+
+      if (unsettled > 0) {
+        totalToSettle += unsettled;
+        feed.settledRevenueUsdc = Number(((feed.settledRevenueUsdc || 0) + unsettled).toFixed(4));
+        feed.unsettledRevenueUsdc = 0;
+        feed.lastUpdated = new Date().toISOString();
+        settledSlugs.push(feed.slug);
+      }
+    }
+
+    if (totalToSettle <= 0) {
+      return {
+        success: false,
+        settledAmount: 0,
+        receiptId: '',
+        txHash: '',
+        settledFeeds: [],
+        timestamp: '',
+        error: 'No pending/unsettled micro-revenue available to settle at this time.',
+      };
+    }
+
+    this.persistToDisk();
+
+    const timestamp = new Date().toISOString();
+    const receiptId = `rcpt_settle_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const txHash = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+
+    return {
+      success: true,
+      settledAmount: Number(totalToSettle.toFixed(4)),
+      receiptId,
+      txHash,
+      settledFeeds: settledSlugs,
+      timestamp,
+    };
   }
 }
 

@@ -18,6 +18,8 @@ export interface IntelligenceFeed {
   auditedBy?: string;
   totalCalls: number;
   grossRevenueUsdc: number;
+  unsettledRevenueUsdc?: number;
+  settledRevenueUsdc?: number;
   sampleQuery: string;
   sampleResponse: Record<string, unknown>;
   lastUpdated: string;
