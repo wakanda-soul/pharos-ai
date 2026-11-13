@@ -47,3 +47,25 @@ export const X402_PAYMENT_VOUCHER_TYPES = {
     { name: 'timestamp', type: 'uint256' },
   ],
 } as const;
+
+export interface X402VoucherSigningRequest {
+  feedSlug: string;
+  priceUsdcAtomic: string;
+  nonce: number;
+  timestamp: number;
+}
+
+export type X402SettlementMode = 'ON_CHAIN_TRANSFER' | 'STATE_CHANNEL_RECONCILIATION';
+
+export interface X402ClaimReceipt {
+  receiptId: string;
+  settledAmountUsdc: number;
+  destinationWallet: string;
+  settlementTxHash: string | null;
+  blockNumber?: number;
+  settledFeeds: string[];
+  settlementStandard: string;
+  settlementMode: X402SettlementMode;
+  timestamp: string;
+}
+
