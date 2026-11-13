@@ -43,15 +43,18 @@ export default function Home() {
     authenticated: isPrivyAuth,
     walletAddress: privyWalletAddress,
     walletBalanceUsdc: privyUsdcBal,
+    walletBalancePros: privyProsBal,
     login: privyLogin,
     logout: privyLogout,
     refreshBalances: privyRefreshBalances,
     deductBalance: privyDeductBalance,
     depositBalance: privyDepositBalance,
+    signPaymentVoucher,
+    sendOnChainClaim,
   } = usePharosAuth();
 
-  const activeWalletAddress = isPrivyConfigured && isPrivyAuth ? privyWalletAddress : walletAddress;
-  const activeBalanceUsdc = isPrivyConfigured && isPrivyAuth ? privyUsdcBal : walletBalanceUsdc;
+  const activeWalletAddress = privyWalletAddress || walletAddress;
+  const activeBalanceUsdc = (privyWalletAddress ? privyUsdcBal : walletBalanceUsdc) || walletBalanceUsdc;
 
   // On-chain curator access check (wakanda-soul / curator address / embedded wallet)
   const isCurator =
@@ -170,18 +173,8 @@ export default function Home() {
   };
 
   const handleDeductSessionBalance = (amountUsdc: number) => {
-    if (activeWalletAddress && typeof window !== 'undefined') {
-      const addrKey = activeWalletAddress.toLowerCase();
-      const spentKey = `pharos_session_spent_${addrKey}`;
-      const prevSpent = parseFloat(localStorage.getItem(spentKey) || '0');
-      const updatedSpent = Number((prevSpent + amountUsdc).toFixed(4));
-      localStorage.setItem(spentKey, updatedSpent.toString());
-    }
-    if (isPrivyConfigured && isPrivyAuth) {
-      privyDeductBalance(amountUsdc);
-    } else {
-      setWalletBalanceUsdc((prev) => Math.max(0, Number((prev - amountUsdc).toFixed(4))));
-    }
+    privyDeductBalance(amountUsdc);
+    setWalletBalanceUsdc((prev) => Math.max(0, Number((prev - amountUsdc).toFixed(4))));
   };
 
   const handleSaveGeminiKey = (key: string) => {
@@ -224,73 +217,14 @@ export default function Home() {
     try {
       const voucherNonce = Date.now();
       const voucherTimestamp = voucherNonce;
-      let authorizationSignature = '0xValidEip712SessionKeySignaturePharosMainnet';
 
-      // 1. If connected via Session Key (autonomous agent wallet), sign cryptographically with real private key
-      if (typeof window !== 'undefined' && walletProvider === 'session_key') {
-        const storedPrivateKey = localStorage.getItem('pharos_agent_session_pk');
-        if (storedPrivateKey && storedPrivateKey.startsWith('0x')) {
-          try {
-            const sessionAccount = privateKeyToAccount(storedPrivateKey as `0x${string}`);
-            authorizationSignature = await sessionAccount.signTypedData({
-              domain: X402_EIP712_DOMAIN,
-              types: X402_PAYMENT_VOUCHER_TYPES,
-              primaryType: 'X402PaymentVoucher',
-              message: {
-                buyerAddress: activeWalletAddress as `0x${string}`,
-                feedSlug,
-                priceUsdcAtomic: BigInt(feed.priceAtomicUnits),
-                nonce: BigInt(voucherNonce),
-                timestamp: BigInt(voucherTimestamp),
-              },
-            });
-          } catch (sessionSigErr) {
-            console.warn('Session key cryptographic signing failed, using fallback voucher:', sessionSigErr);
-          }
-        }
-      } else if (typeof window !== 'undefined' && (window as any).ethereum && walletProvider === 'metamask') {
-        // 2. If connected via MetaMask, request real EIP-712 cryptographic signature
-        try {
-          await ensurePharosNetwork((window as any).ethereum);
-          const msgParams = JSON.stringify({
-            domain: X402_EIP712_DOMAIN,
-            message: {
-              buyerAddress: activeWalletAddress,
-              feedSlug,
-              priceUsdcAtomic: feed.priceAtomicUnits,
-              nonce: voucherNonce,
-              timestamp: voucherTimestamp,
-            },
-            primaryType: 'X402PaymentVoucher',
-            types: {
-              EIP712Domain: [
-                { name: 'name', type: 'string' },
-                { name: 'version', type: 'string' },
-                { name: 'chainId', type: 'uint256' },
-                { name: 'verifyingContract', type: 'address' },
-              ],
-              X402PaymentVoucher: [
-                { name: 'buyerAddress', type: 'address' },
-                { name: 'feedSlug', type: 'string' },
-                { name: 'priceUsdcAtomic', type: 'uint256' },
-                { name: 'nonce', type: 'uint256' },
-                { name: 'timestamp', type: 'uint256' },
-              ],
-            },
-          });
-
-          authorizationSignature = await (window as any).ethereum.request({
-            method: 'eth_signTypedData_v4',
-            params: [activeWalletAddress, msgParams],
-          });
-        } catch (sigErr: any) {
-          if (sigErr?.code === 4001) {
-            alert('EIP-712 Payment Voucher signature was cancelled in MetaMask.');
-            setIsPurchasing(false);
-            return;
-          }
-        }
-      }
+      // Authentic EIP-712 cryptographic voucher signing via Privy embedded wallet / agent session key
+      const authorizationSignature = await signPaymentVoucher({
+        feedSlug,
+        priceUsdcAtomic: feed.priceAtomicUnits,
+        nonce: voucherNonce,
+        timestamp: voucherTimestamp,
+      });
 
       const proofPayload = {
         buyerAddress: activeWalletAddress,
@@ -312,17 +246,13 @@ export default function Home() {
         await refreshFeeds();
         handleDeductSessionBalance(feed.pricePerCallUsdc || 0.001);
         if (activeWalletAddress) {
-          if (isPrivyConfigured && isPrivyAuth) {
-            await privyRefreshBalances();
-          } else {
-            await refreshLiveBalances(activeWalletAddress);
-          }
+          await privyRefreshBalances();
         }
       } else {
         alert(`Payment challenge failed: ${data.error || 'Server rejected authorization.'}`);
       }
-    } catch (err) {
-      alert(`Network error during settlement: ${String(err)}`);
+    } catch (err: any) {
+      alert(`Signature or payment execution error: ${err?.message || String(err)}`);
     } finally {
       setIsPurchasing(false);
     }
