@@ -252,42 +252,46 @@ export async function getLiveContractRiskData(targetAddress?: string) {
     };
   }
 
-  // Real on-chain calls to check ERC-20 metadata
-  let name = 'Unknown';
-  let symbol = 'Unknown';
-  let decimals = 18;
-  let totalSupplyFormatted = '0';
+  // Real on-chain calls to check ERC-20 metadata with strict validation (no simulated defaults)
+  let name: string | null = null;
+  let symbol: string | null = null;
+  let decimals: number | null = null;
+  let totalSupplyFormatted: string | null = null;
   let isErc20 = false;
 
   try {
-    const [nameVal, symVal, decVal, supplyVal] = await Promise.all([
+    const [nameRes, symRes, decRes, supplyRes] = await Promise.allSettled([
       pharosPublicClient.readContract({
         address: addressToInspect,
         abi: ERC20_ABI,
         functionName: 'name',
-      }).catch(() => 'Pharos On-Chain Asset'),
+      }),
       pharosPublicClient.readContract({
         address: addressToInspect,
         abi: ERC20_ABI,
         functionName: 'symbol',
-      }).catch(() => 'PROS'),
+      }),
       pharosPublicClient.readContract({
         address: addressToInspect,
         abi: ERC20_ABI,
         functionName: 'decimals',
-      }).catch(() => 18),
+      }),
       pharosPublicClient.readContract({
         address: addressToInspect,
         abi: ERC20_ABI,
         functionName: 'totalSupply',
-      }).catch(() => BigInt(0)),
+      }),
     ]);
 
-    name = String(nameVal);
-    symbol = String(symVal);
-    decimals = Number(decVal);
-    totalSupplyFormatted = formatUnits(supplyVal as bigint, decimals);
-    isErc20 = true;
+    if (nameRes.status === 'fulfilled' && symRes.status === 'fulfilled' && decRes.status === 'fulfilled') {
+      name = String(nameRes.value);
+      symbol = String(symRes.value);
+      decimals = Number(decRes.value);
+      if (supplyRes.status === 'fulfilled') {
+        totalSupplyFormatted = formatUnits(supplyRes.value as bigint, decimals);
+      }
+      isErc20 = true;
+    }
   } catch {
     // Non-ERC20 contract or custom implementation
   }
@@ -297,18 +301,101 @@ export async function getLiveContractRiskData(targetAddress?: string) {
                   bytecode.includes('b53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103') ||
                   bytecode.includes('7050c9e0f4ca769c69bd3a8ef740bc37934f8e2c036e5a723fd8ee048ed3f8c3');
 
-  // Check for dangerous unverified patterns
-  const hasSelfDestruct = false; // Verified safe on Pharos Mainnet standard ERC-20
-  const hasDelegateCall = isProxy; // Legitimate in ERC-1967 Transparent Proxy
+  // Extract public function selectors from bytecode
+  const selectorRegex = /63([0-9a-f]{8})14/g;
+  const detectedSelectors: string[] = [];
+  let selMatch;
+  while ((selMatch = selectorRegex.exec(bytecode)) !== null) {
+    detectedSelectors.push('0x' + selMatch[1].toLowerCase());
+  }
+  const uniqueSelectors = [...new Set(detectedSelectors)];
+
+  const KNOWN_SIGNATURES: Record<string, string> = {
+    '0x06fdde03': 'name()',
+    '0x95d89b41': 'symbol()',
+    '0x313ce567': 'decimals()',
+    '0x18160ddd': 'totalSupply()',
+    '0x70a08231': 'balanceOf(address)',
+    '0xa9059cbb': 'transfer(address,uint256)',
+    '0x095ea7b3': 'approve(address,uint256)',
+    '0x23b872dd': 'transferFrom(address,address,uint256)',
+    '0xdd62ed3e': 'allowance(address,address)',
+    '0xc45a0155': 'factory()',
+    '0xd66a4d08': 'marketBeacon()',
+    '0x9d3a9dc9': 'limitsOf(address)',
+    '0xa59ac6dd': 'buy(address,uint256,uint256)',
+    '0xe8f5cd92': 'spentOn(address,uint256)',
+    '0x8da5cb5b': 'owner()',
+    '0xf2fde38b': 'transferOwnership(address)',
+  };
+
+  const identifiedFunctions = uniqueSelectors.map((sel) => ({
+    selector: sel,
+    signature: KNOWN_SIGNATURES[sel] || 'custom / unindexed method',
+  }));
+
+  // Resolve zero-argument getters if present
+  const connectedContracts: Record<string, string> = {};
+  if (uniqueSelectors.includes('0xc45a0155')) {
+    try {
+      const res = await pharosPublicClient.call({ to: addressToInspect, data: '0xc45a0155' });
+      if (res.data && res.data.length >= 66) {
+        connectedContracts.factory = '0x' + res.data.slice(26, 66);
+      }
+    } catch {}
+  }
+  if (uniqueSelectors.includes('0xd66a4d08')) {
+    try {
+      const res = await pharosPublicClient.call({ to: addressToInspect, data: '0xd66a4d08' });
+      if (res.data && res.data.length >= 66) {
+        connectedContracts.marketBeacon = '0x' + res.data.slice(26, 66);
+      }
+    } catch {}
+  }
+
+  // Classify authentic contract architecture
+  let contractType = 'Custom Smart Contract / Application Logic';
+  if (isErc20) {
+    contractType = isProxy ? 'ERC-20 Token (Proxy Upgradeable)' : 'Standard ERC-20 Token';
+  } else if (uniqueSelectors.includes('0xa59ac6dd') && uniqueSelectors.includes('0xc45a0155')) {
+    contractType = 'Marketplace / Launchpad / Sale Module';
+  } else if (isProxy) {
+    contractType = 'ERC-1967 Upgradeable Proxy Contract';
+  }
+
+  // Proper EVM opcode traversal to check for dangerous opcodes (skipping PUSH immediate bytes)
+  let hasSelfDestruct = false;
+  let hasDelegateCall = false;
+  const rawHex = bytecode.startsWith('0x') ? bytecode.slice(2) : bytecode;
+  let pc = 0;
+  while (pc < rawHex.length / 2) {
+    const opcode = parseInt(rawHex.substr(pc * 2, 2), 16);
+    if (opcode === 0xff) {
+      hasSelfDestruct = true;
+    }
+    if (opcode === 0xf4 && !isProxy) {
+      hasDelegateCall = true;
+    }
+    if (opcode >= 0x60 && opcode <= 0x7f) {
+      // PUSH1 to PUSH32: skip operand data bytes
+      const pushBytes = opcode - 0x5f;
+      pc += 1 + pushBytes;
+    } else {
+      pc += 1;
+    }
+  }
 
   let securityScore = 99.4;
-  if (!isErc20 && !isProxy) securityScore -= 15;
+  if (!isErc20 && !isProxy && contractType === 'Custom Smart Contract / Application Logic') {
+    securityScore -= 10;
+  }
 
   return {
     timestamp: new Date().toISOString(),
     chain: 'Pharos Mainnet (Chain ID 1672)',
     currentBlockNumber: Number(currentBlock),
     analyzedTarget: addressToInspect,
+    contractType,
     tokenName: name,
     tokenSymbol: symbol,
     decimals,
@@ -319,6 +406,9 @@ export async function getLiveContractRiskData(targetAddress?: string) {
     hasSelfDestruct,
     hasDelegateCall,
     isStandardErc20: isErc20,
+    detectedFunctionSelectors: uniqueSelectors,
+    identifiedFunctions,
+    connectedContracts,
     riskVerdict: {
       score: securityScore,
       rating: securityScore >= 90 ? 'SAFE_VERIFIED' : 'ELEVATED_RISK',
