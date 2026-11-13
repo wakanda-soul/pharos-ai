@@ -372,7 +372,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
     }
   };
 
-  const handleSimulateMutation = async (slug: string) => {
+  const handleUpdateApiVersion = async (slug: string) => {
     setIsUpdating(true);
     setStatusMessage(null);
     try {
@@ -381,13 +381,13 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           slug,
-          newEndpointPath: `/api/x402/${slug}-v2-mutated`,
-          newSchemaHash: `sha256-mutated-${Date.now().toString(16)}`,
+          newEndpointPath: `/api/x402/${slug}-v2`,
+          newSchemaHash: `sha256-v2-${Date.now().toString(16)}`,
         }),
       });
       const data = await res.json();
       if (res.ok) {
-        setStatusMessage(`🛡️ Anti-Scam Triggered: ${data.message}`);
+        setStatusMessage(`🛡️ Curation Security Trigger: ${data.message}`);
         await onRefreshFeeds();
       } else {
         setStatusMessage(`❌ Error: ${data.error}`);
@@ -975,12 +975,12 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
                         {isEditing ? 'Cancel' : 'Edit Price'}
                       </button>
                       <button
-                        onClick={() => handleSimulateMutation(feed.slug)}
+                        onClick={() => handleUpdateApiVersion(feed.slug)}
                         disabled={isUpdating}
                         className="text-amber-600 hover:text-amber-800 hover:underline font-medium ml-2"
-                        title="Simulate schema mutation to trigger security revocation"
+                        title="Update API endpoint and schema to trigger security audit"
                       >
-                        Simulate Mutation
+                        Upgrade API (v2)
                       </button>
                     </td>
                   </tr>

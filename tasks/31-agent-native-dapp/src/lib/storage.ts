@@ -254,7 +254,7 @@ class FeedStore {
     this.persistToDisk();
 
     const timestamp = new Date().toISOString();
-    const receiptId = `rcpt_settle_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const receiptId = `rcpt_settle_${Date.now()}_${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Date.now().toString(16)}`;
 
     return {
       success: true,

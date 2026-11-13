@@ -144,7 +144,7 @@ export async function handleX402Paywall<T>(
 
   const receiptId =
     proof.receiptId ||
-    `rcpt_pharos_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    `rcpt_pharos_${Date.now()}_${typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID().slice(0, 8) : Date.now().toString(16)}`;
 
   const intelligenceData = await dataProvider();
 

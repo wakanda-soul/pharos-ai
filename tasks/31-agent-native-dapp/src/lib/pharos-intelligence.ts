@@ -145,7 +145,7 @@ export async function getLiveWhaleRadarData(queryParams: Record<string, string> 
           { type: 'uint256', name: 'value', indexed: false },
         ],
       },
-      fromBlock: currentBlock > BigInt(500) ? currentBlock - BigInt(500) : BigInt(1),
+      fromBlock: currentBlock > BigInt(800) ? currentBlock - BigInt(800) : BigInt(1),
       toBlock: currentBlock,
     });
 
@@ -163,7 +163,7 @@ export async function getLiveWhaleRadarData(queryParams: Record<string, string> 
       });
     }
   } catch (logErr) {
-    console.warn('Failed to fetch USDC getLogs from Pharos RPC, using block fallback:', logErr);
+    console.warn('Failed to fetch USDC getLogs from Pharos RPC, using block scan:', logErr);
   }
 
   // 2. If fewer events found, scan recent blocks for PROS and WPROS transfers
@@ -190,7 +190,7 @@ export async function getLiveWhaleRadarData(queryParams: Record<string, string> 
               from: tx.from,
               to: tx.to || '0x0000000000000000000000000000000000000000',
               token: 'PROS',
-              amount: Math.round(ethVal || 15000),
+              amount: Math.round(ethVal || 1),
               direction: ethVal > 50 ? 'WHALE_ACCUMULATION' : 'DEX_INTERACTION',
               blockNumber: Number(tx.blockNumber || b),
             });
@@ -202,20 +202,7 @@ export async function getLiveWhaleRadarData(queryParams: Record<string, string> 
     }
   }
 
-  // 3. Fallback for calm block intervals
-  if (events.length === 0) {
-    events.push({
-      txHash: '0x17d59ad007a1c4d9947807b1618fb64dfa0580ca5b94eb04cf204ccf1e493507',
-      from: '0x25fdb4a165661f07cb52ac55d00d8d191126b058',
-      to: PHAROS_CONSTANTS.nativeUsdcAddress,
-      token: 'USDC',
-      amount: 84500,
-      direction: 'HARBOR_LIQUIDITY_INFLOW (Verified on-chain settlement)',
-      blockNumber: Number(currentBlock) - 5,
-    });
-  }
-
-  const largestTransferUsdc = Math.max(...events.map((e) => e.amount));
+  const largestTransferUsdc = events.length > 0 ? Math.max(...events.map((e) => e.amount)) : 0;
 
   return {
     timestamp: new Date().toISOString(),
@@ -439,12 +426,12 @@ export async function getLiveHarborSolvencyData() {
       address: PHAROS_CONSTANTS.nativeUsdcAddress,
       abi: ERC20_ABI,
       functionName: 'totalSupply',
-    }).catch(() => BigInt('20512324000000')),
+    }),
     pharosPublicClient.readContract({
       address: PHAROS_CONSTANTS.wprosAddress,
       abi: ERC20_ABI,
       functionName: 'totalSupply',
-    }).catch(() => BigInt('34064249000000000000000000')),
+    }),
   ]);
 
   const usdcSupplyFormatted = parseFloat(formatUnits(usdcSupply as bigint, 6));

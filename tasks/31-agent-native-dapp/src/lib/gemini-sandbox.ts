@@ -175,6 +175,8 @@ AUTONOMOUS TOOL EXECUTION & PRIVY SESSION KEYS (CRITICAL):
      5. When they ask for a feed, the agent instantly executes the 0.001 USDC micro-payment and delivers the verified on-chain data without any manual steps.
 4. STRICT ON-CHAIN AUTHENTICITY & ZERO HALLUCINATIONS:
    - NEVER invent or hallucinate token names, symbols, decimals, supplies, or contract interfaces (e.g., do NOT invent "Pharos Test Token" or "PTT" or random supplies).
+   - NEVER invent, simulate, or hallucinate transaction hashes, block numbers, wallet addresses, or amounts!
+   - For ANY question about transactions, whale transfers, contract risk, solvency, or network metrics, you MUST invoke the tool buy_intelligence_feed or call_chain_mcp to fetch real data from Pharos Mainnet. NEVER fabricate synthetic markdown tables with fake transactions or imaginary blocks!
    - Only report verified on-chain facts from the provided RPC telemetry.
    - If "isStandardErc20" is false: the contract is NOT an ERC-20 token! State its genuine contract type (e.g., Marketplace / Launchpad / Sale Module or custom contract) and detail the exact function selectors detected in its bytecode.
 
@@ -442,8 +444,18 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
 
     const assistantMessage = data.choices?.[0]?.message;
 
-    // If no tool calls were requested, return the direct conversational answer
+    // Guard against hallucinated on-chain responses: if the user asked for transactions, contracts, solvency, or volatility
+    // but the LLM failed to invoke a tool, we deterministically execute the verified on-chain tool to ensure 100% mainnet authenticity!
+    const lowerPrompt = prompt.toLowerCase();
+    const isTxRequest = lowerPrompt.includes('транзакц') || lowerPrompt.includes('тх') || lowerPrompt.includes('whale') || lowerPrompt.includes('кит') || lowerPrompt.includes('перевод');
+    const isContractRequest = lowerPrompt.includes('контракт') || lowerPrompt.includes('audit') || lowerPrompt.includes('провер') || !!prompt.match(/0x[a-fA-F0-9]{40}/i);
+    const isPoolRequest = lowerPrompt.includes('пул') || lowerPrompt.includes('pool') || lowerPrompt.includes('сольвент') || lowerPrompt.includes('solven') || lowerPrompt.includes('depth') || lowerPrompt.includes('волатил') || lowerPrompt.includes('volatil');
+
+    // If no tool calls were requested, return the direct conversational answer or route to verified on-chain execution
     if (!assistantMessage?.tool_calls || assistantMessage.tool_calls.length === 0) {
+      if (isTxRequest || isContractRequest || isPoolRequest) {
+        return await this.runResilientFallback(context);
+      }
       return {
         id: `msg_${Date.now()}`,
         sender: 'agent',
