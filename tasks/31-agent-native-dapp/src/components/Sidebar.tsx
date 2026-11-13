@@ -65,8 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: 'copilot' as const,
       label: 'AI Copilot',
       icon: Sparkles,
-      badge: '3.8 Flash',
-      badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+      badge: undefined,
       pulse: true,
     },
     {

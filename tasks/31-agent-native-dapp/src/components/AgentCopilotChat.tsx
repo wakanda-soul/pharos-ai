@@ -186,13 +186,6 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
                 Pharos Intelligence Copilot
               </h3>
               <span
-                className="text-[10px] bg-purple-50 text-purple-700 border border-purple-200/80 px-2.5 py-0.5 rounded-full font-mono font-medium flex items-center gap-1.5 shadow-2xs"
-                title="Google Gemini 3.8 Flash low-latency inference engine"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Gemini 3.8 Flash
-              </span>
-              <span
                 className="text-[10px] bg-emerald-50 text-emerald-800 border border-emerald-200/80 px-2 py-0.5 rounded-full font-medium inline-flex items-center gap-1 shadow-2xs"
                 title="Linux Bubblewrap (bwrap) unprivileged container isolation with strict RPC/MCP access policies"
               >
@@ -380,7 +373,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
           <div className="flex items-center gap-2.5 text-xs text-gray-500 bg-[#f8faff] p-3 rounded-xl border border-blue-100 max-w-sm animate-pulse">
             <span className="w-2.5 h-2.5 rounded-full bg-[#5c41ff] animate-ping" />
             <span className="font-medium text-gray-700">
-              Copilot querying live mesh telemetry & Gemini 3.8 Flash...
+              Copilot querying live on-chain telemetry...
             </span>
           </div>
         )}

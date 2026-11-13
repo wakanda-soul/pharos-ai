@@ -73,9 +73,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <Cpu className="w-3.5 h-3.5 text-[#5c41ff]" />
               <span>AI Copilot</span>
-              <span className="text-[9px] bg-purple-50 text-[#5c41ff] border border-purple-200 px-1 py-0.2 rounded font-mono">
-                3.8 Flash
-              </span>
             </button>
 
             <button
@@ -123,7 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={onOpenSettings}
               className="p-2 text-gray-500 hover:text-gray-900 rounded-lg border border-[#e2e8f0] hover:bg-[#f8faff] transition-colors"
-              title="Copilot Sandbox & Gemini OAuth Settings"
+              title="Copilot Sandbox Settings"
             >
               <Settings className="w-4 h-4" />
             </button>

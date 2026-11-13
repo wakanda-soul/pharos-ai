@@ -61,7 +61,7 @@ export const HeroBanner: React.FC = () => {
 
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-purple-200 text-purple-800 font-mono shadow-2xs">
                 <Sparkles className="w-3 h-3 text-[#5c41ff]" />
-                <span>Gemini 3.8 Flash Sandbox</span>
+                <span>Autonomous AI Sandbox</span>
               </span>
             </div>
           </div>
