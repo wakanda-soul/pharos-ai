@@ -43,6 +43,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
   const [isUpdating, setIsUpdating] = useState(false);
   const [isSettlingOffChain, setIsSettlingOffChain] = useState(false);
   const [isClaimingViaMetaMask, setIsClaimingViaMetaMask] = useState(false);
+  const [isClaimingOnChain, setIsClaimingOnChain] = useState(false);
   const [isConnectingBrowser, setIsConnectingBrowser] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [lastSettlementReceipt, setLastSettlementReceipt] = useState<any | null>(null);
@@ -280,6 +281,42 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
       setStatusMessage(`❌ Browser Wallet Claim Error: ${err?.message || String(err)}`);
     } finally {
       setIsClaimingViaMetaMask(false);
+    }
+  };
+
+  // Authentic On-Chain Settlement from Privy Agent Wallet to External Publisher Wallet
+  const handleOnChainClaim = async () => {
+    if (totalUnsettled <= 0) return;
+    setIsClaimingOnChain(true);
+    setStatusMessage(null);
+    try {
+      const { txHash } = await sendOnChainClaim(activePublisherAddress, totalUnsettled);
+      if (!txHash) {
+        throw new Error('On-chain claim did not return a valid transaction hash.');
+      }
+      const res = await fetch('/api/publisher/settle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          publisherAddress: activePublisherAddress,
+          onChainTxHash: txHash,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setLastSettlementReceipt(data.settlementReceipt);
+        setStatusMessage(
+          `🎉 Authentic on-chain transfer of ${totalUnsettled.toFixed(4)} USDC confirmed on Pharos Mainnet!`
+        );
+        await onRefreshFeeds();
+      } else {
+        setStatusMessage(`❌ Settlement registration error: ${data.error}`);
+      }
+    } catch (err: any) {
+      console.warn('On-chain claim error:', err);
+      setStatusMessage(`❌ On-Chain Settlement Error: ${err?.message || String(err)}`);
+    } finally {
+      setIsClaimingOnChain(false);
     }
   };
 
@@ -575,18 +612,18 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
           <div className="space-y-1 text-center sm:text-left">
             <div className="flex items-center gap-2 justify-center sm:justify-start">
               <span className="text-xs font-bold text-gray-900 tracking-tight flex items-center gap-1.5">
-                <Zap className="w-4 h-4 text-[#0012b8]" /> On-Chain Batch Settlement Desk
+                <Zap className="w-4 h-4 text-[#0012b8]" /> Revenue Settlement & Claim Desk
               </span>
               <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
                 Pharos Mainnet 1672
               </span>
             </div>
             <p className="text-xs text-gray-600 max-w-xl">
-              Claim accrued micro-vouchers into your external browser wallet{' '}
+              Claim accrued micro-vouchers for external wallet{' '}
               <code className="text-[#0012b8] font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-blue-100">
                 {activePublisherAddress.slice(0, 10)}...{activePublisherAddress.slice(-6)}
               </code>{' '}
-              via browser extension signing.
+              via MetaMask EIP-712 signature (gasless voucher) or direct on-chain transfer.
             </p>
           </div>
 
@@ -594,9 +631,9 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
             {/* Primary Browser Extension Claim Button */}
             <button
               onClick={handleClaimViaBrowserWallet}
-              disabled={isClaimingViaMetaMask || isSettlingOffChain || totalUnsettled <= 0}
+              disabled={isClaimingViaMetaMask || isClaimingOnChain || isSettlingOffChain || totalUnsettled <= 0}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-98 disabled:opacity-50 disabled:bg-gray-200 bg-[#f6851b] hover:bg-[#e2761b] text-white"
-              title="Invokes MetaMask/browser extension to claim accumulated USDC directly to your external wallet"
+              title="Invokes MetaMask/browser extension to sign EIP-712 claim voucher for your external wallet"
             >
               {isClaimingViaMetaMask ? (
                 <>
@@ -606,7 +643,27 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
               ) : (
                 <>
                   <span>🦊</span>
-                  <span>Claim via Browser Wallet (MetaMask)</span>
+                  <span>Claim via MetaMask (EIP-712)</span>
+                </>
+              )}
+            </button>
+
+            {/* Direct On-Chain Claim via Privy Agent Wallet */}
+            <button
+              onClick={handleOnChainClaim}
+              disabled={isClaimingViaMetaMask || isClaimingOnChain || isSettlingOffChain || totalUnsettled <= 0}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-98 disabled:opacity-50 disabled:bg-gray-200 bg-emerald-600 hover:bg-emerald-700 text-white"
+              title="Executes authentic on-chain ERC-20 transfer from Privy agent wallet directly to your external wallet on Pharos Mainnet"
+            >
+              {isClaimingOnChain ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Broadcasting On-Chain...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Claim On-Chain (Privy)</span>
                 </>
               )}
             </button>
@@ -614,7 +671,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
             {/* Gasless state channel reconciliation */}
             <button
               onClick={handleOffChainVoucherReconcile}
-              disabled={isClaimingViaMetaMask || isSettlingOffChain || totalUnsettled <= 0}
+              disabled={isClaimingViaMetaMask || isClaimingOnChain || isSettlingOffChain || totalUnsettled <= 0}
               className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 transition-all shadow-2xs active:scale-98 disabled:opacity-50"
               title="Reconciles accumulated EIP-712 payment vouchers in the state channel ledger without network gas"
             >
@@ -640,7 +697,11 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-emerald-900 font-bold text-xs">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>On-Chain Settlement Receipt Confirmed</span>
+              <span>
+                {lastSettlementReceipt.settlementTxHash
+                  ? 'On-Chain Settlement Receipt Confirmed'
+                  : 'EIP-712 State Voucher Claim Verified'}
+              </span>
             </div>
             <button
               onClick={() => setLastSettlementReceipt(null)}
@@ -664,7 +725,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
             </div>
             <div>
               <span className="text-[10px] text-gray-400 block font-mono">
-                {lastSettlementReceipt.settlementTxHash ? 'Pharos Mainnet Tx Hash' : 'EIP-712 Voucher Receipt'}
+                {lastSettlementReceipt.settlementTxHash ? 'Pharos Mainnet Tx Hash' : 'EIP-712 Claim Signature'}
               </span>
               {lastSettlementReceipt.settlementTxHash ? (
                 <a
@@ -677,15 +738,21 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
                   <ExternalLink className="w-3 h-3 shrink-0" />
                 </a>
               ) : (
-                <span className="font-mono text-gray-600 text-[11px] truncate block" title={lastSettlementReceipt.receiptId}>
-                  {lastSettlementReceipt.receiptId}
+                <span
+                  className="font-mono text-emerald-800 text-[11px] truncate block bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200"
+                  title={lastSettlementReceipt.signature || lastSettlementReceipt.receiptId}
+                >
+                  {(lastSettlementReceipt.signature || lastSettlementReceipt.receiptId).slice(0, 20)}...
                 </span>
               )}
             </div>
           </div>
           <div className="text-[11px] text-emerald-900 bg-emerald-100/70 px-3 py-2 rounded-lg font-medium flex items-center justify-between">
             <span>
-              ℹ️ Standard: <strong>{lastSettlementReceipt.settlementStandard}</strong>. Confirmed on Pharos Mainnet (Chain ID 1672).
+              ℹ️ Standard: <strong>{lastSettlementReceipt.settlementStandard}</strong>.{' '}
+              {lastSettlementReceipt.settlementTxHash
+                ? 'Broadcast and confirmed on Pharos Mainnet (Chain ID 1672).'
+                : 'Cryptographically reconciled via off-chain EIP-712 state channel (zero gas).'}
             </span>
           </div>
         </div>

@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         settledAmountUsdc: result.settledAmount,
         destinationWallet: publisherAddress,
         network: 'Pharos Mainnet (Chain ID 1672)',
-        settlementTxHash: result.onChainTxHash || (signature ? `0x${signature.slice(2, 66)}` : null),
+        settlementTxHash: result.onChainTxHash || null,
         signature: signature || null,
         settledFeeds: result.settledFeeds,
         settlementStandard: signature ? 'EIP-712 Browser Extension Claim Voucher' : 'x402 Batch Promissory Vouchers (EIP-712)',
