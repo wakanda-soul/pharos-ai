@@ -22,6 +22,7 @@ interface PharosAuthContextType {
   walletBalancePros: number;
   login: () => void;
   logout: () => void;
+  setSessionWalletAddress?: (address: string | null) => void;
   refreshBalances: () => Promise<void>;
   deductBalance: (amountUsdc: number) => void;
   depositBalance: (amountUsdc: number) => void;
@@ -43,6 +44,7 @@ const PharosAuthContext = createContext<PharosAuthContextType>({
   walletBalancePros: 0,
   login: () => {},
   logout: () => {},
+  setSessionWalletAddress: () => {},
   refreshBalances: async () => {},
   deductBalance: () => {},
   depositBalance: () => {},
@@ -76,10 +78,22 @@ function ActivePrivyAuthConsumer({
   const [walletBalanceUsdc, setWalletBalanceUsdc] = useState(0);
   const [walletBalancePros, setWalletBalancePros] = useState(0);
   const [localAgentAddress, setLocalAgentAddress] = useState<string | null>(null);
+  const [isExplicitlyDisconnected, setIsExplicitlyDisconnected] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pharos_session_disconnected') === 'true';
+    }
+    return false;
+  });
 
-  // Initialize or restore autonomous session key so there is always a valid address
+  // Initialize or restore autonomous session key only if NOT explicitly disconnected
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const isDisconnected = localStorage.getItem('pharos_session_disconnected') === 'true';
+      if (isDisconnected) {
+        setIsExplicitlyDisconnected(true);
+        setLocalAgentAddress(null);
+        return;
+      }
       let storedPk = localStorage.getItem('pharos_agent_session_pk');
       let storedAddr = localStorage.getItem('pharos_agent_wallet_address');
       if (!storedPk || !storedAddr) {
@@ -93,9 +107,57 @@ function ActivePrivyAuthConsumer({
     }
   }, []);
 
+  const handleLogout = async () => {
+    setIsExplicitlyDisconnected(true);
+    setLocalAgentAddress(null);
+    setWalletBalanceUsdc(0);
+    setWalletBalancePros(0);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pharos_session_disconnected', 'true');
+      localStorage.removeItem('pharos_agent_wallet_address');
+      localStorage.removeItem('pharos_agent_session_pk');
+      localStorage.removeItem('pharos_agent_provider');
+    }
+    try {
+      if (authenticated) {
+        await logout();
+      }
+    } catch (err) {
+      console.warn('Privy logout warning:', err);
+    }
+  };
+
+  const handleLogin = () => {
+    setIsExplicitlyDisconnected(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('pharos_session_disconnected');
+    }
+    login();
+  };
+
+  const setSessionWalletAddress = (addr: string | null) => {
+    if (addr) {
+      setIsExplicitlyDisconnected(false);
+      setLocalAgentAddress(addr);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('pharos_session_disconnected');
+        localStorage.setItem('pharos_agent_wallet_address', addr);
+      }
+    } else {
+      setIsExplicitlyDisconnected(true);
+      setLocalAgentAddress(null);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pharos_session_disconnected', 'true');
+        localStorage.removeItem('pharos_agent_wallet_address');
+        localStorage.removeItem('pharos_agent_session_pk');
+      }
+    }
+  };
+
   // Derived agent embedded wallet or primary connected wallet
   const embeddedWallet = wallets.find((w) => w.walletClientType === 'privy') || wallets[0];
-  const walletAddress = user?.wallet?.address || embeddedWallet?.address || localAgentAddress;
+  const activeCandidate = authenticated ? (user?.wallet?.address || embeddedWallet?.address) : localAgentAddress;
+  const walletAddress = isExplicitlyDisconnected ? null : (activeCandidate || null);
 
   const refreshBalances = async () => {
     if (!walletAddress) return;
@@ -319,12 +381,13 @@ function ActivePrivyAuthConsumer({
         isPrivyConfigured: true,
         privyAppId,
         setPrivyAppId,
-        authenticated,
+        authenticated: !isExplicitlyDisconnected && (authenticated || !!localAgentAddress),
         walletAddress,
         walletBalanceUsdc,
         walletBalancePros,
-        login,
-        logout,
+        login: handleLogin,
+        logout: handleLogout,
+        setSessionWalletAddress,
         refreshBalances,
         deductBalance,
         depositBalance,
@@ -346,11 +409,22 @@ function UnconfiguredPrivyProvider({
   setPrivyAppId: (id: string) => void;
 }) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const [isExplicitlyDisconnected, setIsExplicitlyDisconnected] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('pharos_session_disconnected') === 'true';
+    }
+    return false;
+  });
   const [walletBalanceUsdc, setWalletBalanceUsdc] = useState(0);
   const [walletBalancePros, setWalletBalancePros] = useState(0);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      if (localStorage.getItem('pharos_session_disconnected') === 'true') {
+        setIsExplicitlyDisconnected(true);
+        setWalletAddress(null);
+        return;
+      }
       let storedPk = localStorage.getItem('pharos_agent_session_pk');
       let storedAddr = localStorage.getItem('pharos_agent_wallet_address');
       if (!storedPk || !storedAddr) {
@@ -363,6 +437,55 @@ function UnconfiguredPrivyProvider({
       setWalletAddress(storedAddr);
     }
   }, []);
+
+  const handleLogout = () => {
+    setIsExplicitlyDisconnected(true);
+    setWalletAddress(null);
+    setWalletBalanceUsdc(0);
+    setWalletBalancePros(0);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pharos_session_disconnected', 'true');
+      localStorage.removeItem('pharos_agent_wallet_address');
+      localStorage.removeItem('pharos_agent_session_pk');
+      localStorage.removeItem('pharos_agent_provider');
+    }
+  };
+
+  const handleLogin = () => {
+    setIsExplicitlyDisconnected(false);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('pharos_session_disconnected');
+      let storedPk = localStorage.getItem('pharos_agent_session_pk');
+      let storedAddr = localStorage.getItem('pharos_agent_wallet_address');
+      if (!storedPk || !storedAddr) {
+        const freshPk = generatePrivateKey();
+        const account = privateKeyToAccount(freshPk);
+        localStorage.setItem('pharos_agent_session_pk', freshPk);
+        localStorage.setItem('pharos_agent_wallet_address', account.address);
+        storedAddr = account.address;
+      }
+      setWalletAddress(storedAddr);
+    }
+  };
+
+  const setSessionWalletAddress = (addr: string | null) => {
+    if (addr) {
+      setIsExplicitlyDisconnected(false);
+      setWalletAddress(addr);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('pharos_session_disconnected');
+        localStorage.setItem('pharos_agent_wallet_address', addr);
+      }
+    } else {
+      setIsExplicitlyDisconnected(true);
+      setWalletAddress(null);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pharos_session_disconnected', 'true');
+        localStorage.removeItem('pharos_agent_wallet_address');
+        localStorage.removeItem('pharos_agent_session_pk');
+      }
+    }
+  };
 
   const refreshBalances = async () => {
     if (!walletAddress) return;
@@ -506,16 +629,13 @@ function UnconfiguredPrivyProvider({
         isPrivyConfigured: false,
         privyAppId: '',
         setPrivyAppId,
-        authenticated: !!walletAddress,
-        walletAddress,
+        authenticated: !isExplicitlyDisconnected && !!walletAddress,
+        walletAddress: isExplicitlyDisconnected ? null : walletAddress,
         walletBalanceUsdc,
         walletBalancePros,
-        login: () => {},
-        logout: () => {
-          setWalletAddress(null);
-          setWalletBalanceUsdc(0);
-          setWalletBalancePros(0);
-        },
+        login: handleLogin,
+        logout: handleLogout,
+        setSessionWalletAddress,
         refreshBalances,
         deductBalance,
         depositBalance,

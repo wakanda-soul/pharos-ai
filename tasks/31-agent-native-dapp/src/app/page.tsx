@@ -42,6 +42,7 @@ export default function Home() {
     walletBalancePros: privyProsBal,
     login: privyLogin,
     logout: privyLogout,
+    setSessionWalletAddress,
     refreshBalances: privyRefreshBalances,
     deductBalance: privyDeductBalance,
     depositBalance: privyDepositBalance,
@@ -59,6 +60,9 @@ export default function Home() {
       activeWalletAddress.toLowerCase() === '0xf80622473df9c6babcf2d382458b7c75b74918b4');
 
   const handleOpenPrivyLogin = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('pharos_session_disconnected');
+    }
     if (isPrivyConfigured) {
       privyLogin();
     } else {
@@ -103,6 +107,10 @@ export default function Home() {
   // Load saved preferences
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      if (localStorage.getItem('pharos_session_disconnected') === 'true') {
+        setWalletAddress(null);
+        return;
+      }
       const savedAddress = localStorage.getItem('pharos_agent_wallet_address');
       const savedProvider = (localStorage.getItem('pharos_agent_provider') as 'metamask' | 'session_key') || 'metamask';
 
@@ -139,14 +147,18 @@ export default function Home() {
     prosBalance: number,
     providerType: 'metamask' | 'session_key' | 'privy'
   ) => {
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('pharos_session_disconnected');
+      localStorage.setItem('pharos_agent_wallet_address', derivedAddress);
+      localStorage.setItem('pharos_agent_provider', providerType);
+    }
+    if (setSessionWalletAddress) {
+      setSessionWalletAddress(derivedAddress);
+    }
     setWalletAddress(derivedAddress);
     setWalletBalanceUsdc(usdcBalance);
     setWalletBalancePros(prosBalance);
     setWalletProvider(providerType);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pharos_agent_wallet_address', derivedAddress);
-      localStorage.setItem('pharos_agent_provider', providerType);
-    }
   };
 
   const handleDeposit = (amountUsdc: number) => {
@@ -237,13 +249,19 @@ export default function Home() {
   };
 
   const handleDisconnectWallet = () => {
-    if (isPrivyConfigured && isPrivyAuth) {
+    try {
       privyLogout();
+    } catch (e) {
+      console.warn('Privy logout error:', e);
+    }
+    if (setSessionWalletAddress) {
+      setSessionWalletAddress(null);
     }
     setWalletAddress(null);
     setWalletBalanceUsdc(0);
     setWalletBalancePros(0);
     if (typeof window !== 'undefined') {
+      localStorage.setItem('pharos_session_disconnected', 'true');
       localStorage.removeItem('pharos_agent_wallet_address');
       localStorage.removeItem('pharos_agent_session_pk');
       localStorage.removeItem('pharos_agent_provider');
