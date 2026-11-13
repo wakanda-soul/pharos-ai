@@ -25,8 +25,6 @@ interface AgentCopilotChatProps {
   walletBalanceUsdc: number;
   onRefreshBalance: () => void;
   onDeductBalance?: (amountUsdc: number) => void;
-  geminiApiKey?: string;
-  oauthAccessToken?: string;
   onOpenPrivyLogin?: () => void;
 }
 
@@ -35,14 +33,12 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
   walletBalanceUsdc,
   onRefreshBalance,
   onDeductBalance,
-  geminiApiKey,
-  oauthAccessToken,
   onOpenPrivyLogin,
 }) => {
   const INITIAL_MESSAGE: AgentChatMessage = {
     id: 'init_1',
     sender: 'agent',
-    text: `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nConnected MCP Gateways:\n• ⚡ **Pharos Chain MCP**: \`https://mcp.pharos.xyz/mcp\` (Live Streamable HTTP RPC telemetry)\n• 📚 **Pharos Docs MCP**: \`https://docs.pharos.xyz/index.md?ask=...\` (Official developer documentation RAG)\n\nI autonomously query the verified marketplace mesh and execute 0.001 USDC micro-payments on your behalf using your embedded agent wallet.\n\n*Notice: I am strictly an on-chain data researcher & documentation assistant. I do not generate programming scripts or arbitrary execution code.*`,
+    text: `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nConnected MCP Gateways:\n• ⚡ **Pharos Chain MCP**: \`https://mcp.pharos.xyz/mcp\` (Live Streamable HTTP RPC telemetry)\n• 📚 **Pharos Docs MCP**: \`https://docs.pharos.xyz/index.md?ask=...\` (Official developer documentation RAG)\n\nI autonomously query the verified marketplace mesh and execute 0.001 USDC micro-payments on your behalf using your embedded agent wallet.\n\n*Notice: I am strictly an on-chain data researcher & documentation assistant. I do not write programming code, and I do not generate images or charts.*`,
     timestamp: new Date().toISOString(),
   };
 
@@ -127,8 +123,6 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
           conversationHistory: historyPayload,
           agentWalletAddress: walletAddress,
           agentWalletBalanceUsdc: walletBalanceUsdc,
-          geminiApiKey,
-          oauthAccessToken,
         }),
       });
 

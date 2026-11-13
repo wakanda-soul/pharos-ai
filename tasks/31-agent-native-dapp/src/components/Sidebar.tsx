@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import {
   Sparkles,
   Database,
-  Settings,
   Shield,
   Wallet,
   PlusCircle,
@@ -13,7 +12,6 @@ import {
   ExternalLink,
   RefreshCw,
   LogOut,
-  Sliders,
   Radio,
   BookOpen,
 } from 'lucide-react';
@@ -27,7 +25,6 @@ interface SidebarProps {
   walletBalancePros: number;
   isCurator: boolean;
   onOpenDeposit: () => void;
-  onOpenSettings: () => void;
   onOpenPrivyLogin: () => void;
   onDisconnectWallet: () => void;
   totalFeedsCount?: number;
@@ -41,7 +38,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   walletBalancePros,
   isCurator,
   onOpenDeposit,
-  onOpenSettings,
   onOpenPrivyLogin,
   onDisconnectWallet,
   totalFeedsCount = 4,
@@ -79,7 +75,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       id: 'publisher' as const,
       label: 'Publisher Hub',
-      icon: Settings,
+      icon: Radio,
       badge: null,
       badgeColor: '',
       pulse: false,
@@ -121,14 +117,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               Agent-Native Data Marketplace · port.pharos.xyz
             </span>
           </div>
-        </button>
-
-        <button
-          onClick={onOpenSettings}
-          className="p-1.5 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors shrink-0"
-          title="Copilot Sandbox Settings"
-        >
-          <Sliders className="w-4 h-4" />
         </button>
       </div>
 

@@ -8,7 +8,6 @@ import { AgentCopilotChat } from '@/components/AgentCopilotChat';
 import { PublisherDashboard } from '@/components/PublisherDashboard';
 import { CuratorWhitelistDesk } from '@/components/CuratorWhitelistDesk';
 import { AgentWalletModal } from '@/components/AgentWalletModal';
-import { SandboxSettingsModal } from '@/components/SandboxSettingsModal';
 import { PrivyLoginModal } from '@/components/PrivyLoginModal';
 import { IntelligenceFeed } from '@/types/feed';
 import { CURATED_FEEDS_INITIAL } from '@/lib/pharos-intelligence';
@@ -17,7 +16,7 @@ import { usePharosAuth } from '@/components/PrivyClientProvider';
 import { formatUnits, formatEther } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { X402_EIP712_DOMAIN, X402_PAYMENT_VOUCHER_TYPES } from '@/types/x402';
-import { Database, Cpu, Settings, Shield, ExternalLink, Code2, Menu, X, PlusCircle, Wallet } from 'lucide-react';
+import { Database, Cpu, Shield, ExternalLink, Code2, Menu, X, PlusCircle, Wallet } from 'lucide-react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'copilot' | 'marketplace' | 'publisher' | 'curator'>(
@@ -29,10 +28,7 @@ export default function Home() {
   const [walletBalancePros, setWalletBalancePros] = useState<number>(0.0);
   const [walletProvider, setWalletProvider] = useState<'metamask' | 'session_key' | 'privy'>('metamask');
   const [isDepositOpen, setIsDepositOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPrivyOpen, setIsPrivyOpen] = useState(false);
-  const [geminiApiKey, setGeminiApiKey] = useState<string>('');
-  const [oauthAccessToken, setOauthAccessToken] = useState<string>('');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [lastPurchaseResult, setLastPurchaseResult] = useState<Record<string, unknown> | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -107,13 +103,9 @@ export default function Home() {
   // Load saved preferences
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const savedKey = localStorage.getItem('pharos_gemini_api_key') || '';
-      const savedOAuth = localStorage.getItem('pharos_oauth_token') || '';
       const savedAddress = localStorage.getItem('pharos_agent_wallet_address');
       const savedProvider = (localStorage.getItem('pharos_agent_provider') as 'metamask' | 'session_key') || 'metamask';
 
-      if (savedKey) setGeminiApiKey(savedKey);
-      if (savedOAuth) setOauthAccessToken(savedOAuth);
       if (savedAddress) {
         setWalletAddress(savedAddress);
         setWalletProvider(savedProvider);
@@ -175,20 +167,6 @@ export default function Home() {
   const handleDeductSessionBalance = (amountUsdc: number) => {
     privyDeductBalance(amountUsdc);
     setWalletBalanceUsdc((prev) => Math.max(0, Number((prev - amountUsdc).toFixed(4))));
-  };
-
-  const handleSaveGeminiKey = (key: string) => {
-    setGeminiApiKey(key);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pharos_gemini_api_key', key);
-    }
-  };
-
-  const handleSaveOAuthToken = (token: string) => {
-    setOauthAccessToken(token);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pharos_oauth_token', token);
-    }
   };
 
   const handleBuyFeed = async (feedSlug: string) => {
@@ -290,7 +268,6 @@ export default function Home() {
               setIsDepositOpen(true);
             }
           }}
-          onOpenSettings={() => setIsSettingsOpen(true)}
           onOpenPrivyLogin={handleOpenPrivyLogin}
           onDisconnectWallet={handleDisconnectWallet}
           totalFeedsCount={feeds.length}
@@ -332,10 +309,6 @@ export default function Home() {
                   } else {
                     setIsDepositOpen(true);
                   }
-                }}
-                onOpenSettings={() => {
-                  setIsMobileMenuOpen(false);
-                  setIsSettingsOpen(true);
                 }}
                 onOpenPrivyLogin={() => {
                   setIsMobileMenuOpen(false);
@@ -412,8 +385,6 @@ export default function Home() {
                 }
               }}
               onDeductBalance={handleDeductSessionBalance}
-              geminiApiKey={geminiApiKey}
-              oauthAccessToken={oauthAccessToken}
               onOpenPrivyLogin={handleOpenPrivyLogin}
             />
           </div>
@@ -502,16 +473,6 @@ export default function Home() {
           if (activeWalletAddress) refreshLiveBalances(activeWalletAddress);
         }}
         onDeposit={handleDeposit}
-      />
-
-      {/* Copilot Settings & Gemini Key Modal */}
-      <SandboxSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        geminiApiKey={geminiApiKey}
-        oauthAccessToken={oauthAccessToken}
-        onSaveGeminiApiKey={handleSaveGeminiKey}
-        onSaveOAuthToken={handleSaveOAuthToken}
       />
 
       {/* Real Web3 / Session Key Login Modal */}

@@ -10,8 +10,6 @@ export async function POST(req: NextRequest) {
       conversationHistory = [],
       agentWalletAddress = '0xAgentEmbeddedWallet00000000000000000001',
       agentWalletBalanceUsdc = 0.5,
-      geminiApiKey,
-      oauthAccessToken,
     } = body;
 
     if (!prompt || typeof prompt !== 'string') {
@@ -23,8 +21,6 @@ export async function POST(req: NextRequest) {
       conversationHistory,
       agentWalletAddress,
       agentWalletBalanceUsdc,
-      geminiApiKey: geminiApiKey || process.env.GEMINI_API_KEY,
-      oauthAccessToken,
     });
 
     console.log('[COPILOT_ROUTE_RESPONSE]', new Date().toISOString(), 'text:', message?.text);

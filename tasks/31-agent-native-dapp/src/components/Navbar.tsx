@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Shield, Wallet, Cpu, Database, CheckCircle, Settings, PlusCircle, Activity } from 'lucide-react';
+import { Shield, Wallet, Cpu, Database, CheckCircle, PlusCircle, Activity, Radio } from 'lucide-react';
 import { PHAROS_CONSTANTS } from '@/lib/pharos-chain';
 
 interface NavbarProps {
@@ -11,7 +11,6 @@ interface NavbarProps {
   walletBalanceUsdc: number;
   isCurator?: boolean;
   onOpenDeposit: () => void;
-  onOpenSettings: () => void;
   onOpenPrivyLogin: () => void;
   onDisconnectWallet: () => void;
 }
@@ -23,7 +22,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   walletBalanceUsdc,
   isCurator = false,
   onOpenDeposit,
-  onOpenSettings,
   onOpenPrivyLogin,
   onDisconnectWallet,
 }) => {
@@ -95,7 +93,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
               }`}
             >
-              <Settings className="w-3.5 h-3.5 text-gray-600" />
+              <Radio className="w-3.5 h-3.5 text-gray-600" />
               <span>Publisher Hub</span>
             </button>
 
@@ -117,14 +115,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Wallet & Auth Pill */}
           <div className="flex items-center gap-2">
-            <button
-              onClick={onOpenSettings}
-              className="p-2 text-gray-500 hover:text-gray-900 rounded-lg border border-[#e2e8f0] hover:bg-[#f8faff] transition-colors"
-              title="Copilot Sandbox Settings"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-
             {/* Embedded Agent Wallet / Privy Login */}
             {walletAddress ? (
               <div className="flex items-center bg-[#f8faff] border border-[#e2e8f0] rounded-xl p-1 pl-2.5 gap-2 text-xs shadow-2xs">
