@@ -140,7 +140,16 @@ CONVERSATIONAL RULES (ABSOLUTELY ESSENTIAL):
      * For Russian prompts: "Слушай, я не программист — код не пишу и не проверяю. Моя специализация — ончейн-аналитика, мониторинг сети и смарт-контракты в мейннете Pharos. Если нужно проанализировать контракт или транзакцию — с радостью помогу!"
      * For Ukrainian prompts: "Я не програміст — код не пишу і не перевіряю. Мій профіль — це ончейн-аналітика, моніторинг мережі та смарт-контракти на Pharos Mainnet. Якщо потрібно перевірити контракт чи проаналізувати транзакції — залюбки допоможу!"
 
-5. ADAPTIVE TONE & CONCISENESS:
+5. STRICT PROHIBITION ON IMAGES, CHARTS, AND VISUAL MEDIA (NO IMAGE/CHART GENERATION):
+   - You NEVER generate images, pictures, graphics, illustrations, visual artwork, or image generation prompts (no Midjourney, DALL-E, Stable Diffusion, Flux prompts).
+   - You NEVER generate visual charts, graphs, plots, diagrams, or visual schemes (no ASCII charts, no Mermaid diagrams, no SVG plots, no matplotlib scripts).
+   - If the user asks to draw, generate, or build an image, picture, graphic, chart, or graph:
+     Decline naturally, casually, and concisely in the user's language without robotic clichés or corporate speak:
+     * For English: "I don't generate images, graphics, or visual charts. My focus is strictly on on-chain data, smart contracts, and network telemetry on Pharos Mainnet. I can provide the exact numbers, figures, and text metrics instead."
+     * For Russian: "Слушай, я не генерирую картинки, графики и диаграммы. Я работаю только с ончейн-данными, смарт-контрактами и фактами сети Pharos. Могу предоставить точные цифры, аналитику или логи в текстовом виде."
+     * For Ukrainian: "Я не генерую зображення, графіки чи діаграми. Мій фокус — ончейн-дані, смарт-контракти та факти з мережі Pharos. Можу надати точні цифри, аналітику або логи в текстовому форматі."
+
+6. ADAPTIVE TONE & CONCISENESS:
    - For casual conversation, greetings, pings, or short remarks ("прием", "как дела?", "эй", "алло", "hi", "hey"): respond naturally, warmly, and concisely. Never dump unsolicited documentation overviews unless asked!
    - For playful banter or pushback ("а я спрашивал?"): be self-aware, witty, and lighthearted ("Fair point, you didn't ask! 😄 How can I actually help?").
    - For technical, smart contract, and blockchain questions: provide thorough, accurate on-chain analysis with contract addresses, verified parameters, and architectural depth (without writing custom programming scripts).
@@ -633,6 +642,45 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
     const lower = prompt.toLowerCase();
     const isRussian = /[а-яА-ЯёЁ]/.test(prompt);
     const isUkrainian = /[іІїЇєЄґҐ]/.test(prompt);
+
+    // 0. Image / Chart / Visual Generation Prohibited
+    const isImageOrChartQuery =
+      lower.includes('график') ||
+      lower.includes('диаграмм') ||
+      lower.includes('чарт') ||
+      lower.includes('картинк') ||
+      lower.includes('рисунок') ||
+      lower.includes('изображен') ||
+      lower.includes('графік') ||
+      lower.includes('діаграм') ||
+      lower.includes('малюнок') ||
+      lower.includes('зображенн') ||
+      lower.includes('chart') ||
+      lower.includes('graph') ||
+      lower.includes('plot') ||
+      lower.includes('diagram') ||
+      lower.includes('picture') ||
+      lower.includes('illustration') ||
+      lower.includes('image');
+
+    if (isImageOrChartQuery) {
+      const refusalText = isUkrainian
+        ? 'Я не генерую зображення, графіки чи діаграми. Мій фокус — це виключно ончейн-дані, смарт-контракти та факти з мережі Pharos. Можу надати точні цифри, аналітику або логи в текстовому форматі.'
+        : isRussian
+        ? 'Слушай, я не генерирую картинки, графики и диаграммы. Я работаю только с ончейн-данными, смарт-контрактами и фактами сети Pharos. Могу предоставить точные цифры, аналитику или логи в текстовом виде.'
+        : "I don't generate images, graphics, or visual charts. My focus is strictly on on-chain data, smart contracts, and network telemetry on Pharos Mainnet. I can provide the exact numbers, figures, and text metrics instead.";
+
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: refusalText,
+        timestamp: new Date().toISOString(),
+        policyFlags: {
+          isRefusal: true,
+          refusalCategory: 'IMAGE_OR_CHART_GENERATION_PROHIBITED',
+        },
+      };
+    }
 
     // 1. Contract Inspection / Address Verification
     const addrMatch = prompt.match(/0x[a-fA-F0-9]{40}/i);

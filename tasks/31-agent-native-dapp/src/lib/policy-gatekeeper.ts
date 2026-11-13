@@ -16,13 +16,43 @@ export class PolicyGatekeeper {
    */
   public static evaluateUserIntent(prompt: string): {
     isViolating: boolean;
-    category?: 'CODE_GENERATION_PROHIBITED' | 'OFF_TOPIC' | 'PROMPT_INJECTION';
+    category?:
+      | 'CODE_GENERATION_PROHIBITED'
+      | 'IMAGE_OR_CHART_GENERATION_PROHIBITED'
+      | 'OFF_TOPIC'
+      | 'PROMPT_INJECTION';
     wittyRefusal?: string;
   } {
     const lower = prompt.toLowerCase();
+    const isUkrainian = /[іІїЇєЄґҐ]/.test(prompt);
     const isRussian = /[а-яА-ЯёЁ]/.test(prompt);
 
-    // Check for code generation requests (e.g. "write me a python script to swap tokens")
+    // 1. Check for image, chart, graph, and visual generation requests
+    const visualPatterns = [
+      /(нарисуй|построй|сделай|сгенерируй|создай|покажи|выведи|начерти).*(график|диаграмм|чарт|картинк|рисунок|изображени|иллюстраци|svg|плот|схем)/i,
+      /(график|диаграмм|чарт|картинк|изображени|рисунок).*(цен|объем|volat|swap|токен|пул|сделай|нарисуй|построй|покажи)/i,
+      /(намалюй|побудуй|згенеруй|створи|покажи).*(графік|діаграм|чарт|зображенн|малюнок|ілюстраці)/i,
+      /(графік|діаграм|чарт|зображенн).*(цін|обсяг|пул|токен|побудуй|намалюй)/i,
+      /(draw|generate|plot|render|create|make|show).*(chart|graph|plot|diagram|image|picture|drawing|artwork|illustration|figure|svg|visual)/i,
+      /(chart|graph|diagram|plot|image|picture).*(price|volatility|volume|token|pool|draw|generate|plot)/i,
+      /(dall-e|midjourney|stable diffusion|flux)/i,
+    ];
+
+    for (const pat of visualPatterns) {
+      if (pat.test(lower)) {
+        return {
+          isViolating: true,
+          category: 'IMAGE_OR_CHART_GENERATION_PROHIBITED',
+          wittyRefusal: isUkrainian
+            ? 'Я не генерую зображення, графіки чи діаграми. Мій фокус — це виключно ончейн-дані, смарт-контракти та факти з мережі Pharos. Можу надати точні цифри, аналітику або логи в текстовому форматі.'
+            : isRussian
+            ? 'Слушай, я не генерирую картинки, графики и диаграммы. Я работаю только с ончейн-данными, смарт-контрактами и фактами сети Pharos. Могу предоставить точные цифры, аналитику или логи в текстовом виде.'
+            : "I don't generate images, graphics, or visual charts. My focus is strictly on on-chain data, smart contracts, and network telemetry on Pharos Mainnet. I can provide the exact numbers, figures, and text metrics instead.",
+        };
+      }
+    }
+
+    // 2. Check for code generation requests (e.g. "write me a python script to swap tokens")
     const codePatterns = [
       /write.*(python|javascript|typescript|solidity|bash|script|code).*(swap|trade|bot|drain|hack|transfer)/i,
       /give me (a )?(script|code|bot) to/i,

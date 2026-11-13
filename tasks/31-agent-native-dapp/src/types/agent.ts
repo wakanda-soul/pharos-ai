@@ -22,7 +22,12 @@ export interface AgentChatMessage {
   attachedIntelligence?: Record<string, unknown>;
   policyFlags?: {
     isRefusal: boolean;
-    refusalCategory?: 'CODE_GENERATION_PROHIBITED' | 'OFF_TOPIC' | 'PROMPT_INJECTION' | 'BUDGET_CAP_EXCEEDED';
+    refusalCategory?:
+      | 'CODE_GENERATION_PROHIBITED'
+      | 'IMAGE_OR_CHART_GENERATION_PROHIBITED'
+      | 'OFF_TOPIC'
+      | 'PROMPT_INJECTION'
+      | 'BUDGET_CAP_EXCEEDED';
     humorousRemark?: string;
   };
 }
