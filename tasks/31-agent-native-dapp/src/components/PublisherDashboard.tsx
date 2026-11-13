@@ -145,34 +145,6 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
     }
   };
 
-  const handleClaimDemoFeed = async (slug: string) => {
-    if (!walletAddress) return;
-    setIsUpdating(true);
-    setStatusMessage(null);
-    try {
-      const res = await fetch('/api/publisher/claim-feed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug,
-          publisherAddress: walletAddress,
-          publisherName: 'My Agent Publisher',
-        }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setStatusMessage(`✅ ${data.message}`);
-        await onRefreshFeeds();
-      } else {
-        setStatusMessage(`❌ Error: ${data.error}`);
-      }
-    } catch (err) {
-      setStatusMessage(`❌ Network error claiming demo feed: ${String(err)}`);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
   const handleUpdatePrice = async (slug: string) => {
     setIsUpdating(true);
     setStatusMessage(null);
@@ -553,23 +525,14 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
           <div>
             <h3 className="text-sm font-semibold text-gray-900">No endpoints registered under your wallet</h3>
             <p className="text-xs text-gray-500 max-w-md mx-auto mt-1">
-              You haven&apos;t registered any x402 endpoints yet under address <code className="font-mono text-gray-700">{walletAddress.slice(0, 10)}...</code>. You can link an existing verified feed to your address for testing, or register a fresh custom endpoint.
+              You haven&apos;t registered any x402 endpoints yet under address <code className="font-mono text-gray-700">{walletAddress.slice(0, 10)}...</code>. You can register a fresh custom endpoint to begin monetizing your data feeds on Pharos Mainnet.
             </p>
           </div>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5">
             <button
               type="button"
-              onClick={() => handleClaimDemoFeed('whale-radar')}
-              disabled={isUpdating}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#eef2ff] hover:bg-[#e0e7ff] text-[#0012b8] border border-[#c7d2fe] transition-all shadow-2xs active:scale-98"
-            >
-              <Zap className="w-3.5 h-3.5 text-[#5c41ff]" />
-              <span>Link &quot;Whale Movement Radar&quot; to My Wallet (Test Drive)</span>
-            </button>
-            <button
-              type="button"
               onClick={() => setIsRegisterOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white hover:bg-gray-50 text-gray-700 border border-[#e2e8f0] transition-all shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#0012b8] hover:bg-[#000fa0] text-white transition-all shadow-xs active:scale-98"
             >
               <PlusCircle className="w-3.5 h-3.5" />
               <span>Register Custom Endpoint</span>
