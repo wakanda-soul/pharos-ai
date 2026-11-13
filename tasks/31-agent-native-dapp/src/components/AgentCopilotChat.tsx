@@ -145,8 +145,12 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
           if (onDeductBalance && totalCost > 0) {
             onDeductBalance(totalCost);
           }
+          setTimeout(() => {
+            onRefreshBalance();
+          }, 50);
+        } else {
+          onRefreshBalance();
         }
-        onRefreshBalance();
       } else {
         throw new Error(data.error || 'Failed to receive copilot response');
       }

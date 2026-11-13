@@ -128,12 +128,7 @@ export async function handleX402Paywall<T>(
     isCryptographicallyVerified = false;
   }
 
-  // Allow designated testing / session keys with explicit attestation prefix in test harnesses
-  const isSimulatedDevVoucher =
-    proof.authorizationSignature.startsWith('0xValidEip712SessionKeySignature') ||
-    proof.authorizationSignature.startsWith('0xDevSimulatedVoucher');
-
-  if (!isCryptographicallyVerified && !isSimulatedDevVoucher) {
+  if (!isCryptographicallyVerified) {
     return NextResponse.json(
       {
         error: 'Payment authorization signature verification failed.',

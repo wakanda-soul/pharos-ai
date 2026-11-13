@@ -93,9 +93,17 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
       return policyRefusal;
     }
 
+    // Calculate accurate remaining balance if any micropayment was debited during preflight
+    const purchasesTotalCost = preflightToolCalls
+      .filter((t) => t.toolName === 'buy_intelligence_feed')
+      .reduce((acc, t) => acc + (typeof t.arguments?.costUsdc === 'number' ? t.arguments.costUsdc : 0.001), 0);
+    const effectiveRemainingBal = Math.max(0, Number((agentWalletBalanceUsdc - purchasesTotalCost).toFixed(4)));
+
     const userWalletInfo = `[CONNECTED AGENT USER WALLET]:
 • Address: ${agentWalletAddress}
-• Balance: ${agentWalletBalanceUsdc.toFixed(3)} USDC
+• Previous Balance: ${agentWalletBalanceUsdc.toFixed(3)} USDC
+• Debited for Current Purchases: ${purchasesTotalCost.toFixed(3)} USDC
+• Current Remaining Available Balance: ${effectiveRemainingBal.toFixed(3)} USDC
 • Network: Pharos Mainnet (Chain ID 1672)`;
 
     const enrichedPersona = injectedContext
