@@ -227,8 +227,9 @@ export async function getLiveWhaleRadarData(queryParams: Record<string, string> 
  * Real on-chain audit and bytecode verification for any contract on Pharos Mainnet.
  */
 export async function getLiveContractRiskData(targetAddress?: string) {
-  const addressToInspect = isAddress(targetAddress || '')
-    ? (targetAddress as `0x${string}`)
+  const addrMatch = (targetAddress || '').trim().match(/0x[a-fA-F0-9]{40}/i);
+  const addressToInspect = addrMatch && isAddress(addrMatch[0])
+    ? (addrMatch[0] as `0x${string}`)
     : PHAROS_CONSTANTS.nativeUsdcAddress;
 
   const [bytecode, balance, currentBlock] = await Promise.all([
@@ -513,7 +514,10 @@ export async function getLiveDexVolatilityData() {
 /**
  * Unified intelligence dispatcher for all 4 feeds.
  */
-export async function fetchLiveIntelligenceData(feedSlug: string, queryParams: Record<string, string> = {}) {
+export async function fetchLiveIntelligenceData(
+  feedSlug: string,
+  queryParams: Record<string, any> = {}
+) {
   switch (feedSlug) {
     case 'whale-radar':
       return getLiveWhaleRadarData(queryParams);

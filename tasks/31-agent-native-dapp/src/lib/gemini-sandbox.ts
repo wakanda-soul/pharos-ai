@@ -3,8 +3,9 @@ import { feedStore } from './storage';
 import { AgentChatMessage, ToolCallExecution } from '@/types/agent';
 import { fetchLiveIntelligenceData } from './pharos-intelligence';
 import { PHAROS_CONSTANTS } from './pharos-chain';
-import { queryDocsMcp, callChainMcp, getDocsKnowledgeFallback } from './mcp-mesh';
+import { queryDocsMcp, callChainMcp } from './mcp-mesh';
 import { AntigravitySandboxRunner } from './antigravity-sandbox-runner';
+import { isAddress } from 'viem';
 
 export interface CopilotContext {
   prompt: string;
@@ -14,6 +15,102 @@ export interface CopilotContext {
   geminiApiKey?: string;
   oauthAccessToken?: string;
 }
+
+/**
+ * Native OpenAI/Gemini Tools schema definitions for autonomous agent execution.
+ * Allows the LLM to understand and invoke on-chain capabilities directly from user intent in any language.
+ */
+export const COPILOT_TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'buy_intelligence_feed',
+      description:
+        'Purchase and retrieve live, verified on-chain intelligence telemetry on Pharos Mainnet (Chain ID 1672) for 0.001 USDC atomically debited via Privy embedded session key. Available feeds: "contract-risk" (bytecode disassembly, selector analysis, honeypot & proxy verification for ANY contract address), "whale-radar" (large transfer detection on USDC/WPROS), "harbor-solvency" (Harbor Protocol DEX pool depth and liquidity solvency), "dex-volatility" (DEX price volatility, spread, and gas fees).',
+      parameters: {
+        type: 'object',
+        properties: {
+          feedSlug: {
+            type: 'string',
+            enum: ['contract-risk', 'whale-radar', 'harbor-solvency', 'dex-volatility'],
+            description: 'The feed slug to execute.',
+          },
+          targetAddress: {
+            type: 'string',
+            description:
+              'The Ethereum smart contract address (0x...) to audit. REQUIRED when feedSlug is "contract-risk".',
+          },
+          windowHours: {
+            type: 'string',
+            description: 'Optional time window for whale radar (e.g. "4h", "24h").',
+          },
+          minAmount: {
+            type: 'number',
+            description: 'Optional minimum USDC threshold for whale radar transfers.',
+          },
+        },
+        required: ['feedSlug'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'query_docs_mcp',
+      description:
+        'Query official Pharos documentation, developer guides, and specifications (MCP server, RPC setup, Foundry deploy scripts, Privy embedded wallets, token contracts USDC/WPROS, architecture).',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'The technical query or topic to look up in Pharos documentation.',
+          },
+        },
+        required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'call_chain_mcp',
+      description:
+        'Query live Pharos Mainnet RPC via MCP for block number, balance, gas price, or chain specifications.',
+      parameters: {
+        type: 'object',
+        properties: {
+          tool: {
+            type: 'string',
+            description: 'Chain MCP method: "get_chain_info", "eth_blockNumber", "eth_getBalance", etc.',
+          },
+          params: {
+            type: 'object',
+            description: 'Method parameters (e.g. { address: "0x..." }).',
+          },
+        },
+        required: ['tool'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_feeds',
+      description:
+        'List or search all active and curated intelligence feeds available on the Pharos x402 Marketplace.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: 'Optional search keyword or filter.',
+          },
+        },
+      },
+    },
+  },
+];
 
 export class GeminiSandboxEngine {
   private static readonly SYSTEM_PERSONA = `
@@ -34,15 +131,18 @@ CONVERSATIONAL RULES (ABSOLUTELY ESSENTIAL):
    - For technical, smart contract, and blockchain questions: provide thorough, accurate on-chain analysis with contract addresses, verified parameters, and architectural depth (without writing custom programming scripts).
 5. LANGUAGE ADAPTABILITY: Always respond in the exact language used by the user (fluent, natural Russian if the user writes in Russian or Ukrainian; English if English).
 
-AUTONOMOUS X402 MICROPAYMENTS & PRIVY SESSION KEYS (CRITICAL):
-5. ZERO POPUPS, ZERO WAITING FOR MANUAL CONFIRMATION:
-   - All x402 intelligence micro-payments (0.001 USDC for whale-radar, harbor-solvency, contract-risk, dex-volatility) are executed AUTONOMOUSLY in the background using the user's embedded Privy session wallet.
+AUTONOMOUS TOOL EXECUTION & PRIVY SESSION KEYS (CRITICAL):
+1. IMMEDIATE TOOL CALLING (ZERO CONFIRMATION PROMPTS):
+   - You have active tools available (buy_intelligence_feed, query_docs_mcp, call_chain_mcp, search_feeds).
+   - The user has an embedded Privy session smart wallet on Pharos Mainnet (Chain ID 1672) with pre-authorized USDC funds.
+   - When the user asks to inspect, check, or audit a contract, see whale movements, check Harbor DEX solvency/depth, or inspect volatility in ANY language or phrasing: DO NOT ask in chat "Подтверждаешь?", "Подтверди покупку", "Хотите проверить?", or tell them it will cost 0.001 USDC and wait for their reply.
+   - You are FULLY AUTHORIZED to execute the appropriate tool IMMEDIATELY via function calling!
+   - Execute the tool right away, receive the verified on-chain result, and synthesize the report for the user in their language.
+2. ZERO POPUPS, ZERO WAITING FOR MANUAL CONFIRMATION:
+   - All x402 intelligence micro-payments (0.001 USDC for whale-radar, harbor-solvency, contract-risk, dex-volatility) are executed AUTONOMOUSLY via the tool buy_intelligence_feed using the user's embedded Privy session wallet.
    - NEVER tell the user to "confirm in MetaMask", "open your wallet", "approve transaction", or wait for a popup!
    - There are NO MetaMask popups and NO manual signing dialogs for x402 session payments.
-   - When a user asks to buy or fetch any intelligence feed ("купи фид на китов", "покажи китов", "купи", "проверь solvency"), or confirms a purchase ("подтверждаю", "давай", "покупай"):
-     The 0.001 USDC micropayment is ALREADY finalized and debited on-chain!
-     State the confirmation of the 0.001 USDC payment and immediately provide the detailed analytical breakdown of the retrieved data.
-6. PRIVY EMBEDDED WALLET & PAYMENT CLARIFICATION:
+3. PRIVY EMBEDDED WALLET & PAYMENT CLARIFICATION:
    - If the user asks how internal Privy wallet deductions work or reports an issue ("какая-то проблема со списанием с внутреннего кошелька приви. как это делать?", "как платить с Privy?"):
      Explain clearly:
      1. The embedded Privy wallet is an autonomous session wallet (embedded smart wallet on Pharos Mainnet, Chain ID 1672).
@@ -50,7 +150,7 @@ AUTONOMOUS X402 MICROPAYMENTS & PRIVY SESSION KEYS (CRITICAL):
      3. If the bot previously asked for confirmation or told them to look for a popup, apologize for the confusion: in the x402 protocol, payment deduction is completely automated and gasless.
      4. To purchase feeds, the user simply needs at least 0.001 USDC balance in the embedded wallet (which can be topped up via the Deposit button in the header/sidebar).
      5. When they ask for a feed, the agent instantly executes the 0.001 USDC micro-payment and delivers the verified on-chain data without any manual steps.
-7. STRICT ON-CHAIN AUTHENTICITY & ZERO HALLUCINATIONS:
+4. STRICT ON-CHAIN AUTHENTICITY & ZERO HALLUCINATIONS:
    - NEVER invent or hallucinate token names, symbols, decimals, supplies, or contract interfaces (e.g., do NOT invent "Pharos Test Token" or "PTT" or random supplies).
    - Only report verified on-chain facts from the provided RPC telemetry.
    - If "isStandardErc20" is false: the contract is NOT an ERC-20 token! State its genuine contract type (e.g., Marketplace / Launchpad / Sale Module or custom contract) and detail the exact function selectors detected in its bytecode.
@@ -96,25 +196,9 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
       };
     }
 
-    // Pre-flight gather verified on-chain telemetry, feed purchases or Docs MCP context
-    const { injectedContext, toolCalls: preflightToolCalls, policyRefusal } =
-      await this.preflightGatherContext(prompt, agentWalletBalanceUsdc, agentWalletAddress, conversationHistory);
-
-    if (policyRefusal) {
-      return policyRefusal;
-    }
-
-    // Calculate accurate remaining balance if any micropayment was debited during preflight
-    const purchasesTotalCost = preflightToolCalls
-      .filter((t) => t.toolName === 'buy_intelligence_feed')
-      .reduce((acc, t) => acc + (typeof t.arguments?.costUsdc === 'number' ? t.arguments.costUsdc : 0.001), 0);
-    const effectiveRemainingBal = Math.max(0, Number((agentWalletBalanceUsdc - purchasesTotalCost).toFixed(4)));
-
     const userWalletInfo = `[CONNECTED AGENT USER WALLET]:
 • Address: ${agentWalletAddress}
-• Previous Balance: ${agentWalletBalanceUsdc.toFixed(3)} USDC
-• Debited for Current Purchases: ${purchasesTotalCost.toFixed(3)} USDC
-• Current Remaining Available Balance: ${effectiveRemainingBal.toFixed(3)} USDC
+• Available Balance: ${agentWalletBalanceUsdc.toFixed(4)} USDC
 • Network: Pharos Mainnet (Chain ID 1672)`;
 
     const codeGuidanceSnippet =
@@ -122,25 +206,22 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
         ? '\n\n[ROLE DIRECTIVE]: The user is asking for programming code or scripts. Strictly decline naturally, conversationally, and casually in your own words in the dialogue (do NOT write code). Never use robotic templates or canned clichés.'
         : '';
 
-    const enrichedPersona = injectedContext
-      ? `${this.SYSTEM_PERSONA}${codeGuidanceSnippet}\n\n${userWalletInfo}\n\nVERIFIED REAL-TIME DATA RETRIEVED FROM PHAROS MESH:\n${injectedContext}\n\nSynthesize this verified on-chain data directly in your response to answer the user accurately and naturally.`
-      : `${this.SYSTEM_PERSONA}${codeGuidanceSnippet}\n\n${userWalletInfo}`;
+    const enrichedPersona = `${this.SYSTEM_PERSONA}${codeGuidanceSnippet}\n\n${userWalletInfo}`;
 
-    // Priority 1: Google Gemini REST API (if user entered an API key or GEMINI_API_KEY is configured)
-    if (geminiApiKey || process.env.GEMINI_API_KEY) {
-      try {
-        return await this.callGeminiApi(context, enrichedPersona, preflightToolCalls);
-      } catch (err) {
-        console.warn('Gemini API invocation failed, falling back to OpenRouter:', err);
-      }
+    // Priority 1: Direct High-Speed Autonomous Agent Gateway (OpenRouter with Gemini 2.5 Flash)
+    try {
+      return await this.callOpenRouterApi(context, enrichedPersona);
+    } catch (err) {
+      console.warn('OpenRouter agent gateway failed, checking Gemini API:', err);
     }
 
-    // Priority 2: Direct High-Speed LLM Gateway (OpenRouter with Gemini 2.5 Flash)
-    // Ensures real LLM responses to ANY question or phrase on Vercel and serverless deployments
-    try {
-      return await this.callOpenRouterApi(context, enrichedPersona, preflightToolCalls);
-    } catch (err) {
-      console.warn('OpenRouter LLM gateway failed, checking Antigravity CLI sandbox:', err);
+    // Priority 2: Google Gemini REST API (if user entered an API key or GEMINI_API_KEY is configured)
+    if (geminiApiKey || process.env.GEMINI_API_KEY) {
+      try {
+        return await this.callGeminiApi(context, enrichedPersona);
+      } catch (err) {
+        console.warn('Gemini API invocation failed, checking Antigravity CLI sandbox:', err);
+      }
     }
 
     // Priority 3: Hardware-isolated Bubblewrap Antigravity CLI sandbox (if local agy runner is available)
@@ -159,7 +240,6 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
             sender: 'agent',
             text: liveAiResponse,
             timestamp: new Date().toISOString(),
-            toolCalls: preflightToolCalls.length > 0 ? preflightToolCalls : undefined,
           };
         }
       } catch (err) {
@@ -167,35 +247,42 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
       }
     }
 
-    // Fallback: Resilient response synthesized from verified tool calls
-    return this.runResilientFallback(context, injectedContext, preflightToolCalls);
+    // Fallback: Resilient offline response
+    return this.runResilientFallback(context);
   }
 
   /**
-   * Pre-flight gather verified on-chain telemetry, feed payloads, and Docs/Chain MCP answers
-   * to enrich the system persona before executing within the LLM model.
+   * Deterministic dispatcher executing real on-chain tools selected autonomously by the LLM.
    */
-  private static async preflightGatherContext(
-    prompt: string,
+  private static async executeTool(
+    name: string,
+    args: any,
     agentWalletBalanceUsdc: number,
     agentWalletAddress: string,
-    conversationHistory: Array<{ sender: string; text: string }> = []
+    isRussian: boolean,
+    userPrompt?: string
   ): Promise<{
-    injectedContext: string;
-    toolCalls: ToolCallExecution[];
+    output: any;
     policyRefusal?: AgentChatMessage;
+    toolCall: ToolCallExecution;
   }> {
-    const lower = prompt.toLowerCase();
-    const isRussian = /[а-яА-ЯёЁіІїЇєЄґҐ]/.test(prompt);
-    const toolCalls: ToolCallExecution[] = [];
-    const contextSnippets: string[] = [];
+    if (name === 'buy_intelligence_feed') {
+      const feedSlug = args?.feedSlug || 'contract-risk';
+      const rawTarget = args?.targetAddress || args?.target || args?.address;
+      let targetAddress = typeof rawTarget === 'string' ? rawTarget.trim() : undefined;
 
-    // Helper to enforce Policy Gatekeeper limits before buying any feed
-    const checkFeedPurchase = (targetSlug: string): { policyRefusal?: AgentChatMessage; isAllowed: boolean } => {
-      const verdict = PolicyGatekeeper.evaluatePurchasePolicy(targetSlug, agentWalletBalanceUsdc);
+      // Robust fallback: if LLM truncated or missed the address string, extract exact address from user prompt
+      if (!targetAddress || targetAddress.length < 42 || !isAddress(targetAddress)) {
+        const promptMatch = (userPrompt || '').match(/0x[a-fA-F0-9]{40}/i);
+        if (promptMatch) {
+          targetAddress = promptMatch[0];
+        }
+      }
+
+      const verdict = PolicyGatekeeper.evaluatePurchasePolicy(feedSlug, agentWalletBalanceUsdc);
       if (!verdict.isPermitted) {
         return {
-          isAllowed: false,
+          output: { error: verdict.reason, suggestion: verdict.suggestedCorrection },
           policyRefusal: {
             id: `msg_${Date.now()}`,
             sender: 'policy_gatekeeper',
@@ -208,385 +295,100 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
               refusalCategory: 'BUDGET_CAP_EXCEEDED',
             },
           },
+          toolCall: {
+            toolName: 'buy_intelligence_feed',
+            arguments: { feedSlug, targetAddress, costUsdc: 0.001 },
+            output: { error: verdict.reason },
+          },
         };
       }
-      return { isAllowed: true };
-    };
 
-    let targetWhale =
-      lower.includes('whale') ||
-      lower.includes('кит') ||
-      lower.includes('крупн') ||
-      lower.includes('трансфер') ||
-      lower.includes('large transfer') ||
-      lower.includes('movement');
-
-    let targetHarbor =
-      lower.includes('harbor') ||
-      lower.includes('харбор') ||
-      lower.includes('solvency') ||
-      lower.includes('платежеспособн') ||
-      lower.includes('резерв') ||
-      lower.includes('reserves') ||
-      lower.includes('pool depth') ||
-      lower.includes('глубин');
-
-    const extractedAddressMatch = prompt.match(/0x[a-fA-F0-9]{40}/);
-    const hasContractAddress = !!extractedAddressMatch;
-    const extractedAddress = extractedAddressMatch ? extractedAddressMatch[0] : undefined;
-
-    let targetRisk =
-      lower.includes('risk') ||
-      lower.includes('риск') ||
-      lower.includes('honeypot') ||
-      lower.includes('ханипот') ||
-      lower.includes('скан') ||
-      lower.includes('scan') ||
-      lower.includes('vulnerability') ||
-      lower.includes('уязвим') ||
-      lower.includes('безопасн') ||
-      lower.includes('чекни') ||
-      lower.includes('проверь') ||
-      lower.includes('проверить') ||
-      lower.includes('check') ||
-      lower.includes('audit') ||
-      lower.includes('аудит') ||
-      (hasContractAddress &&
-        (lower.includes('контракт') ||
-          lower.includes('contract') ||
-          lower.includes('токен') ||
-          lower.includes('token') ||
-          lower.includes('адрес') ||
-          lower.includes('address') ||
-          lower.includes('байткод') ||
-          lower.includes('bytecode')));
-
-    let targetVolatility =
-      lower.includes('volat') ||
-      lower.includes('волатильн') ||
-      lower.includes('swing') ||
-      lower.includes('колебан') ||
-      lower.includes('arbitrage') ||
-      lower.includes('арбитраж');
-
-    // Contextual resolution for confirmation and buy follow-ups ("подтверждаю", "давай", "покупай", "спиши", "посылай транзакцию")
-    const isConfirmationOrFollowUp =
-      lower === 'подтверждаю' ||
-      lower.startsWith('подтверждаю') ||
-      lower === 'подтвердить' ||
-      lower === 'давай' ||
-      lower === 'покупай' ||
-      lower === 'покупаю' ||
-      lower === 'купи' ||
-      lower === 'оплачивай' ||
-      lower === 'спиши' ||
-      lower.includes('посілай') ||
-      lower.includes('посылай') ||
-      lower.includes('отправляй') ||
-      lower === 'да' ||
-      lower === 'yes' ||
-      lower === 'confirm' ||
-      lower === 'proceed';
-
-    if (
-      isConfirmationOrFollowUp &&
-      !targetWhale &&
-      !targetHarbor &&
-      !targetRisk &&
-      !targetVolatility &&
-      conversationHistory &&
-      conversationHistory.length > 0
-    ) {
-      const recentContext = conversationHistory.slice(-4).map((m) => m.text.toLowerCase()).join(' ');
-      if (recentContext.includes('кит') || recentContext.includes('whale')) {
-        targetWhale = true;
-      } else if (
-        recentContext.includes('harbor') ||
-        recentContext.includes('харбор') ||
-        recentContext.includes('solvency') ||
-        recentContext.includes('платежеспособн')
-      ) {
-        targetHarbor = true;
-      } else if (
-        recentContext.includes('risk') ||
-        recentContext.includes('риск') ||
-        recentContext.includes('honeypot') ||
-        recentContext.includes('ханипот')
-      ) {
-        targetRisk = true;
-      } else if (
-        recentContext.includes('volat') ||
-        recentContext.includes('волатильн') ||
-        recentContext.includes('arbitrage')
-      ) {
-        targetVolatility = true;
-      }
-    }
-
-    // 1. Whale Radar Detection & Micropayment
-    if (targetWhale) {
-      const gate = checkFeedPurchase('whale-radar');
-      if (!gate.isAllowed) {
-        return { injectedContext: '', toolCalls: [], policyRefusal: gate.policyRefusal };
-      }
-
-      try {
-        const liveWhaleData = await fetchLiveIntelligenceData('whale-radar');
-        toolCalls.push({
-          toolName: 'buy_intelligence_feed',
-          arguments: { feedSlug: 'whale-radar', costUsdc: 0.001 },
-          output: liveWhaleData,
-        });
-        feedStore.recordPurchase('whale-radar', 0.001);
-        contextSnippets.push(
-          `[AUTONOMOUS X402 PAYMENT STATUS: CONFIRMED & DEBITED]:
-• Feed: whale-radar (0.001 USDC)
-• Status: Successfully settled on Pharos Mainnet (Chain ID 1672)
-• Buyer Wallet: ${agentWalletAddress}
-• Autonomous Session Key: Settled seamlessly via Privy embedded session key without popups.
-• CRITICAL DIRECTIVE: The micropayment of 0.001 USDC has ALREADY been executed and debited. DO NOT ask the user for confirmation. DO NOT mention MetaMask or wallet popups. Immediately present the analytical breakdown of this live whale radar data!
-
-[LIVE ON-CHAIN WHALE RADAR TELEMETRY FROM PHAROS MAINNET]:
-${JSON.stringify(liveWhaleData, null, 2)}`
-        );
-      } catch (err) {
-        console.warn('Failed to prefetch whale radar:', err);
-      }
-    }
-
-    // 2. Harbor Solvency Detection & Micropayment
-    if (targetHarbor) {
-      const gate = checkFeedPurchase('harbor-solvency');
-      if (!gate.isAllowed) {
-        return { injectedContext: '', toolCalls: [], policyRefusal: gate.policyRefusal };
-      }
-
-      try {
-        const liveSolvencyData = await fetchLiveIntelligenceData('harbor-solvency');
-        toolCalls.push({
-          toolName: 'buy_intelligence_feed',
-          arguments: { feedSlug: 'harbor-solvency', costUsdc: 0.001 },
-          output: liveSolvencyData,
-        });
-        feedStore.recordPurchase('harbor-solvency', 0.001);
-        contextSnippets.push(
-          `[AUTONOMOUS X402 PAYMENT STATUS: CONFIRMED & DEBITED]:
-• Feed: harbor-solvency (0.001 USDC)
-• Status: Successfully settled on Pharos Mainnet (Chain ID 1672)
-• Buyer Wallet: ${agentWalletAddress}
-• Autonomous Session Key: Settled seamlessly via Privy embedded session key without popups.
-• CRITICAL DIRECTIVE: The micropayment of 0.001 USDC has ALREADY been executed and debited. DO NOT ask the user for confirmation. DO NOT mention MetaMask or wallet popups. Immediately present the solvency and pool depth findings!
-
-[LIVE HARBOR DEX ON-CHAIN SOLVENCY & DEPTH TELEMETRY]:
-${JSON.stringify(liveSolvencyData, null, 2)}`
-        );
-      } catch (err) {
-        console.warn('Failed to prefetch harbor solvency:', err);
-      }
-    }
-
-    // 3. Smart Contract Honeypot / Risk Detection & Micropayment
-    if (targetRisk) {
-      const gate = checkFeedPurchase('contract-risk');
-      if (!gate.isAllowed) {
-        return { injectedContext: '', toolCalls: [], policyRefusal: gate.policyRefusal };
-      }
-
-      try {
-        const targetToAudit = extractedAddress || PHAROS_CONSTANTS.nativeUsdcAddress;
-        const liveRiskData = await fetchLiveIntelligenceData('contract-risk', { target: targetToAudit });
-        toolCalls.push({
-          toolName: 'buy_intelligence_feed',
-          arguments: { feedSlug: 'contract-risk', costUsdc: 0.001, targetAddress: targetToAudit },
-          output: liveRiskData,
-        });
-        feedStore.recordPurchase('contract-risk', 0.001);
-        contextSnippets.push(
-          `[AUTONOMOUS X402 PAYMENT STATUS: CONFIRMED & DEBITED]:
-• Feed: contract-risk (0.001 USDC)
-• Status: Successfully settled on Pharos Mainnet (Chain ID 1672)
-• Buyer Wallet: ${agentWalletAddress}
-• Autonomous Session Key: Settled seamlessly via Privy embedded session key without popups.
-• Target Address Analyzed: ${targetToAudit}
-• CRITICAL DIRECTIVE: The micropayment of 0.001 USDC has ALREADY been executed and debited. DO NOT ask the user for confirmation. DO NOT mention MetaMask or wallet popups. Immediately present the smart contract risk report!
-
-[LIVE SMART CONTRACT BYTECODE DISASSEMBLY & AUDIT REPORT ON PHAROS MAINNET]:
-${JSON.stringify(liveRiskData, null, 2)}
-
-[CRITICAL ACCURACY DIRECTIVE]:
-1. If "isStandardErc20" is false: this contract is NOT an ERC-20 token! Under NO circumstances should you state it is an ERC-20 token or invent a fake token name (e.g., do NOT invent "Pharos Test Token" or "PTT"), decimals, or supply numbers!
-2. Accurately report its true contract architecture based on "contractType" (e.g. Marketplace / Launchpad / Sale Module or custom contract).
-3. Explicitly report the real function selectors detected in its bytecode (e.g. limitsOf(address), buy(address,uint256,uint256), factory(), marketBeacon(), spentOn(address,uint256)).
-4. If "connectedContracts" are detected (such as factory or marketBeacon), cite their real on-chain addresses directly.`
-        );
-      } catch (err) {
-        console.warn('Failed to prefetch contract risk:', err);
-      }
-    }
-
-    // 4. Volatility & Price Swing Detection & Micropayment
-    if (targetVolatility) {
-      const gate = checkFeedPurchase('dex-volatility');
-      if (!gate.isAllowed) {
-        return { injectedContext: '', toolCalls: [], policyRefusal: gate.policyRefusal };
-      }
-
-      try {
-        const liveVolData = await fetchLiveIntelligenceData('dex-volatility');
-        toolCalls.push({
-          toolName: 'buy_intelligence_feed',
-          arguments: { feedSlug: 'dex-volatility', costUsdc: 0.001 },
-          output: liveVolData,
-        });
-        feedStore.recordPurchase('dex-volatility', 0.001);
-        contextSnippets.push(
-          `[AUTONOMOUS X402 PAYMENT STATUS: CONFIRMED & DEBITED]:
-• Feed: dex-volatility (0.001 USDC)
-• Status: Successfully settled on Pharos Mainnet (Chain ID 1672)
-• Buyer Wallet: ${agentWalletAddress}
-• Autonomous Session Key: Settled seamlessly via Privy embedded session key without popups.
-• CRITICAL DIRECTIVE: The micropayment of 0.001 USDC has ALREADY been executed and debited. DO NOT ask the user for confirmation. DO NOT mention MetaMask or wallet popups. Immediately present the DEX volatility telemetry!
-
-[LIVE PHAROS DEX VOLATILITY TELEMETRY]:
-${JSON.stringify(liveVolData, null, 2)}`
-        );
-      } catch (err) {
-        console.warn('Failed to prefetch dex volatility:', err);
-      }
-    }
-
-    // 5. Documentation, Contract Functions, Token Specifications & MCP Queries
-    const isDocsOrContractQuery =
-      lower.includes('mcp') ||
-      lower.includes('мсп') ||
-      lower.includes('док') || // доки, в доках, документация, документы
-      lower.includes('doc') || // docs, documentation
-      lower.includes('privy') ||
-      lower.includes('приви') ||
-      lower.includes('списан') ||
-      lower.includes('кошельк') ||
-      lower.includes('кошелек') ||
-      lower.includes('wallet') ||
-      lower.includes('foundry') ||
-      lower.includes('фаундри') ||
-      lower.includes('forge') ||
-      lower.includes('hardhat') ||
-      lower.includes('deploy') ||
-      lower.includes('депло') || // деплой, деплоить, деплоя, задеплоить
-      lower.includes('развер') || // развернуть, развертывание
-      lower.includes('розгорн') ||
-      lower.includes('rpc') ||
-      lower.includes('faucet') ||
-      lower.includes('кран') ||
-      lower.includes('sitemap') ||
-      lower.includes('раздел') || // разделы, разделов, разделі
-      lower.includes('структур') ||
-      lower.includes('содержан') ||
-      lower.includes('оглавлен') ||
-      lower.includes('навигац') ||
-      lower.includes('инструкц') ||
-      lower.includes('руководств') ||
-      lower.includes('функци') || // функции, функцию
-      lower.includes('function') ||
-      lower.includes('abi') ||
-      lower.includes('метод') ||
-      ((lower.includes('контракт') || lower.includes('contract')) && (lower.includes('как') || lower.includes('how') || lower.includes('создать') || lower.includes('написать'))) ||
-      ((lower.includes('usdc') || lower.includes('юсдц')) &&
-        (lower.includes('контракт') || lower.includes('contract') || lower.includes('токен') || lower.includes('token')));
-
-    if (isDocsOrContractQuery) {
-      try {
-        const [chainInfo, docsData] = await Promise.all([
-          callChainMcp('get_chain_info', {}),
-          queryDocsMcp(prompt),
-        ]);
-        toolCalls.push({
-          toolName: 'query_docs_mcp',
-          arguments: { query: prompt },
-          output: docsData,
-        });
-        toolCalls.push({
-          toolName: 'call_chain_mcp',
-          arguments: { tool: 'get_chain_info' },
-          output: chainInfo,
-        });
-        contextSnippets.push(
-          `[OFFICIAL PHAROS DEVELOPER DOCS MCP RAG SEARCH RESULT]:\n${docsData.answer}\n\n[PHAROS CHAIN MCP RPC TELEMETRY (https://mcp.pharos.xyz/mcp)]:\nLatest Block: ${chainInfo.result?.latestBlock || 'Live'}, Chain ID: ${chainInfo.result?.chainId || 1672}`
-        );
-      } catch (err) {
-        console.warn('Failed to prefetch docs/chain mcp:', err);
-      }
-    }
-
-    // 6. Search / Catalog Query (ONLY if not requesting a specific feed!)
-    const isSpecificFeed =
-      lower.includes('whale') ||
-      lower.includes('кит') ||
-      lower.includes('крупн') ||
-      lower.includes('трансфер') ||
-      lower.includes('harbor') ||
-      lower.includes('харбор') ||
-      lower.includes('solvency') ||
-      lower.includes('платежеспособн') ||
-      lower.includes('risk') ||
-      lower.includes('риск') ||
-      lower.includes('honeypot') ||
-      lower.includes('ханипот') ||
-      lower.includes('volat') ||
-      lower.includes('волатильн');
-
-    if (
-      !isSpecificFeed &&
-      (lower.includes('catalog') ||
-        lower.includes('каталог') ||
-        lower.includes('все фиды') ||
-        lower.includes('список фидов') ||
-        lower.includes('какие фиды') ||
-        lower.includes('список доступных') ||
-        lower.includes('list feeds'))
-    ) {
-      const allFeeds = feedStore.getAllFeeds();
-      toolCalls.push({
-        toolName: 'search_feeds',
-        arguments: { query: prompt },
-        output: {
-          totalFeeds: allFeeds.length,
-          feeds: allFeeds.map((f) => ({
-            name: f.name,
-            slug: f.slug,
-            priceUsdc: f.pricePerCallUsdc,
-            status: f.curationStatus,
-          })),
-        },
+      const liveData = await fetchLiveIntelligenceData(feedSlug, {
+        target: targetAddress,
+        windowHours: args?.windowHours,
+        minAmount: args?.minAmount,
       });
-      contextSnippets.push(
-        `[AVAILABLE CURATED FEEDS IN PHAROS X402 MARKETPLACE]:\n` +
-          allFeeds
-            .map((f) => `- ${f.name} (${f.slug}): ${f.pricePerCallUsdc} USDC [Status: ${f.curationStatus}]`)
-            .join('\n')
-      );
+      feedStore.recordPurchase(feedSlug, 0.001);
+
+      return {
+        output: liveData,
+        toolCall: {
+          toolName: 'buy_intelligence_feed',
+          arguments: { feedSlug, targetAddress, costUsdc: 0.001 },
+          output: liveData,
+        },
+      };
+    }
+
+    if (name === 'query_docs_mcp') {
+      const docsData = await queryDocsMcp(args?.query || '');
+      return {
+        output: docsData,
+        toolCall: {
+          toolName: 'query_docs_mcp',
+          arguments: { query: args?.query || '' },
+          output: docsData,
+        },
+      };
+    }
+
+    if (name === 'call_chain_mcp') {
+      const chainData = await callChainMcp(args?.tool || 'get_chain_info', args?.params || {});
+      return {
+        output: chainData,
+        toolCall: {
+          toolName: 'call_chain_mcp',
+          arguments: { tool: args?.tool || 'get_chain_info', params: args?.params },
+          output: chainData,
+        },
+      };
+    }
+
+    if (name === 'search_feeds') {
+      const allFeeds = feedStore.getAllFeeds();
+      const output = {
+        totalFeeds: allFeeds.length,
+        feeds: allFeeds.map((f) => ({
+          name: f.name,
+          slug: f.slug,
+          priceUsdc: f.pricePerCallUsdc,
+          status: f.curationStatus,
+          description: f.description,
+        })),
+      };
+      return {
+        output,
+        toolCall: {
+          toolName: 'search_feeds',
+          arguments: { query: args?.query },
+          output,
+        },
+      };
     }
 
     return {
-      injectedContext: contextSnippets.join('\n\n'),
-      toolCalls,
+      output: { error: `Unknown tool: ${name}` },
+      toolCall: {
+        toolName: name as any,
+        arguments: args,
+        output: { error: `Unknown tool: ${name}` },
+      },
     };
   }
 
   /**
-   * High-speed OpenRouter API caller with Gemini 2.5 Flash.
+   * Autonomous Agent loop with Tool Calling via OpenRouter (Gemini 2.5 Flash).
+   * Evaluates user intent in ANY language and invokes appropriate on-chain tools dynamically.
    */
   private static async callOpenRouterApi(
     context: CopilotContext,
-    systemPrompt: string,
-    toolCalls?: ToolCallExecution[]
+    systemPrompt: string
   ): Promise<AgentChatMessage> {
-    const { prompt, conversationHistory = [] } = context;
+    const { prompt, conversationHistory = [], agentWalletBalanceUsdc, agentWalletAddress } = context;
     const apiKey = process.env.OPENROUTER_API_KEY || this.DEFAULT_OPENROUTER_KEY;
+    const isRussian = /[а-яА-ЯёЁіІїЇєЄґҐ]/.test(prompt);
 
-    const messages: Array<{ role: string; content: string }> = [
-      { role: 'system', content: systemPrompt },
-    ];
+    const messages: Array<any> = [{ role: 'system', content: systemPrompt }];
 
     if (conversationHistory && conversationHistory.length > 0) {
       for (const msg of conversationHistory.slice(-8)) {
@@ -599,10 +401,11 @@ ${JSON.stringify(liveVolData, null, 2)}`
 
     messages.push({ role: 'user', content: prompt });
 
+    // Turn 1: LLM autonomously decides whether to answer directly or call on-chain tools
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
         'HTTP-Referer': 'https://pharos-ai.xyz',
         'X-Title': 'Pharos Copilot',
@@ -610,8 +413,10 @@ ${JSON.stringify(liveVolData, null, 2)}`
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages,
-        max_tokens: 1000,
-        temperature: 0.4,
+        tools: COPILOT_TOOLS,
+        tool_choice: 'auto',
+        max_tokens: 1500,
+        temperature: 0.3,
       }),
       signal: AbortSignal.timeout(15000),
     });
@@ -622,26 +427,103 @@ ${JSON.stringify(liveVolData, null, 2)}`
     }
 
     const data = await res.json();
-    const candidateText =
-      data.choices?.[0]?.message?.content?.trim() ||
+    const assistantMessage = data.choices?.[0]?.message;
+
+    // If no tool calls were requested, return the direct conversational answer
+    if (!assistantMessage?.tool_calls || assistantMessage.tool_calls.length === 0) {
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: assistantMessage?.content?.trim() || 'Ответ модели не был получен.',
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // Turn 2: Execute each tool call autonomously on Pharos Mainnet
+    const executedToolCalls: ToolCallExecution[] = [];
+    messages.push(assistantMessage);
+
+    for (const tc of assistantMessage.tool_calls) {
+      let args = {};
+      try {
+        args = typeof tc.function.arguments === 'string' ? JSON.parse(tc.function.arguments) : tc.function.arguments;
+      } catch (e) {
+        console.warn('Failed to parse tool call arguments:', tc.function.arguments);
+      }
+
+      const execution = await this.executeTool(
+        tc.function.name,
+        args,
+        agentWalletBalanceUsdc,
+        agentWalletAddress,
+        isRussian,
+        prompt
+      );
+
+      // If Gatekeeper policy blocked execution, return refusal immediately
+      if (execution.policyRefusal) {
+        return execution.policyRefusal;
+      }
+
+      executedToolCalls.push(execution.toolCall);
+      messages.push({
+        role: 'tool',
+        tool_call_id: tc.id,
+        content: JSON.stringify(execution.output),
+      });
+    }
+
+    // Turn 2 Follow-up: Give tool execution data back to LLM for final grounded synthesis
+    const followUpRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://pharos-ai.xyz',
+        'X-Title': 'Pharos Copilot',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages,
+        max_tokens: 1500,
+        temperature: 0.3,
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!followUpRes.ok) {
+      // Fallback: Synthesize tool outputs directly if follow-up times out
+      return {
+        id: `msg_${Date.now()}`,
+        sender: 'agent',
+        text: isRussian
+          ? `Получены проверенные ончейн-данные с Pharos Mainnet:\n\`\`\`json\n${JSON.stringify(executedToolCalls.map((t) => t.output), null, 2)}\n\`\`\``
+          : `Verified on-chain data retrieved from Pharos Mainnet:\n\`\`\`json\n${JSON.stringify(executedToolCalls.map((t) => t.output), null, 2)}\n\`\`\``,
+        timestamp: new Date().toISOString(),
+        toolCalls: executedToolCalls,
+      };
+    }
+
+    const followUpData = await followUpRes.json();
+    const finalContent =
+      followUpData.choices?.[0]?.message?.content?.trim() ||
       'Ответ модели не был получен.';
 
     return {
       id: `msg_${Date.now()}`,
       sender: 'agent',
-      text: candidateText,
+      text: finalContent,
       timestamp: new Date().toISOString(),
-      toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
+      toolCalls: executedToolCalls,
     };
   }
 
   /**
-   * Direct Google Gemini REST API caller (for custom keys or Google AI Studio keys).
+   * Direct Google Gemini REST API caller with functionDeclarations.
    */
   private static async callGeminiApi(
     context: CopilotContext,
-    systemPrompt: string,
-    toolCalls?: ToolCallExecution[]
+    systemPrompt: string
   ): Promise<AgentChatMessage> {
     const { prompt, conversationHistory = [], geminiApiKey, oauthAccessToken } = context;
     const key = geminiApiKey || process.env.GEMINI_API_KEY || '';
@@ -674,8 +556,8 @@ ${JSON.stringify(liveVolData, null, 2)}`
       },
       contents,
       generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 1000,
+        temperature: 0.3,
+        maxOutputTokens: 1500,
       },
     };
 
@@ -700,68 +582,15 @@ ${JSON.stringify(liveVolData, null, 2)}`
       sender: 'agent',
       text: candidateText,
       timestamp: new Date().toISOString(),
-      toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
     };
   }
 
   /**
    * Dynamic fallback only reached if all LLM endpoints are offline.
-   * Synthesizes gathered data cleanly without any canned cliches.
    */
-  private static runResilientFallback(
-    context: CopilotContext,
-    injectedContext: string,
-    toolCalls: ToolCallExecution[]
-  ): AgentChatMessage {
+  private static runResilientFallback(context: CopilotContext): AgentChatMessage {
     const { prompt } = context;
     const isRussian = /[а-яА-ЯёЁіІїЇєЄґҐ]/.test(prompt);
-
-    // If Docs MCP query was retrieved, provide the answer directly
-    const docsCall = toolCalls.find((t) => t.toolName === 'query_docs_mcp');
-    if (docsCall && docsCall.output?.answer) {
-      return {
-        id: `msg_${Date.now()}`,
-        sender: 'agent',
-        text: docsCall.output.answer,
-        timestamp: new Date().toISOString(),
-        toolCalls,
-      };
-    }
-
-    // If intelligence feed was purchased
-    const feedCall = toolCalls.find((t) => t.toolName === 'buy_intelligence_feed');
-    if (feedCall) {
-      const feedSlug = feedCall.arguments?.feedSlug || 'intelligence-feed';
-      const outputData = feedCall.output;
-      const text = isRussian
-        ? `✅ **Платёж 0.001 USDC успешно проведён через сессионный кошелек Privy** на Pharos Mainnet.\n\nПолучены свежие ончейн-данные фида **${feedSlug}**:\n\`\`\`json\n${JSON.stringify(outputData, null, 2)}\n\`\`\``
-        : `✅ **Autonomous 0.001 USDC micropayment settled via embedded Privy session key** on Pharos Mainnet.\n\nFresh on-chain telemetry for **${feedSlug}**:\n\`\`\`json\n${JSON.stringify(outputData, null, 2)}\n\`\`\``;
-      return {
-        id: `msg_${Date.now()}`,
-        sender: 'agent',
-        text,
-        timestamp: new Date().toISOString(),
-        toolCalls,
-      };
-    }
-
-    // If feed catalog was searched
-    const searchCall = toolCalls.find((t) => t.toolName === 'search_feeds');
-    if (searchCall) {
-      const allFeeds = feedStore.getAllFeeds();
-      const listText = isRussian
-        ? `Активные фиды в каталоге Pharos x402 Marketplace (0.001 USDC):\n\n` +
-          allFeeds.map((f) => `• **${f.name}** (\`${f.slug}\`): ${f.description}`).join('\n')
-        : `Active intelligence feeds on Pharos x402 Marketplace (0.001 USDC):\n\n` +
-          allFeeds.map((f) => `• **${f.name}** (\`${f.slug}\`): ${f.description}`).join('\n');
-      return {
-        id: `msg_${Date.now()}`,
-        sender: 'agent',
-        text: listText,
-        timestamp: new Date().toISOString(),
-        toolCalls,
-      };
-    }
 
     const fallback = isRussian
       ? `На связи! Готов помочь с анализом смарт-контрактов, проверкой пулов и фидами данных x402 на Pharos Mainnet.`
