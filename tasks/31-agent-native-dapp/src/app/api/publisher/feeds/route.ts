@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { feedStore } from '@/lib/storage';
+import { isAddress } from 'viem';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -21,11 +22,20 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, slug, description, category, publisherAddress, pricePerCallUsdc, endpointPath } = body;
+    const { name, slug, description, category, publisherAddress, payoutAddress, pricePerCallUsdc, endpointPath } = body;
 
-    if (!name || !slug || !endpointPath || !publisherAddress) {
+    const targetPublisher = (payoutAddress || publisherAddress || '').trim();
+
+    if (!name || !slug || !endpointPath || !targetPublisher) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, slug, endpointPath, publisherAddress.' },
+        { error: 'Missing required fields: name, slug, endpointPath, payoutAddress/publisherAddress.' },
+        { status: 400 }
+      );
+    }
+
+    if (!isAddress(targetPublisher)) {
+      return NextResponse.json(
+        { error: 'Payout address must be a valid 42-character Ethereum address (e.g. 0x...).' },
         { status: 400 }
       );
     }
@@ -44,7 +54,7 @@ export async function POST(req: NextRequest) {
       slug: cleanSlug,
       description: description || 'Custom publisher intelligence endpoint.',
       category: category || 'CUSTOM',
-      publisherAddress,
+      publisherAddress: targetPublisher,
       publisherName: 'Independent Data Provider',
       pricePerCallUsdc: price,
       priceAtomicUnits: Math.round(price * 1_000_000).toString(),
