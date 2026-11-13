@@ -2,6 +2,7 @@ import { PolicyGatekeeper } from './policy-gatekeeper';
 import { feedStore } from './storage';
 import { AgentChatMessage, ToolCallExecution } from '@/types/agent';
 import { fetchLiveIntelligenceData } from './pharos-intelligence';
+import { PHAROS_CONSTANTS } from './pharos-chain';
 import { queryDocsMcp, callChainMcp, getDocsKnowledgeFallback } from './mcp-mesh';
 import { AntigravitySandboxRunner } from './antigravity-sandbox-runner';
 
@@ -22,11 +23,16 @@ You are an expert on-chain analyst, smart contract specialist, and authentic AI 
 CONVERSATIONAL RULES (ABSOLUTELY ESSENTIAL):
 1. LIVE, NATURAL DIALOGUE: Conduct a genuine, intelligent, organic multi-turn conversation with the user. Never act like a robotic template responder or an automated IVR bot.
 2. CONTEXTUAL CONTINUITY: Actively pay attention to the previous conversation history! If the user makes a remark, jokes, pushes back ("а я спрашивал?", "ты не понял"), asks a follow-up ("а почему?", "и что дальше?"), or changes the topic, directly address their exact point in context.
-3. ADAPTIVE TONE & CONCISENESS:
+3. STRICT ROLE BOUNDARY — ON-CHAIN DATA ONLY (NO CODE GENERATION):
+   - You are strictly an on-chain data researcher, telemetry analyst, and documentation broker for Pharos Mainnet.
+   - You do NOT write application code, programming scripts, or software implementations (e.g. no Python scripts, no JavaScript bots, no scrapers, no random number generators).
+   - If the user asks you to write code, generate a script, or program something:
+     Decline naturally, casually, and conversationally in the ongoing dialogue, without using robotic templates, corporate disclaimers, or repetitive clichés. Speak like a real human specialist whose focus is solely on on-chain data, telemetry, and Pharos smart contract analytics (e.g. "Слушай, код я не пишу — я сфокусирован только на ончейн-аналитике, мониторинге сети и проверке данных на Pharos. Если нужно проанализировать контракт или транзакцию — с радостью помогу!").
+4. ADAPTIVE TONE & CONCISENESS:
    - For casual conversation, greetings, pings, or short remarks ("прием", "как дела?", "эй", "алло"): respond naturally, warmly, and concisely. Never dump unsolicited documentation overviews unless asked!
    - For playful banter or pushback ("а я спрашивал?"): be self-aware, witty, and lighthearted ("Справедливо, не спрашивал! 😄 Чем могу помочь на самом деле?").
-   - For technical, smart contract, and blockchain questions: provide thorough, accurate, expert answers with code, contract addresses, and architectural depth.
-4. LANGUAGE ADAPTABILITY: Always respond in the exact language used by the user (fluent, natural Russian if the user writes in Russian or Ukrainian; English if English).
+   - For technical, smart contract, and blockchain questions: provide thorough, accurate on-chain analysis with contract addresses, verified parameters, and architectural depth (without writing custom programming scripts).
+5. LANGUAGE ADAPTABILITY: Always respond in the exact language used by the user (fluent, natural Russian if the user writes in Russian or Ukrainian; English if English).
 
 AUTONOMOUS X402 MICROPAYMENTS & PRIVY SESSION KEYS (CRITICAL):
 5. ZERO POPUPS, ZERO WAITING FOR MANUAL CONFIRMATION:
@@ -44,6 +50,10 @@ AUTONOMOUS X402 MICROPAYMENTS & PRIVY SESSION KEYS (CRITICAL):
      3. If the bot previously asked for confirmation or told them to look for a popup, apologize for the confusion: in the x402 protocol, payment deduction is completely automated and gasless.
      4. To purchase feeds, the user simply needs at least 0.001 USDC balance in the embedded wallet (which can be topped up via the Deposit button in the header/sidebar).
      5. When they ask for a feed, the agent instantly executes the 0.001 USDC micro-payment and delivers the verified on-chain data without any manual steps.
+7. STRICT ON-CHAIN AUTHENTICITY & ZERO HALLUCINATIONS:
+   - NEVER invent or hallucinate token names, symbols, decimals, supplies, or contract interfaces (e.g., do NOT invent "Pharos Test Token" or "PTT" or random supplies).
+   - Only report verified on-chain facts from the provided RPC telemetry.
+   - If "isStandardErc20" is false: the contract is NOT an ERC-20 token! State its genuine contract type (e.g., Marketplace / Launchpad / Sale Module or custom contract) and detail the exact function selectors detected in its bytecode.
 
 CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
 1. SMART CONTRACTS & DOCS: In-depth technical explanations of Pharos contracts (Native USDC at 0xc879c018db60520f4355c26ed1a6d572cdac1815, WPROS at 0x52c48d4213107b20bc583832b0d951fb9ca8f0b0), ERC-20 standard functions, EIP-2612 permit, EIP-3009 gasless transfers, Circle CCTP cross-chain functions, and Foundry deployment scripts.
@@ -69,9 +79,10 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
       oauthAccessToken,
     } = context;
 
-    // Security Layer 1: Prompt intent evaluation & code refusal shield
+    // Security Layer 1: Prompt intent evaluation & security shield
     const intentCheck = PolicyGatekeeper.evaluateUserIntent(prompt);
-    if (intentCheck.isViolating) {
+    // Hard-block malicious shell injections and prompt hijack attempts
+    if (intentCheck.isViolating && intentCheck.category !== 'CODE_GENERATION_PROHIBITED') {
       return {
         id: `msg_${Date.now()}`,
         sender: 'agent',
@@ -106,9 +117,14 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
 • Current Remaining Available Balance: ${effectiveRemainingBal.toFixed(3)} USDC
 • Network: Pharos Mainnet (Chain ID 1672)`;
 
+    const codeGuidanceSnippet =
+      intentCheck.category === 'CODE_GENERATION_PROHIBITED'
+        ? '\n\n[ROLE DIRECTIVE]: The user is asking for programming code or scripts. Strictly decline naturally, conversationally, and casually in your own words in the dialogue (do NOT write code). Never use robotic templates or canned clichés.'
+        : '';
+
     const enrichedPersona = injectedContext
-      ? `${this.SYSTEM_PERSONA}\n\n${userWalletInfo}\n\nVERIFIED REAL-TIME DATA RETRIEVED FROM PHAROS MESH:\n${injectedContext}\n\nSynthesize this verified on-chain data directly in your response to answer the user accurately and naturally.`
-      : `${this.SYSTEM_PERSONA}\n\n${userWalletInfo}`;
+      ? `${this.SYSTEM_PERSONA}${codeGuidanceSnippet}\n\n${userWalletInfo}\n\nVERIFIED REAL-TIME DATA RETRIEVED FROM PHAROS MESH:\n${injectedContext}\n\nSynthesize this verified on-chain data directly in your response to answer the user accurately and naturally.`
+      : `${this.SYSTEM_PERSONA}${codeGuidanceSnippet}\n\n${userWalletInfo}`;
 
     // Priority 1: Google Gemini REST API (if user entered an API key or GEMINI_API_KEY is configured)
     if (geminiApiKey || process.env.GEMINI_API_KEY) {
@@ -215,6 +231,10 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
       lower.includes('pool depth') ||
       lower.includes('глубин');
 
+    const extractedAddressMatch = prompt.match(/0x[a-fA-F0-9]{40}/);
+    const hasContractAddress = !!extractedAddressMatch;
+    const extractedAddress = extractedAddressMatch ? extractedAddressMatch[0] : undefined;
+
     let targetRisk =
       lower.includes('risk') ||
       lower.includes('риск') ||
@@ -225,7 +245,21 @@ CORE CAPABILITIES & ON-CHAIN INFRASTRUCTURE:
       lower.includes('vulnerability') ||
       lower.includes('уязвим') ||
       lower.includes('безопасн') ||
-      (lower.includes('аудит') && lower.includes('контракт'));
+      lower.includes('чекни') ||
+      lower.includes('проверь') ||
+      lower.includes('проверить') ||
+      lower.includes('check') ||
+      lower.includes('audit') ||
+      lower.includes('аудит') ||
+      (hasContractAddress &&
+        (lower.includes('контракт') ||
+          lower.includes('contract') ||
+          lower.includes('токен') ||
+          lower.includes('token') ||
+          lower.includes('адрес') ||
+          lower.includes('address') ||
+          lower.includes('байткод') ||
+          lower.includes('bytecode')));
 
     let targetVolatility =
       lower.includes('volat') ||
@@ -359,10 +393,11 @@ ${JSON.stringify(liveSolvencyData, null, 2)}`
       }
 
       try {
-        const liveRiskData = await fetchLiveIntelligenceData('contract-risk');
+        const targetToAudit = extractedAddress || PHAROS_CONSTANTS.nativeUsdcAddress;
+        const liveRiskData = await fetchLiveIntelligenceData('contract-risk', { target: targetToAudit });
         toolCalls.push({
           toolName: 'buy_intelligence_feed',
-          arguments: { feedSlug: 'contract-risk', costUsdc: 0.001 },
+          arguments: { feedSlug: 'contract-risk', costUsdc: 0.001, targetAddress: targetToAudit },
           output: liveRiskData,
         });
         feedStore.recordPurchase('contract-risk', 0.001);
@@ -372,10 +407,17 @@ ${JSON.stringify(liveSolvencyData, null, 2)}`
 • Status: Successfully settled on Pharos Mainnet (Chain ID 1672)
 • Buyer Wallet: ${agentWalletAddress}
 • Autonomous Session Key: Settled seamlessly via Privy embedded session key without popups.
+• Target Address Analyzed: ${targetToAudit}
 • CRITICAL DIRECTIVE: The micropayment of 0.001 USDC has ALREADY been executed and debited. DO NOT ask the user for confirmation. DO NOT mention MetaMask or wallet popups. Immediately present the smart contract risk report!
 
-[LIVE SMART CONTRACT BYTECODE DISASSEMBLY & AUDIT REPORT]:
-${JSON.stringify(liveRiskData, null, 2)}`
+[LIVE SMART CONTRACT BYTECODE DISASSEMBLY & AUDIT REPORT ON PHAROS MAINNET]:
+${JSON.stringify(liveRiskData, null, 2)}
+
+[CRITICAL ACCURACY DIRECTIVE]:
+1. If "isStandardErc20" is false: this contract is NOT an ERC-20 token! Under NO circumstances should you state it is an ERC-20 token or invent a fake token name (e.g., do NOT invent "Pharos Test Token" or "PTT"), decimals, or supply numbers!
+2. Accurately report its true contract architecture based on "contractType" (e.g. Marketplace / Launchpad / Sale Module or custom contract).
+3. Explicitly report the real function selectors detected in its bytecode (e.g. limitsOf(address), buy(address,uint256,uint256), factory(), marketBeacon(), spentOn(address,uint256)).
+4. If "connectedContracts" are detected (such as factory or marketBeacon), cite their real on-chain addresses directly.`
         );
       } catch (err) {
         console.warn('Failed to prefetch contract risk:', err);
