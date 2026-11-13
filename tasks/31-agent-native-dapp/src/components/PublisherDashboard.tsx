@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { IntelligenceFeed } from '@/types/feed';
+import { usePharosAuth } from './PrivyClientProvider';
 import {
   Settings,
   RefreshCw,
@@ -15,6 +16,7 @@ import {
   Coins,
   Check,
   ExternalLink,
+  Layers,
 } from 'lucide-react';
 
 interface PublisherDashboardProps {
@@ -30,11 +32,13 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
   onRefreshFeeds,
   onConnectWallet,
 }) => {
+  const { sendOnChainClaim } = usePharosAuth();
   const [editingSlug, setEditingSlug] = useState<string | null>(null);
   const [newPrice, setNewPrice] = useState<number>(0.001);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [isSettling, setIsSettling] = useState(false);
+  const [isSettlingOnChain, setIsSettlingOnChain] = useState(false);
+  const [isSettlingOffChain, setIsSettlingOffChain] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [lastSettlementReceipt, setLastSettlementReceipt] = useState<any | null>(null);
 
@@ -82,9 +86,43 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
   }, 0);
   const totalSettled = myFeeds.reduce((acc, f) => acc + (f.settledRevenueUsdc || 0), 0);
 
-  const handleSettleAll = async () => {
-    if (!walletAddress) return;
-    setIsSettling(true);
+  // 1. Authentic On-Chain Claim on Pharos Mainnet
+  const handleOnChainClaim = async () => {
+    if (!walletAddress || totalUnsettled <= 0) return;
+    setIsSettlingOnChain(true);
+    setStatusMessage(null);
+    try {
+      const { txHash, blockNumber } = await sendOnChainClaim(walletAddress, totalUnsettled);
+
+      const res = await fetch('/api/publisher/settle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publisherAddress: walletAddress, onChainTxHash: txHash }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setLastSettlementReceipt({
+          ...data.settlementReceipt,
+          settlementTxHash: txHash,
+          blockNumber,
+        });
+        setStatusMessage(`🎉 On-Chain Claim Executed! Confirmed in block #${blockNumber || 'recent'} on Pharos Mainnet.`);
+        await onRefreshFeeds();
+      } else {
+        setStatusMessage(`❌ Settlement error: ${data.error}`);
+      }
+    } catch (err: any) {
+      console.warn('On-chain claim error:', err);
+      setStatusMessage(`❌ On-Chain Settlement Error: ${err?.message || String(err)}`);
+    } finally {
+      setIsSettlingOnChain(false);
+    }
+  };
+
+  // 2. Off-Chain State Channel Voucher Reconciliation (Gasless)
+  const handleOffChainVoucherReconcile = async () => {
+    if (!walletAddress || totalUnsettled <= 0) return;
+    setIsSettlingOffChain(true);
     setStatusMessage(null);
     try {
       const res = await fetch('/api/publisher/settle', {
@@ -95,15 +133,15 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
       const data = await res.json();
       if (res.ok) {
         setLastSettlementReceipt(data.settlementReceipt);
-        setStatusMessage(`🎉 Successfully settled ${data.settlementReceipt.settledAmountUsdc} USDC to your wallet on Pharos Mainnet!`);
+        setStatusMessage(`✅ Off-Chain state vouchers reconciled in mesh ledger (${data.settlementReceipt.settledAmountUsdc} USDC).`);
         await onRefreshFeeds();
       } else {
         setStatusMessage(`❌ Settlement error: ${data.error}`);
       }
-    } catch (err) {
-      setStatusMessage(`❌ Network error executing settlement: ${String(err)}`);
+    } catch (err: any) {
+      setStatusMessage(`❌ Network error executing voucher reconciliation: ${String(err)}`);
     } finally {
-      setIsSettling(false);
+      setIsSettlingOffChain(false);
     }
   };
 
@@ -317,21 +355,40 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <button
-              onClick={handleSettleAll}
-              disabled={isSettling || totalUnsettled <= 0}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-98 disabled:opacity-50 disabled:bg-gray-200 pharos-gradient-bg text-white hover:opacity-95"
+              onClick={handleOnChainClaim}
+              disabled={isSettlingOnChain || isSettlingOffChain || totalUnsettled <= 0}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-98 disabled:opacity-50 disabled:bg-gray-200 pharos-gradient-bg text-white hover:opacity-95"
+              title="Broadcasts authentic on-chain ERC-20 transfer on Pharos Mainnet (Chain ID 1672) to your wallet"
             >
-              {isSettling ? (
+              {isSettlingOnChain ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Settling to Wallet...</span>
+                  <span>Broadcasting On-Chain...</span>
                 </>
               ) : (
                 <>
-                  <Coins className="w-4 h-4" />
-                  <span>Claim ${totalUnsettled.toFixed(4)} USDC</span>
+                  <Zap className="w-3.5 h-3.5" />
+                  <span>Broadcast On-Chain Claim (${totalUnsettled.toFixed(4)} USDC)</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleOffChainVoucherReconcile}
+              disabled={isSettlingOnChain || isSettlingOffChain || totalUnsettled <= 0}
+              className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 transition-all shadow-2xs active:scale-98 disabled:opacity-50"
+              title="Reconciles accumulated EIP-712 payment vouchers in the state channel ledger without network gas"
+            >
+              {isSettlingOffChain ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Reconciling Ledger...</span>
+                </>
+              ) : (
+                <>
+                  <Layers className="w-3.5 h-3.5 text-[#0012b8]" />
+                  <span>Reconcile State Vouchers (Gasless)</span>
                 </>
               )}
             </button>
@@ -390,7 +447,12 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
           </div>
           <div className="text-[11px] text-emerald-900 bg-emerald-100/70 px-3 py-2 rounded-lg font-medium flex items-center justify-between">
             <span>
-              ℹ️ Standard: <strong>{lastSettlementReceipt.settlementStandard}</strong>. Micro-payments are reconciled in the state channel ledger.
+              ℹ️ Standard: <strong>{lastSettlementReceipt.settlementStandard}</strong>.
+              {lastSettlementReceipt.settlementTxHash ? (
+                <> Confirmed on-chain in Pharos Mainnet block #{lastSettlementReceipt.blockNumber || 'latest'}.</>
+              ) : (
+                <> Off-chain vouchers reconciled in state channel ledger without network gas fees.</>
+              )}
             </span>
           </div>
         </div>
