@@ -150,4 +150,29 @@ describe('x402 Payment Gateway & Curation Verification', () => {
     expect(body.receipt.verifiedEip712).toBe(true);
     expect(body.intelligence.liveData).toBe('whales-detected-on-chain');
   });
+
+  it('strictly rejects simulated mock strings (e.g. 0xValidEip712SessionKeySignature) with HTTP 401 Unauthorized', async () => {
+    const sessionPrivateKey = generatePrivateKey();
+    const sessionAccount = privateKeyToAccount(sessionPrivateKey);
+    const nonce = Date.now();
+
+    const mockPayload = {
+      buyerAddress: sessionAccount.address,
+      authorizationSignature: '0xValidEip712SessionKeySignaturePharosMainnet',
+      nonce,
+      queryHash: '0xmockquery123',
+    };
+
+    const req = new NextRequest('http://localhost:3000/api/x402/whale-radar', {
+      headers: {
+        Authorization: `x402 ${JSON.stringify(mockPayload)}`,
+      },
+    });
+
+    const res = await handleX402Paywall(req, 'whale-radar', () => ({ telemetry: 'ok' }));
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error).toContain('Payment authorization signature verification failed');
+    expect(body.message).toContain('signature does not match');
+  });
 });
