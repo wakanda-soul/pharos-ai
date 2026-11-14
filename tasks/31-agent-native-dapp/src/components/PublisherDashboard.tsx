@@ -900,7 +900,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
             {/* Payout & Claimer Wallet Address Field with Required Helper Tooltip */}
             <div className="sm:col-span-2">
               <label className="block text-gray-700 font-medium mb-1 flex items-center justify-between">
-                <span>Claim & Payout Recipient Address (Адрес для клейма и выплат) *</span>
+                <span>Claim & Payout Recipient Address *</span>
                 <span className="text-[10px] text-amber-700 font-semibold">External Web3 Wallet</span>
               </label>
               <input
@@ -908,12 +908,12 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
                 required
                 value={payoutAddress}
                 onChange={(e) => setPayoutAddress(e.target.value)}
-                placeholder="0x... (ваш внешний адрес MetaMask / Rabby)"
+                placeholder="0x... (your external MetaMask / Rabby address)"
                 className="w-full px-3 py-1.5 border border-[#e5e7eb] rounded bg-white font-mono text-xs focus:ring-1 focus:ring-[#0012b8] focus:border-[#0012b8]"
               />
               <p className="text-[11px] text-gray-500 mt-1.5 flex items-start gap-1 bg-amber-50/80 border border-amber-200/80 p-2.5 rounded-lg text-amber-900">
-                <span className="text-amber-600 font-bold shrink-0">💡 Подсказка:</span>
-                <span>Укажите адрес вашего внешнего кошелька (например, MetaMask), который будет клеймить накопленные оплаты. Это должен быть отдельный ваш кошелек, а не временный сессионный Privy-кошелек, созданный при регистрации и входе.</span>
+                <span className="text-amber-600 font-bold shrink-0">💡 Pro Tip:</span>
+                <span>Specify your external Web3 wallet address (e.g. MetaMask or Rabby) that will claim accrued payments. This must be your separate personal wallet, not the temporary embedded Privy session wallet created during sign-in.</span>
               </p>
             </div>
 
