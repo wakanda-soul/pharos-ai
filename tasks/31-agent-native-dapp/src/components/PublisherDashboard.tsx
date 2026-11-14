@@ -92,6 +92,18 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
     }
   }, [feeds]);
 
+  // Sync active publisher address if wallet connects and owns feeds
+  useEffect(() => {
+    if (walletAddress) {
+      const ownsFeeds = feeds.some(
+        (f) => f.publisherAddress.toLowerCase() === walletAddress.toLowerCase()
+      );
+      if (ownsFeeds) {
+        setActivePublisherAddress(walletAddress);
+      }
+    }
+  }, [walletAddress, feeds]);
+
   // Gatekeeper: only authenticated publishers can access
   if (!walletAddress) {
     return (
@@ -186,10 +198,11 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
     return acc + unsettled;
   }, 0);
   const totalSettled = myFeeds.reduce((acc, f) => acc + (f.settledRevenueUsdc || 0), 0);
+  const totalClaimable = Number((totalUnsettled + totalSettled).toFixed(4));
 
   // Authentic Claim via Browser Extension Wallet (MetaMask / Rabby)
   const handleClaimViaBrowserWallet = async () => {
-    if (totalUnsettled <= 0) {
+    if (totalClaimable <= 0) {
       setStatusMessage('ℹ️ No accrued revenue ready to settle for this publisher address.');
       return;
     }
@@ -200,6 +213,16 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
         throw new Error(
           'Browser wallet extension (MetaMask / Rabby) is not installed. Please install a browser extension to claim accrued rewards directly to your external address.'
         );
+      }
+
+      // If vouchers were in off-chain reconciled state, re-open them first so they can be signed and settled
+      if (totalUnsettled <= 0 && totalSettled > 0) {
+        await fetch('/api/publisher/reopen-unsettled', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ publisherAddress: activePublisherAddress }),
+        });
+        await onRefreshFeeds();
       }
 
       // 1. Request or connect accounts
@@ -216,7 +239,8 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
       // 3. Construct authentic EIP-712 settlement voucher claim
       const nonce = Date.now();
       const timestamp = Math.floor(Date.now() / 1000);
-      const amountAtomic = BigInt(Math.round(totalUnsettled * 1_000_000)).toString();
+      const claimAmount = totalClaimable;
+      const amountAtomic = BigInt(Math.round(claimAmount * 1_000_000)).toString();
 
       const claimTypedData = {
         domain: {
@@ -272,7 +296,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
           destinationWallet: activeAccount,
         });
         setStatusMessage(
-          `🎉 Successfully claimed ${totalUnsettled.toFixed(4)} USDC via MetaMask to external wallet ${activeAccount.slice(0, 8)}... on Pharos Mainnet!`
+          `🎉 Successfully claimed ${claimAmount.toFixed(4)} USDC via MetaMask to external wallet ${activeAccount.slice(0, 8)}... on Pharos Mainnet!`
         );
         await onRefreshFeeds();
       } else {
@@ -288,11 +312,20 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
 
   // Authentic On-Chain Settlement from Privy Agent Wallet to External Publisher Wallet
   const handleOnChainClaim = async () => {
-    if (totalUnsettled <= 0) return;
+    if (totalClaimable <= 0) return;
     setIsClaimingOnChain(true);
     setStatusMessage(null);
     try {
-      const { txHash } = await sendOnChainClaim(activePublisherAddress, totalUnsettled);
+      if (totalUnsettled <= 0 && totalSettled > 0) {
+        await fetch('/api/publisher/reopen-unsettled', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ publisherAddress: activePublisherAddress }),
+        });
+        await onRefreshFeeds();
+      }
+      const claimAmount = totalClaimable;
+      const { txHash } = await sendOnChainClaim(activePublisherAddress, claimAmount);
       if (!txHash) {
         throw new Error('On-chain claim did not return a valid transaction hash.');
       }
@@ -308,7 +341,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
       if (res.ok) {
         setLastSettlementReceipt(data.settlementReceipt);
         setStatusMessage(
-          `🎉 Authentic on-chain transfer of ${totalUnsettled.toFixed(4)} USDC confirmed on Pharos Mainnet!`
+          `🎉 Authentic on-chain transfer of ${claimAmount.toFixed(4)} USDC confirmed on Pharos Mainnet!`
         );
         await onRefreshFeeds();
       } else {
@@ -779,11 +812,13 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
               </code>{' '}
               via MetaMask EIP-712 signature (gasless voucher) or direct on-chain transfer.
             </p>
-            {totalUnsettled <= 0 && (
+            {totalClaimable <= 0 ? (
               <div className="text-[11px] text-gray-500 italic mt-1">
-                {totalSettled > 0
-                  ? `ℹ️ All accrued vouchers (${totalSettled.toFixed(4)} USDC) are in reconciled status. Click "Re-open for On-Chain Claim" above to unlock them for on-chain transfer.`
-                  : 'ℹ️ No pending micro-vouchers ready to settle at this time.'}
+                ℹ️ No pending or accrued micro-vouchers ready to settle at this time.
+              </div>
+            ) : (
+              <div className="text-[11px] text-emerald-800 font-semibold mt-1">
+                ✨ Ready to claim: <span className="font-mono">${totalClaimable.toFixed(4)} USDC</span> ({totalUnsettled > 0 ? `${totalUnsettled.toFixed(4)} unsettled` : ''}{totalUnsettled > 0 && totalSettled > 0 ? ' + ' : ''}{totalSettled > 0 ? `${totalSettled.toFixed(4)} off-chain reconciled` : ''})
               </div>
             )}
           </div>
@@ -792,7 +827,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
             {/* Primary Browser Extension Claim Button */}
             <button
               onClick={handleClaimViaBrowserWallet}
-              disabled={isClaimingViaMetaMask || isClaimingOnChain || isSettlingOffChain || totalUnsettled <= 0}
+              disabled={isClaimingViaMetaMask || isClaimingOnChain || isSettlingOffChain || totalClaimable <= 0}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-98 disabled:opacity-50 disabled:bg-gray-200 bg-[#f6851b] hover:bg-[#e2761b] text-white"
               title="Invokes MetaMask/browser extension to sign EIP-712 claim voucher for your external wallet"
             >
@@ -804,7 +839,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
               ) : (
                 <>
                   <span>🦊</span>
-                  <span>Claim via MetaMask (EIP-712)</span>
+                  <span>Claim via MetaMask ({totalClaimable > 0 ? `$${totalClaimable.toFixed(4)}` : 'EIP-712'})</span>
                 </>
               )}
             </button>
@@ -812,7 +847,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
             {/* Direct On-Chain Claim via Privy Agent Wallet */}
             <button
               onClick={handleOnChainClaim}
-              disabled={isClaimingViaMetaMask || isClaimingOnChain || isSettlingOffChain || totalUnsettled <= 0}
+              disabled={isClaimingViaMetaMask || isClaimingOnChain || isSettlingOffChain || totalClaimable <= 0}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-98 disabled:opacity-50 disabled:bg-gray-200 bg-emerald-600 hover:bg-emerald-700 text-white"
               title="Executes authentic on-chain ERC-20 transfer from Privy agent wallet directly to your external wallet on Pharos Mainnet"
             >
@@ -824,7 +859,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
               ) : (
                 <>
                   <Zap className="w-3.5 h-3.5" />
-                  <span>Claim On-Chain (Privy)</span>
+                  <span>Claim On-Chain ({totalClaimable > 0 ? `$${totalClaimable.toFixed(4)}` : 'Privy'})</span>
                 </>
               )}
             </button>

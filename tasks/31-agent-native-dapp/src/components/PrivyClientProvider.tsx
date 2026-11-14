@@ -78,12 +78,7 @@ function ActivePrivyAuthConsumer({
   const [walletBalanceUsdc, setWalletBalanceUsdc] = useState(0);
   const [walletBalancePros, setWalletBalancePros] = useState(0);
   const [localAgentAddress, setLocalAgentAddress] = useState<string | null>(null);
-  const [isExplicitlyDisconnected, setIsExplicitlyDisconnected] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('pharos_session_disconnected') === 'true';
-    }
-    return false;
-  });
+  const [isExplicitlyDisconnected, setIsExplicitlyDisconnected] = useState<boolean>(false);
 
   // Initialize or restore autonomous session key only if NOT explicitly disconnected
   useEffect(() => {
@@ -409,12 +404,7 @@ function UnconfiguredPrivyProvider({
   setPrivyAppId: (id: string) => void;
 }) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [isExplicitlyDisconnected, setIsExplicitlyDisconnected] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('pharos_session_disconnected') === 'true';
-    }
-    return false;
-  });
+  const [isExplicitlyDisconnected, setIsExplicitlyDisconnected] = useState<boolean>(false);
   const [walletBalanceUsdc, setWalletBalanceUsdc] = useState(0);
   const [walletBalancePros, setWalletBalancePros] = useState(0);
 

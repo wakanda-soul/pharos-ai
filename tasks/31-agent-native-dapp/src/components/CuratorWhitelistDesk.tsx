@@ -44,35 +44,6 @@ export const CuratorWhitelistDesk: React.FC<CuratorWhitelistDeskProps> = ({
   // Local overrides map to guarantee instant optimistic updates without waiting for network/caching
   const [localOverrides, setLocalOverrides] = useState<Record<string, FeedCurationStatus>>({});
 
-  // Security gate: only designated curator can access
-  if (!isCurator) {
-    return (
-      <div className="bg-white rounded-xl border border-red-200 p-10 shadow-sm text-center max-w-lg mx-auto my-8 space-y-4">
-        <div className="w-14 h-14 rounded-full bg-red-50 border border-red-200 flex items-center justify-center mx-auto text-red-600">
-          <Lock className="w-7 h-7" />
-        </div>
-        <h2 className="text-lg font-bold text-gray-900 tracking-tight">Curator Governance Access Restricted</h2>
-        <p className="text-xs text-gray-600 leading-relaxed">
-          The Curator Whitelist Desk is strictly reserved for the designated Pharos Network Curator (<strong>{PHAROS_CONSTANTS.curatorHandle}</strong>).
-          Unauthenticated guests and non-curator wallets cannot review, approve, or revoke marketplace data feeds.
-        </p>
-        {!walletAddress ? (
-          <button
-            onClick={onConnectWallet}
-            className="inline-flex items-center gap-2 bg-[#0012b8] hover:bg-[#000fa0] text-white px-5 py-2.5 rounded-lg text-xs font-semibold shadow-sm transition-all"
-          >
-            <Wallet className="w-4 h-4" />
-            <span>Connect Curator Wallet</span>
-          </button>
-        ) : (
-          <div className="text-xs text-red-700 bg-red-50 p-2.5 rounded border border-red-200 font-mono">
-            Connected: {walletAddress} (Unauthorized)
-          </div>
-        )}
-      </div>
-    );
-  }
-
   // Merge server feeds with local optimistic overrides
   const effectiveFeeds = useMemo(() => {
     return feeds.map((feed) => {
@@ -128,6 +99,35 @@ export const CuratorWhitelistDesk: React.FC<CuratorWhitelistDeskProps> = ({
         return new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime();
       });
   }, [effectiveFeeds, statusFilter, searchQuery]);
+
+  // Security gate: only designated curator can access
+  if (!isCurator) {
+    return (
+      <div className="bg-white rounded-xl border border-red-200 p-10 shadow-sm text-center max-w-lg mx-auto my-8 space-y-4">
+        <div className="w-14 h-14 rounded-full bg-red-50 border border-red-200 flex items-center justify-center mx-auto text-red-600">
+          <Lock className="w-7 h-7" />
+        </div>
+        <h2 className="text-lg font-bold text-gray-900 tracking-tight">Curator Governance Access Restricted</h2>
+        <p className="text-xs text-gray-600 leading-relaxed">
+          The Curator Whitelist Desk is strictly reserved for the designated Pharos Network Curator (<strong>{PHAROS_CONSTANTS.curatorHandle}</strong>).
+          Unauthenticated guests and non-curator wallets cannot review, approve, or revoke marketplace data feeds.
+        </p>
+        {!walletAddress ? (
+          <button
+            onClick={onConnectWallet}
+            className="inline-flex items-center gap-2 bg-[#0012b8] hover:bg-[#000fa0] text-white px-5 py-2.5 rounded-lg text-xs font-semibold shadow-sm transition-all"
+          >
+            <Wallet className="w-4 h-4" />
+            <span>Connect Curator Wallet</span>
+          </button>
+        ) : (
+          <div className="text-xs text-red-700 bg-red-50 p-2.5 rounded border border-red-200 font-mono">
+            Connected: {walletAddress} (Unauthorized)
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const handleCurationAction = async (slug: string, newStatus: FeedCurationStatus) => {
     setIsProcessing(true);
@@ -440,7 +440,7 @@ export const CuratorWhitelistDesk: React.FC<CuratorWhitelistDeskProps> = ({
                           Price:{' '}
                           <strong className="text-[#0012b8]">{feed.pricePerCallUsdc} USDC</strong>
                         </span>
-                        <span className="text-gray-400">
+                        <span className="text-gray-400" suppressHydrationWarning>
                           Updated:{' '}
                           {new Date(feed.lastUpdated).toLocaleTimeString([], {
                             hour: '2-digit',

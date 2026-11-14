@@ -39,7 +39,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
     id: 'init_1',
     sender: 'agent',
     text: `Hello! I am your **Pharos x402 Intelligence Copilot** on Pharos Mainnet (Chain ID 1672).\n\nConnected MCP Gateways:\n• ⚡ **Pharos Chain MCP**: \`https://mcp.pharos.xyz/mcp\` (Live Streamable HTTP RPC telemetry)\n• 📚 **Pharos Docs MCP**: \`https://docs.pharos.xyz/index.md?ask=...\` (Official developer documentation RAG)\n\nI autonomously query the verified marketplace mesh and execute 0.001 USDC micro-payments on your behalf using your embedded agent wallet.\n\n*Notice: I am strictly an on-chain data researcher & documentation assistant. I do not write programming code, and I do not generate images or charts.*`,
-    timestamp: new Date().toISOString(),
+    timestamp: '2026-01-01T00:00:00.000Z',
   };
 
   const [messages, setMessages] = useState<AgentChatMessage[]>([INITIAL_MESSAGE]);
@@ -356,7 +356,7 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
                 )}
               </div>
 
-              <span className="text-[10px] text-gray-400 px-1 font-mono">
+              <span className="text-[10px] text-gray-400 px-1 font-mono" suppressHydrationWarning>
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>
