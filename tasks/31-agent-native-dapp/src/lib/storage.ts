@@ -19,7 +19,9 @@ class FeedStore {
       process.env.NODE_ENV === 'test'
         ? 'pharos-feeds.test.json'
         : 'pharos-feeds.json';
-    this.stateFilePath = path.join(process.cwd(), '.state', fileName);
+    const isVercel = !!process.env.VERCEL;
+    const baseDir = isVercel ? '/tmp' : path.join(process.cwd(), '.state');
+    this.stateFilePath = path.join(baseDir, fileName);
     this.initStore();
   }
 
