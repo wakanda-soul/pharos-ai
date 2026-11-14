@@ -100,11 +100,12 @@ export default function Home() {
   const activeWalletAddress = privyWalletAddress || walletAddress;
   const activeBalanceUsdc = (privyWalletAddress ? privyUsdcBal : walletBalanceUsdc) || walletBalanceUsdc;
 
-  // On-chain curator access check (wakanda-soul / curator address / embedded wallet)
+  // On-chain curator access check (wakanda-soul / curator address / embedded wallet / publisher wallet)
   const isCurator =
     !!activeWalletAddress &&
     (activeWalletAddress.toLowerCase() === PHAROS_CONSTANTS.curatorAddress.toLowerCase() ||
-      activeWalletAddress.toLowerCase() === '0xf80622473df9c6babcf2d382458b7c75b74918b4');
+      activeWalletAddress.toLowerCase() === '0xf80622473df9c6babcf2d382458b7c75b74918b4' ||
+      activeWalletAddress.toLowerCase() === '0x11d12c00308c92beb5937fc9315cfa9b5a3c8b1e');
 
   const handleOpenPrivyLogin = () => {
     if (typeof window !== 'undefined') {

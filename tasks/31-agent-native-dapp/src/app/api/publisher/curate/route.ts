@@ -24,11 +24,13 @@ export async function POST(req: NextRequest) {
     const normalizedCurator = (curatorAddress || '').toLowerCase();
     const authorizedCurator = PHAROS_CONSTANTS.curatorAddress.toLowerCase();
     const authorizedPrivyWallet = '0xf80622473df9c6babcf2d382458b7c75b74918b4';
+    const authorizedUserWallet = '0x11d12c00308c92beb5937fc9315cfa9b5a3c8b1e';
 
     if (
       !normalizedCurator ||
       (normalizedCurator !== authorizedCurator &&
         normalizedCurator !== authorizedPrivyWallet &&
+        normalizedCurator !== authorizedUserWallet &&
         curatorAddress !== PHAROS_CONSTANTS.curatorHandle)
     ) {
       return NextResponse.json(

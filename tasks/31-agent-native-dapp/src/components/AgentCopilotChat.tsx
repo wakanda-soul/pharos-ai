@@ -300,8 +300,12 @@ export const AgentCopilotChat: React.FC<AgentCopilotChatProps> = ({
                   <div className="mt-3 pt-2.5 border-t border-gray-200/80 space-y-2">
                     {msg.toolCalls.map((tc, idx) => {
                       const isPaid = tc.toolName === 'buy_intelligence_feed';
+                      const feeAmount =
+                        typeof tc.arguments?.costUsdc === 'number'
+                          ? tc.arguments.costUsdc
+                          : parseFloat(tc.arguments?.costUsdc || '0.001');
                       const costText = isPaid
-                        ? 'x402 Micropayment · 0.001 USDC'
+                        ? `x402 Micropayment · ${isNaN(feeAmount) ? '0.001' : feeAmount} USDC`
                         : tc.toolName === 'search_feeds'
                         ? 'Free · Catalog Mesh'
                         : 'Free · Telemetry MCP';
