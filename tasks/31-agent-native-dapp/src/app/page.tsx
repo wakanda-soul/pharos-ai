@@ -18,10 +18,57 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { X402_EIP712_DOMAIN, X402_PAYMENT_VOUCHER_TYPES } from '@/types/x402';
 import { Database, Cpu, Shield, ExternalLink, Code2, Menu, X, PlusCircle, Wallet } from 'lucide-react';
 
+type TabType = 'copilot' | 'marketplace' | 'publisher' | 'curator';
+
+const isValidTab = (tab: any): tab is TabType => {
+  return tab === 'copilot' || tab === 'marketplace' || tab === 'publisher' || tab === 'curator';
+};
+
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'copilot' | 'marketplace' | 'publisher' | 'curator'>(
-    'copilot'
-  );
+  const [activeTab, setActiveTabState] = useState<TabType>('copilot');
+
+  // Synchronize activeTab state with URL hash & localStorage
+  const setActiveTab = useCallback((tab: TabType) => {
+    setActiveTabState(tab);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pharos_active_tab', tab);
+      if (window.location.hash !== `#${tab}`) {
+        window.history.replaceState(null, '', `#${tab}`);
+      }
+    }
+  }, []);
+
+  // Restore saved active tab on page mount/reload from hash or localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hashTab = window.location.hash.replace('#', '').toLowerCase();
+      if (isValidTab(hashTab)) {
+        setActiveTabState(hashTab);
+        localStorage.setItem('pharos_active_tab', hashTab);
+        return;
+      }
+
+      const savedTab = localStorage.getItem('pharos_active_tab');
+      if (isValidTab(savedTab)) {
+        setActiveTabState(savedTab);
+        window.history.replaceState(null, '', `#${savedTab}`);
+      }
+    }
+  }, []);
+
+  // Listen to browser Back/Forward navigation
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleHashChange = () => {
+      const hashTab = window.location.hash.replace('#', '').toLowerCase();
+      if (isValidTab(hashTab)) {
+        setActiveTabState(hashTab);
+        localStorage.setItem('pharos_active_tab', hashTab);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
   const [feeds, setFeeds] = useState<IntelligenceFeed[]>(CURATED_FEEDS_INITIAL);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [walletBalanceUsdc, setWalletBalanceUsdc] = useState<number>(0.0);
