@@ -46,6 +46,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
   const [isClaimingOnChain, setIsClaimingOnChain] = useState(false);
   const [isConnectingBrowser, setIsConnectingBrowser] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [isClaimingOwnership, setIsClaimingOwnership] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [lastSettlementReceipt, setLastSettlementReceipt] = useState<any | null>(null);
 
@@ -375,6 +376,42 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
     }
   };
 
+  // Transfer and assign all 4 platform feeds & accrued revenue to the active managing wallet
+  const handleClaimAllFeedsOwnership = async (targetWallet?: string) => {
+    const destination = targetWallet || activePublisherAddress || browserWallet || walletAddress;
+    if (!destination || !isAddress(destination)) {
+      setStatusMessage('❌ Please connect your wallet first to link feeds.');
+      return;
+    }
+    setIsClaimingOwnership(true);
+    setStatusMessage(null);
+    try {
+      const res = await fetch('/api/publisher/claim-feed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: 'all',
+          publisherAddress: destination,
+          publisherName: 'Verified Independent Publisher',
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setActivePublisherAddress(destination);
+        setStatusMessage(
+          `🎉 Successfully assigned all 4 active feeds and accrued revenue to your wallet: ${destination.slice(0, 10)}...${destination.slice(-6)}!`
+        );
+        await onRefreshFeeds();
+      } else {
+        setStatusMessage(`❌ Error assigning feeds: ${data.error}`);
+      }
+    } catch (err: any) {
+      setStatusMessage(`❌ Network error assigning feeds: ${err?.message || String(err)}`);
+    } finally {
+      setIsClaimingOwnership(false);
+    }
+  };
+
   const handleUpdatePrice = async (slug: string) => {
     setIsUpdating(true);
     setStatusMessage(null);
@@ -516,8 +553,22 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
               }`}
               title="View endpoints owned by external payout address (0x11D12C00...)"
             >
-              External Feeds (0x11D1...)
+              External (0x11D1...)
             </button>
+            {browserWallet && browserWallet.toLowerCase() !== DEFAULT_PLATFORM_PUBLISHER.toLowerCase() && (
+              <button
+                type="button"
+                onClick={() => setActivePublisherAddress(browserWallet)}
+                className={`px-2.5 py-1 rounded-lg font-medium transition-all text-[11px] ${
+                  activePublisherAddress.toLowerCase() === browserWallet.toLowerCase()
+                    ? 'bg-white shadow-xs text-[#0012b8] font-bold border border-[#e2e8f0]'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                title="View endpoints owned by your connected MetaMask wallet"
+              >
+                MetaMask ({browserWallet.slice(0, 6)}...)
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setActivePublisherAddress(walletAddress)}
@@ -528,7 +579,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
               }`}
               title="View endpoints owned by your Privy agent wallet"
             >
-              Privy Feeds
+              Privy ({walletAddress.slice(0, 6)}...)
             </button>
           </div>
 
@@ -548,6 +599,43 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
           </button>
         </div>
       </div>
+
+      {/* 1-Click Link/Transfer Feeds Banner when active wallet owns 0 feeds */}
+      {myFeeds.length === 0 && (
+        <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/70 to-purple-50/90 border border-blue-200/90 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-2xs">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-gray-900 flex items-center gap-1.5">
+                <span>🔗</span> Link Platform Feeds & Revenue to Your Wallet
+              </span>
+              <span className="text-[10px] bg-blue-100 text-[#0012b8] font-mono font-bold px-2 py-0.5 rounded-full border border-blue-300">
+                {activePublisherAddress.slice(0, 8)}...{activePublisherAddress.slice(-6)}
+              </span>
+            </div>
+            <p className="text-xs text-gray-600 max-w-xl">
+              Your wallet currently owns 0 feeds. Click below to transfer the 4 active marketplace intelligence feeds and their accrued revenue ($0.0710 USDC) directly to your wallet so the claim button activates.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleClaimAllFeedsOwnership(activePublisherAddress)}
+            disabled={isClaimingOwnership}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-98 bg-[#0012b8] hover:bg-[#000fa0] text-white shrink-0"
+          >
+            {isClaimingOwnership ? (
+              <>
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Linking Feeds...</span>
+              </>
+            ) : (
+              <>
+                <span>👑</span>
+                <span>Assign Feeds & Revenue to My Wallet</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Browser Wallet Extension Banner */}
       <div className="bg-[#fcfdff] border border-indigo-100 rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">

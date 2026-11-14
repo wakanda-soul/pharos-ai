@@ -186,6 +186,24 @@ class FeedStore {
     return true;
   }
 
+  public claimAllFeedsOwnership(
+    newPublisherAddress: string,
+    newPublisherName?: string
+  ): { updatedCount: number; slugs: string[] } {
+    this.loadFromDisk();
+    const slugs: string[] = [];
+    for (const feed of this.feeds.values()) {
+      feed.publisherAddress = newPublisherAddress;
+      if (newPublisherName) {
+        feed.publisherName = newPublisherName;
+      }
+      feed.lastUpdated = new Date().toISOString();
+      slugs.push(feed.slug);
+    }
+    this.persistToDisk();
+    return { updatedCount: slugs.length, slugs };
+  }
+
   public settleFeedRevenue(
     publisherAddress: string,
     slug?: string,
