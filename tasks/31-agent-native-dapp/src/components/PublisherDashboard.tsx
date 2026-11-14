@@ -296,7 +296,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
           destinationWallet: activeAccount,
         });
         setStatusMessage(
-          `🎉 Successfully claimed ${claimAmount.toFixed(4)} USDC via MetaMask to external wallet ${activeAccount.slice(0, 8)}... on Pharos Mainnet!`
+          `✅ State channel settlement voucher verified & signed via MetaMask! Cryptographic receipt archived for external wallet ${activeAccount.slice(0, 8)}... on Pharos Mainnet (Zero Gas).`
         );
         await onRefreshFeeds();
       } else {
@@ -824,12 +824,12 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-            {/* Primary Browser Extension Claim Button */}
+            {/* Primary Browser Extension Claim / Sign Voucher Button */}
             <button
               onClick={handleClaimViaBrowserWallet}
               disabled={isClaimingViaMetaMask || isClaimingOnChain || isSettlingOffChain || totalClaimable <= 0}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs active:scale-98 disabled:opacity-50 disabled:bg-gray-200 bg-[#f6851b] hover:bg-[#e2761b] text-white"
-              title="Invokes MetaMask/browser extension to sign EIP-712 claim voucher for your external wallet"
+              title="Cryptographically signs and reconciles EIP-712 settlement voucher via MetaMask without paying on-chain gas"
             >
               {isClaimingViaMetaMask ? (
                 <>
@@ -839,7 +839,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
               ) : (
                 <>
                   <span>🦊</span>
-                  <span>Claim via MetaMask ({totalClaimable > 0 ? `$${totalClaimable.toFixed(4)}` : 'EIP-712'})</span>
+                  <span>Sign Voucher (MetaMask EIP-712)</span>
                 </>
               )}
             </button>
@@ -859,7 +859,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
               ) : (
                 <>
                   <Zap className="w-3.5 h-3.5" />
-                  <span>Claim On-Chain ({totalClaimable > 0 ? `$${totalClaimable.toFixed(4)}` : 'Privy'})</span>
+                  <span>Claim On-Chain ({totalClaimable > 0 ? `$${totalClaimable.toFixed(4)}` : 'USDC'})</span>
                 </>
               )}
             </button>

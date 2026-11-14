@@ -52,15 +52,16 @@ export class PolicyGatekeeper {
       }
     }
 
-    // 2. Check for code generation requests (e.g. "write me a python script to swap tokens")
+    // 2. Check for code generation requests (e.g. "write a solidity flashloan exploit", "python script", etc.)
     const codePatterns = [
-      /write.*(python|javascript|typescript|solidity|bash|script|code).*(swap|trade|bot|drain|hack|transfer)/i,
-      /give me (a )?(script|code|bot) to/i,
-      /create (a )?(python|js|ts) script/i,
-      /code.*for.*swap/i,
-      /generate.*script/i,
-      /(напиши|создай|сгенерируй|дай|сделай).*(скрипт|код|бота|программу)/i,
-      /(скрипт|код).*(своп|swap|обмен|трансфер|токен)/i,
+      /write.*(python|javascript|typescript|solidity|vyper|rust|bash|script|code|contract)/i,
+      /give me (a )?(script|code|bot|exploit) to/i,
+      /create (a )?(python|js|ts|solidity) script/i,
+      /code.*for.*(swap|exploit|flashloan|drain|hack)/i,
+      /generate.*(script|code|exploit|contract)/i,
+      /(flashloan|exploit|reentrancy|drain|frontrun|sandwich|arbitrage bot|liquidity drain|honeypot code)/i,
+      /(напиши|создай|сгенерируй|дай|сделай|разработай).*(скрипт|код|бота|программу|эксплойт|дрейн|смарт-контракт)/i,
+      /(скрипт|код|эксплойт).*(своп|swap|обмен|трансфер|токен|дрейн|хак|ликвидност)/i,
     ];
 
     for (const pat of codePatterns) {
@@ -68,9 +69,11 @@ export class PolicyGatekeeper {
         return {
           isViolating: true,
           category: 'CODE_GENERATION_PROHIBITED',
-          wittyRefusal: isRussian
-            ? "Хорошая попытка! Но я — Data Copilot для мейннета Pharos, а не стол заказов скриптов. Я брокерую и анализирую проверенные ончейн-данные и фиды, а не произвольный исполняемый код. Как насчёт проверить активность китов или ликвидность Harbor DEX?"
-            : "Nice try! I'm the Pharos Data Copilot, not a script dispensary. I broker verified on-chain intelligence feeds, not arbitrary execution code. How about we check Harbor DEX solvency or scan for whale movements instead?",
+          wittyRefusal: isUkrainian
+            ? "Дія відхилена Policy Gatekeeper: генерація програмного коду, скриптів та експлойтів суворо заблокована. Мій профіль — це ончейн-аналітика, аудит контрактів та верифіковані x402 потоки даних на Pharos Mainnet."
+            : isRussian
+            ? "Запрос отклонён Policy Gatekeeper: генерация программного кода, скриптов и эксплойтов строго запрещена политикой безопасности. Моя специализация — ончейн-аналитика, аудит контрактов и проверка x402 фидов данных на Pharos Mainnet."
+            : "Request Refused by Policy Gatekeeper: I'm the Pharos Data Copilot, not a script dispensary. Code generation, exploit scripts, and visual asset generation are strictly disabled by security guidelines. Only on-chain intelligence, contract audits, and verified x402 feed ingestion are allowed.",
         };
       }
     }
