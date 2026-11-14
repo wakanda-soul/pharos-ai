@@ -45,6 +45,7 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
   const [isClaimingViaMetaMask, setIsClaimingViaMetaMask] = useState(false);
   const [isClaimingOnChain, setIsClaimingOnChain] = useState(false);
   const [isConnectingBrowser, setIsConnectingBrowser] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = useState(false);
   const [lastSettlementReceipt, setLastSettlementReceipt] = useState<any | null>(null);
 
@@ -348,6 +349,32 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
     }
   };
 
+  // Re-open off-chain reconciled vouchers so publisher can claim them on-chain
+  const handleReopenOffChainVouchers = async () => {
+    setIsRestoring(true);
+    setStatusMessage(null);
+    try {
+      const res = await fetch('/api/publisher/reopen-unsettled', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ publisherAddress: activePublisherAddress }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStatusMessage(
+          `🔄 Restored ${data.restoredAmount} USDC in vouchers! All pending revenue is now unlocked for on-chain claiming.`
+        );
+        await onRefreshFeeds();
+      } else {
+        setStatusMessage(`❌ Error restoring vouchers: ${data.error}`);
+      }
+    } catch (err: any) {
+      setStatusMessage(`❌ Network error restoring vouchers: ${err?.message || String(err)}`);
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
   const handleUpdatePrice = async (slug: string) => {
     setIsUpdating(true);
     setStatusMessage(null);
@@ -598,13 +625,52 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
         </div>
 
         <div className="bg-[#f8faff] p-3.5 rounded-xl border border-blue-100/80">
-          <span className="text-[11px] text-gray-500 font-medium">Settled on-chain</span>
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-gray-500 font-medium">Reconciled Off-Chain</span>
+            {totalSettled > 0 && (
+              <button
+                type="button"
+                onClick={handleReopenOffChainVouchers}
+                disabled={isRestoring}
+                className="text-[10px] text-[#0012b8] hover:underline font-bold flex items-center gap-1"
+                title="Restore off-chain vouchers back to Ready to Settle for on-chain claiming"
+              >
+                {isRestoring ? 'Restoring...' : '🔄 Re-open'}
+              </button>
+            )}
+          </div>
           <div className="mt-1 flex items-baseline gap-1.5">
             <span className="text-xl font-bold text-[#0012b8] font-mono">${totalSettled.toFixed(4)}</span>
             <span className="text-[10px] text-gray-400 font-mono">USDC</span>
           </div>
         </div>
       </div>
+
+      {/* Notice & One-Click Restore for Off-Chain Reconciled Vouchers */}
+      {totalSettled > 0 && (
+        <div className="bg-amber-50/90 border border-amber-200 rounded-xl p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <span className="text-amber-600 font-bold text-base">ℹ️</span>
+            <div>
+              <div className="font-semibold text-amber-900">
+                Off-Chain Reconciled Vouchers: ${totalSettled.toFixed(4)} USDC
+              </div>
+              <div className="text-amber-700 text-[11px]">
+                These vouchers were signed off-chain but have not yet been broadcast as an on-chain transfer to your external wallet. Click &ldquo;Re-open for On-Chain Claim&rdquo; to unlock them for on-chain withdrawal.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleReopenOffChainVouchers}
+            disabled={isRestoring}
+            className="px-3.5 py-2 rounded-xl font-bold text-xs bg-amber-600 hover:bg-amber-700 text-white shadow-2xs transition-all active:scale-98 shrink-0 flex items-center gap-1.5"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRestoring ? 'animate-spin' : ''}`} />
+            <span>{isRestoring ? 'Restoring...' : 'Re-open for On-Chain Claim'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Batch Settlement Control Desk */}
       {myFeeds.length > 0 && (
@@ -625,6 +691,13 @@ export const PublisherDashboard: React.FC<PublisherDashboardProps> = ({
               </code>{' '}
               via MetaMask EIP-712 signature (gasless voucher) or direct on-chain transfer.
             </p>
+            {totalUnsettled <= 0 && (
+              <div className="text-[11px] text-gray-500 italic mt-1">
+                {totalSettled > 0
+                  ? `ℹ️ All accrued vouchers (${totalSettled.toFixed(4)} USDC) are in reconciled status. Click "Re-open for On-Chain Claim" above to unlock them for on-chain transfer.`
+                  : 'ℹ️ No pending micro-vouchers ready to settle at this time.'}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">

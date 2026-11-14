@@ -265,6 +265,50 @@ class FeedStore {
       timestamp,
     };
   }
+
+  public reopenUnsettledRevenue(publisherAddress: string): {
+    success: boolean;
+    restoredAmount: number;
+    restoredFeeds: string[];
+    error?: string;
+  } {
+    this.loadFromDisk();
+    const normalizedPublisher = publisherAddress.toLowerCase();
+    const matchingFeeds = Array.from(this.feeds.values()).filter(
+      (f) => f.publisherAddress.toLowerCase() === normalizedPublisher
+    );
+
+    if (matchingFeeds.length === 0) {
+      return {
+        success: false,
+        restoredAmount: 0,
+        restoredFeeds: [],
+        error: `No feeds found for publisher ${publisherAddress}`,
+      };
+    }
+
+    let totalRestored = 0;
+    const restoredSlugs: string[] = [];
+
+    for (const feed of matchingFeeds) {
+      const settledAmount = feed.settledRevenueUsdc || 0;
+      if (settledAmount > 0) {
+        totalRestored += settledAmount;
+        feed.unsettledRevenueUsdc = Number(((feed.unsettledRevenueUsdc || 0) + settledAmount).toFixed(4));
+        feed.settledRevenueUsdc = 0;
+        feed.lastUpdated = new Date().toISOString();
+        restoredSlugs.push(feed.slug);
+      }
+    }
+
+    this.persistToDisk();
+
+    return {
+      success: true,
+      restoredAmount: Number(totalRestored.toFixed(4)),
+      restoredFeeds: restoredSlugs,
+    };
+  }
 }
 
 // Global singleton across API routes in Next.js
